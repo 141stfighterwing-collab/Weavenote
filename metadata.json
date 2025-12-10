@@ -1,0 +1,5 @@
+{
+  "name": "WeaveNote",
+  "description": "An AI-powered smart note organizer that categorizes ideas, visualizes connections with a neural mind map, and formats messy thoughts into structured post-its.",
+  "requestFramePermissions": []
+}
