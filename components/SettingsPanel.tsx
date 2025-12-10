@@ -9,7 +9,7 @@ import {
     getSessionTimeout, setSessionTimeout
 } from '../services/authService';
 import { getUserStats, UserUsageStats, loadNotes, downloadAllNotesAsZip } from '../services/storageService';
-import { getAIUsageLogs, clearAIUsageLogs, getErrorLogs, clearErrorLogs } from '../services/geminiService';
+import { getAIUsageLogs, clearAIUsageLogs, getErrorLogs, clearErrorLogs, runConnectivityTest } from '../services/geminiService';
 import { Theme, AILogEntry, ErrorLogEntry } from '../types';
 
 interface SettingsPanelProps {
@@ -52,6 +52,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const [resetPassUser, setResetPassUser] = useState<string | null>(null);
   const [resetPassValue, setResetPassValue] = useState('');
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
+
+  // Diagnostic State
+  const [diagResult, setDiagResult] = useState<{ success: boolean, message: string, details?: any } | null>(null);
+  const [isRunningDiag, setIsRunningDiag] = useState(false);
 
   const isUserAdmin = isAdmin(currentUser);
 
@@ -165,13 +169,21 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
   const handleDownloadErrorLogs = () => {
       const text = JSON.stringify(errorLogs, null, 2);
-      const blob = new Blob([text], { type: 'text/json' });
+      const blob = new Blob([text], { type: 'text/plain' }); // Error.txt format
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `error_logs_${new Date().toISOString()}.json`;
+      a.download = `Error_Log_${new Date().toISOString()}.txt`;
       a.click();
       URL.revokeObjectURL(url);
+  };
+
+  const runDiagnostics = async () => {
+      setIsRunningDiag(true);
+      setDiagResult(null);
+      const result = await runConnectivityTest();
+      setDiagResult(result);
+      setIsRunningDiag(false);
   };
 
   // Calculated Stats
@@ -632,16 +644,48 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 {activeTab === 'errors' && isUserAdmin && (
                     <div>
                          <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-red-600 dark:text-red-400">Error Logs (Debugging)</h3>
+                            <h3 className="text-lg font-bold text-red-600 dark:text-red-400">System Diagnostics</h3>
                             <div className="flex gap-3">
-                                <button type="button" onClick={handleDownloadErrorLogs} className="text-xs bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 px-3 py-1 rounded text-slate-700 dark:text-slate-300 transition-colors">Download JSON</button>
+                                <button type="button" onClick={handleDownloadErrorLogs} className="text-xs bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 px-3 py-1 rounded text-slate-700 dark:text-slate-300 transition-colors">Download Error.txt</button>
                                 <button type="button" onClick={() => { clearErrorLogs(); loadData(); }} className="text-xs text-red-500 hover:underline">Clear Errors</button>
                             </div>
                         </div>
-                        <div className="mb-4 text-xs text-slate-500">
-                            Logs detailed client-side errors, API failures, and stack traces. Use this to debug "Failed to process" issues.
+
+                        {/* LIVE DIAGNOSTIC TOOL */}
+                        <div className="mb-6 p-4 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-100 dark:bg-slate-900">
+                            <div className="flex justify-between items-center mb-2">
+                                <h4 className="font-bold text-sm">Connection Tester</h4>
+                                <button 
+                                    onClick={runDiagnostics}
+                                    disabled={isRunningDiag}
+                                    className="px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded hover:bg-indigo-700 disabled:opacity-50"
+                                >
+                                    {isRunningDiag ? 'Testing...' : 'Run Diagnostics'}
+                                </button>
+                            </div>
+                            <p className="text-xs text-slate-500 mb-2">Run this if you are seeing "Failed to process" or "403" errors.</p>
+                            
+                            {diagResult && (
+                                <div className={`p-3 rounded border text-xs font-mono whitespace-pre-wrap overflow-x-auto ${diagResult.success ? 'bg-green-100 border-green-200 text-green-800' : 'bg-red-100 border-red-200 text-red-800'}`}>
+                                    <strong>Status:</strong> {diagResult.status === 0 ? 'Network Error' : diagResult.status} {diagResult.success ? '✅' : '❌'}
+                                    <br/>
+                                    <strong>Message:</strong> {diagResult.message}
+                                    {diagResult.details && (
+                                        <>
+                                            <br/><br/>
+                                            <strong>Raw Details:</strong>
+                                            <br/>
+                                            {JSON.stringify(diagResult.details, null, 2)}
+                                        </>
+                                    )}
+                                </div>
+                            )}
                         </div>
-                        <div className="border border-red-200 dark:border-red-900 rounded-lg overflow-hidden h-[600px] overflow-y-auto bg-slate-50 dark:bg-slate-900">
+
+                        <div className="mb-2 text-xs text-slate-500">
+                            <strong>Local Error Logs</strong> (Captures errors that occur during usage)
+                        </div>
+                        <div className="border border-red-200 dark:border-red-900 rounded-lg overflow-hidden h-[400px] overflow-y-auto bg-slate-50 dark:bg-slate-900">
                                 <table className="min-w-full text-xs">
                                     <thead className="bg-red-50 dark:bg-red-900/30 sticky top-0">
                                         <tr>

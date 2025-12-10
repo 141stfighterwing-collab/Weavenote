@@ -8,8 +8,9 @@ import { API_KEY } from "../config";
 let ai: GoogleGenAI | null = null;
 
 const initAI = () => {
+    // Check if key is the placeholder
     if (!API_KEY || API_KEY.includes("PASTE_YOUR_API_KEY_HERE") || API_KEY.includes("your_key_here")) {
-        throw new Error("Missing or Invalid API Key. The app is using the placeholder key. Please check your Vercel/Cloud Run Environment Variables (VITE_API_KEY).");
+        throw new Error("API Key is missing or invalid. Please check your Vercel/Cloud Run Environment Variables (VITE_API_KEY).");
     }
     if (!ai) {
         ai = new GoogleGenAI({ apiKey: API_KEY });
@@ -103,6 +104,48 @@ export const clearAIUsageLogs = () => {
 
 export const clearErrorLogs = () => {
     localStorage.removeItem(ERROR_LOG_KEY);
+};
+
+/**
+ * DIAGNOSTIC TOOL
+ * Runs a raw fetch connection test to debug 403/400 errors without using the SDK.
+ * This helps identify if the key is invalid, restricted, or if the quota is exceeded.
+ */
+export const runConnectivityTest = async (): Promise<{ success: boolean; status: number; message: string; details?: any }> => {
+    try {
+        if (!API_KEY || API_KEY.includes("PASTE")) {
+            return { success: false, status: 0, message: "API Key is missing or default placeholder." };
+        }
+
+        // We use a simple GET request to list models. This is the lightest weight test.
+        // It bypasses the SDK to give us the raw HTTP error body which contains the specific "Why" for 403s.
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash?key=${API_KEY}`);
+        
+        const data = await response.json();
+
+        if (response.ok) {
+            return { success: true, status: 200, message: "Connection Successful! API Key is valid and active." };
+        } else {
+            // Analyze the error
+            const errorMsg = data.error?.message || response.statusText;
+            let friendlyMessage = `API Error: ${errorMsg}`;
+
+            if (response.status === 403) {
+                friendlyMessage = "403 FORBIDDEN: Your API Key is valid but restricted. Go to Google AI Studio > API Key > Restrictions. If 'HTTP Referrers' is checked, you MUST add this website's URL to the allowed list (or set it to None).";
+            } else if (response.status === 400) {
+                friendlyMessage = "400 BAD REQUEST: The API Key format might be invalid.";
+            }
+
+            return { 
+                success: false, 
+                status: response.status, 
+                message: friendlyMessage,
+                details: data
+            };
+        }
+    } catch (e: any) {
+        return { success: false, status: 0, message: "Network Error: Could not reach Google servers.", details: e.message };
+    }
 };
 
 const responseSchema: Schema = {

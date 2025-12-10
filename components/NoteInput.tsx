@@ -125,7 +125,8 @@ const NoteInput: React.FC<NoteInputProps> = ({ onAddNote, isProcessing, activeTy
         let processedCount = 0;
         setImportProgress({ current: 0, total: bulkFiles.length });
 
-        for (const file of bulkFiles) {
+        for (const item of bulkFiles) {
+            const file = item as File;
             try {
                 const content = await parseDocument(file);
                 // Prepend filename context to content
