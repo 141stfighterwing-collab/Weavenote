@@ -1,11 +1,22 @@
 
 
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { ProcessedNoteData, NoteType, AILogEntry } from "../types";
+import { ProcessedNoteData, NoteType, AILogEntry, ErrorLogEntry } from "../types";
 import { API_KEY } from "../config";
 
 // Initialize Gemini Client with key from config
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+// Note: We move initialization inside the function or use a lazy init to safely handle missing keys
+let ai: GoogleGenAI | null = null;
+
+const initAI = () => {
+    if (!API_KEY || API_KEY.includes("PASTE_YOUR_API_KEY_HERE") || API_KEY.includes("your_key_here")) {
+        throw new Error("Missing or Invalid API Key. The app is using the placeholder key. Please check your Vercel/Cloud Run Environment Variables (VITE_API_KEY).");
+    }
+    if (!ai) {
+        ai = new GoogleGenAI({ apiKey: API_KEY });
+    }
+    return ai;
+}
 
 // SAFEGUARD: Self-imposed limit to prevent overuse
 export const DAILY_REQUEST_LIMIT = 800;
@@ -13,6 +24,7 @@ export const DAILY_REQUEST_LIMIT = 800;
 // Helper to manage local usage tracking
 const getUsageKey = () => `ideaweaver_usage_${new Date().toISOString().split('T')[0]}`;
 const AI_LOG_KEY = 'ideaweaver_ai_logs';
+const ERROR_LOG_KEY = 'ideaweaver_error_logs';
 
 export const getDailyUsage = (): number => {
   const key = getUsageKey();
@@ -54,13 +66,44 @@ export const logAIUsage = (username: string, action: string, details: string) =>
     }
 };
 
+export const logError = (context: string, error: any) => {
+    try {
+        const logsStr = localStorage.getItem(ERROR_LOG_KEY);
+        const logs: ErrorLogEntry[] = logsStr ? JSON.parse(logsStr) : [];
+        
+        const newEntry: ErrorLogEntry = {
+            id: crypto.randomUUID(),
+            timestamp: Date.now(),
+            context,
+            message: error?.message || String(error),
+            stack: error?.stack
+        };
+
+        // Keep last 50 errors
+        const updatedLogs = [newEntry, ...logs].slice(0, 50);
+        localStorage.setItem(ERROR_LOG_KEY, JSON.stringify(updatedLogs));
+        console.error(`[WeaveNote Error - ${context}]`, error);
+    } catch (e) {
+        console.error("Failed to log error", e);
+    }
+};
+
 export const getAIUsageLogs = (): AILogEntry[] => {
     const logsStr = localStorage.getItem(AI_LOG_KEY);
     return logsStr ? JSON.parse(logsStr) : [];
 };
 
+export const getErrorLogs = (): ErrorLogEntry[] => {
+    const logsStr = localStorage.getItem(ERROR_LOG_KEY);
+    return logsStr ? JSON.parse(logsStr) : [];
+};
+
 export const clearAIUsageLogs = () => {
     localStorage.removeItem(AI_LOG_KEY);
+};
+
+export const clearErrorLogs = () => {
+    localStorage.removeItem(ERROR_LOG_KEY);
 };
 
 const responseSchema: Schema = {
@@ -157,6 +200,9 @@ export const processNoteWithAI = async (
   username: string
 ): Promise<ProcessedNoteData> => {
   try {
+    // 1. Init AI & Validate Key
+    const aiClient = initAI();
+
     // 2. Check Safeguard Limit
     const currentUsage = getDailyUsage();
     if (currentUsage >= DAILY_REQUEST_LIMIT) {
@@ -248,7 +294,7 @@ export const processNoteWithAI = async (
       """
     `;
 
-    const response = await ai.models.generateContent({
+    const response = await aiClient.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
       config: {
@@ -277,7 +323,9 @@ export const processNoteWithAI = async (
     }
 
     return data;
-  } catch (error) {
+  } catch (error: any) {
+    // LOG THE ERROR so it can be viewed in settings
+    logError("processNoteWithAI", error);
     console.error("Error processing note with AI:", error);
     throw error; // Re-throw to be handled by UI
   }
@@ -285,6 +333,7 @@ export const processNoteWithAI = async (
 
 export const expandNoteContent = async (originalContent: string, username: string): Promise<string> => {
     try {
+        const aiClient = initAI();
         const prompt = `
             Act as an expert researcher and educational content creator.
             I have a research note with the following content:
@@ -303,7 +352,7 @@ export const expandNoteContent = async (originalContent: string, username: strin
             Format the output with a horizontal rule (---) at the start to separate it from original content.
         `;
 
-        const response = await ai.models.generateContent({
+        const response = await aiClient.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
         });
@@ -312,7 +361,8 @@ export const expandNoteContent = async (originalContent: string, username: strin
         logAIUsage(username, "Deep Dive", `Content length: ${originalContent.length} chars`);
         
         return response.text || "";
-    } catch (error) {
+    } catch (error: any) {
+        logError("expandNoteContent", error);
         console.error("Error expanding note:", error);
         throw new Error("Failed to perform Deep Dive.");
     }

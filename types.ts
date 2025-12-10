@@ -116,3 +116,11 @@ export interface AILogEntry {
     action: string;
     details: string;
 }
+
+export interface ErrorLogEntry {
+    id: string;
+    timestamp: number;
+    context: string;
+    message: string;
+    stack?: string;
+}

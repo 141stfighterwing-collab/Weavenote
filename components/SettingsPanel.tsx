@@ -9,8 +9,8 @@ import {
     getSessionTimeout, setSessionTimeout
 } from '../services/authService';
 import { getUserStats, UserUsageStats, loadNotes, downloadAllNotesAsZip } from '../services/storageService';
-import { getAIUsageLogs, clearAIUsageLogs } from '../services/geminiService';
-import { Theme, AILogEntry } from '../types';
+import { getAIUsageLogs, clearAIUsageLogs, getErrorLogs, clearErrorLogs } from '../services/geminiService';
+import { Theme, AILogEntry, ErrorLogEntry } from '../types';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -32,12 +32,13 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     isOpen, onClose, currentUser, darkMode, toggleDarkMode, theme, setTheme, reducedMotion, toggleReducedMotion,
     enableImages, toggleEnableImages, showLinkPreviews, toggleShowLinkPreviews
 }) => {
-  const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'security' | 'ai-logs' | 'appearance' | 'data'>('appearance');
+  const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'security' | 'ai-logs' | 'errors' | 'appearance' | 'data'>('appearance');
   const [users, setUsers] = useState<User[]>([]);
   const [userStats, setUserStats] = useState<Record<string, UserUsageStats>>({});
   const [requests, setRequests] = useState<AccountRequest[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [aiLogs, setAiLogs] = useState<AILogEntry[]>([]);
+  const [errorLogs, setErrorLogs] = useState<ErrorLogEntry[]>([]);
   const [sessionTimeout, setSessionTimeoutState] = useState<number>(30);
 
   // Form States
@@ -69,6 +70,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
           setRequests(getRequests());
           setAuditLogs(getAuditLogs());
           setAiLogs(getAIUsageLogs());
+          setErrorLogs(getErrorLogs());
           setSessionTimeoutState(getSessionTimeout());
 
           // Calculate stats for all users
@@ -161,6 +163,17 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
       }
   };
 
+  const handleDownloadErrorLogs = () => {
+      const text = JSON.stringify(errorLogs, null, 2);
+      const blob = new Blob([text], { type: 'text/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `error_logs_${new Date().toISOString()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+  };
+
   // Calculated Stats
   const activeUsersCount = users.filter(u => u.status === 'active').length;
   const suspendedUsersCount = users.filter(u => u.status === 'suspended').length;
@@ -188,7 +201,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
         <div className="flex flex-grow overflow-hidden">
             {/* Sidebar / Tabs */}
-            <div className="w-1/5 min-w-[220px] bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 p-4 flex flex-col gap-2">
+            <div className="w-1/5 min-w-[220px] bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 p-4 flex flex-col gap-2 overflow-y-auto">
                 {isUserAdmin && (
                     <>
                         <button 
@@ -225,6 +238,14 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                             className={`text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors flex justify-between items-center ${activeTab === 'ai-logs' ? 'bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                         >
                             <span>AI Usage Log</span>
+                        </button>
+                        <button 
+                            type="button"
+                            onClick={() => setActiveTab('errors')}
+                            className={`text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors flex justify-between items-center ${activeTab === 'errors' ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                        >
+                            <span>Debug / Errors</span>
+                            {errorLogs.length > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{errorLogs.length}</span>}
                         </button>
                         <div className="h-px bg-slate-200 dark:bg-slate-700 my-2"></div>
                     </>
@@ -599,6 +620,59 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                                         {aiLogs.length === 0 && (
                                             <tr>
                                                 <td colSpan={4} className="px-4 py-8 text-center text-slate-400">No AI usage recorded yet.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* DEBUG / ERROR LOGS TAB */}
+                {activeTab === 'errors' && isUserAdmin && (
+                    <div>
+                         <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-red-600 dark:text-red-400">Error Logs (Debugging)</h3>
+                            <div className="flex gap-3">
+                                <button type="button" onClick={handleDownloadErrorLogs} className="text-xs bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 px-3 py-1 rounded text-slate-700 dark:text-slate-300 transition-colors">Download JSON</button>
+                                <button type="button" onClick={() => { clearErrorLogs(); loadData(); }} className="text-xs text-red-500 hover:underline">Clear Errors</button>
+                            </div>
+                        </div>
+                        <div className="mb-4 text-xs text-slate-500">
+                            Logs detailed client-side errors, API failures, and stack traces. Use this to debug "Failed to process" issues.
+                        </div>
+                        <div className="border border-red-200 dark:border-red-900 rounded-lg overflow-hidden h-[600px] overflow-y-auto bg-slate-50 dark:bg-slate-900">
+                                <table className="min-w-full text-xs">
+                                    <thead className="bg-red-50 dark:bg-red-900/30 sticky top-0">
+                                        <tr>
+                                            <th className="px-4 py-2 text-left font-medium text-red-800 dark:text-red-200">Time</th>
+                                            <th className="px-4 py-2 text-left font-medium text-red-800 dark:text-red-200">Context</th>
+                                            <th className="px-4 py-2 text-left font-medium text-red-800 dark:text-red-200">Message</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-red-100 dark:divide-red-900/50 font-mono">
+                                        {errorLogs.map(log => (
+                                            <tr key={log.id} className="bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/20">
+                                                <td className="px-4 py-2 whitespace-nowrap text-slate-500 align-top w-32">
+                                                    {new Date(log.timestamp).toLocaleString([], { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit'})}
+                                                </td>
+                                                <td className="px-4 py-2 font-bold text-slate-700 dark:text-slate-300 align-top w-40">{log.context}</td>
+                                                <td className="px-4 py-2 align-top">
+                                                    <div className="text-red-600 dark:text-red-400 font-semibold">{log.message}</div>
+                                                    {log.stack && (
+                                                        <details className="mt-1">
+                                                            <summary className="text-[10px] text-slate-400 cursor-pointer hover:text-slate-600">Show Stack Trace</summary>
+                                                            <pre className="mt-1 p-2 bg-slate-100 dark:bg-slate-900 rounded text-[9px] overflow-x-auto text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                                                {log.stack}
+                                                            </pre>
+                                                        </details>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {errorLogs.length === 0 && (
+                                            <tr>
+                                                <td colSpan={3} className="px-4 py-8 text-center text-slate-400">No errors recorded.</td>
                                             </tr>
                                         )}
                                     </tbody>
