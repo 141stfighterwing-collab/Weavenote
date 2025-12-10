@@ -226,6 +226,22 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
         animation: surgeWeak 4s linear infinite; /* Faster */
         opacity: 0.4;
       }
+
+      /* Hover Effects */
+      .node-hover circle {
+        stroke: #3b82f6;
+        stroke-width: 3px;
+        filter: url(#glow);
+      }
+      
+      .node-hover text {
+        paint-order: stroke;
+        stroke: rgba(255, 255, 255, 0.9);
+        stroke-width: 4px;
+        font-weight: 800;
+        z-index: 10;
+        text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      }
     `);
 
     const g = svg.append("g");
@@ -274,6 +290,8 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
       .selectAll("g")
       .data(nodes)
       .join("g")
+      .attr("class", "node-group")
+      .style("cursor", "pointer")
       .call(d3.drag<SVGGElement, GraphNode>()
         .on("start", dragstarted)
         .on("drag", dragged)
@@ -304,7 +322,6 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
       })
       .attr("stroke", d => d.type === 'tag' ? '#94a3b8' : '#fff')
       .attr("stroke-width", d => d.type === 'tag' ? 1 : 2)
-      .style("cursor", "pointer")
       .on("click", (event, d) => {
         if (d.type === 'note') {
             event.stopPropagation();
@@ -320,9 +337,38 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
       .attr("font-size", d => d.type === 'tag' ? "11px" : "13px")
       .attr("font-weight", d => d.type === 'tag' ? "500" : "700")
       .attr("fill", "#1e293b") 
-      .attr("class", "fill-slate-800 dark:fill-slate-200") 
-      .style("pointer-events", "none")
-      .style("text-shadow", "0 1px 2px rgba(255,255,255,0.5)");
+      .attr("class", "fill-slate-800 dark:fill-slate-200 pointer-events-none")
+      .style("transition", "all 0.2s ease"); // Smooth transition for text stroke
+
+    // Hover Interaction
+    nodeGroup
+        .on("mouseover", function(event, d) {
+            const group = d3.select(this);
+            
+            // Bring to front
+            group.raise();
+            
+            // Add Hover Class
+            group.classed("node-hover", true);
+
+            // Animate Size (Scale up)
+            group.select("circle")
+                .transition()
+                .duration(200)
+                .attr("r", d.val * 1.3);
+        })
+        .on("mouseout", function(event, d) {
+            const group = d3.select(this);
+            
+            // Remove Hover Class
+            group.classed("node-hover", false);
+
+            // Animate Size (Restore)
+            group.select("circle")
+                .transition()
+                .duration(200)
+                .attr("r", d.val);
+        });
 
     // 6. Tick Function
     simulation.on("tick", () => {
