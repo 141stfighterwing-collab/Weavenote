@@ -5,7 +5,6 @@ import { ProcessedNoteData, NoteType, AILogEntry, ErrorLogEntry } from "../types
 import { API_KEY } from "../config";
 
 // Initialize Gemini Client with key from config
-// Note: We move initialization inside the function or use a lazy init to safely handle missing keys
 let ai: GoogleGenAI | null = null;
 
 const initAI = () => {
