@@ -2,9 +2,10 @@
 
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Note, NOTE_COLORS } from '../types';
+import { Note, NOTE_COLORS, WorkflowNode, WorkflowEdge } from '../types';
 import { expandNoteContent } from '../services/geminiService';
 import GanttChart from './GanttChart';
+import WorkflowEditor from './WorkflowEditor';
 
 interface NoteDetailModalProps {
   note: Note | null;
@@ -37,12 +38,24 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
   const [isExpanding, setIsExpanding] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(600);
+  
+  // Local state for Workflow to allow interactivity within modal
+  const [workflowNodes, setWorkflowNodes] = useState<WorkflowNode[]>([]);
+  const [workflowEdges, setWorkflowEdges] = useState<WorkflowEdge[]>([]);
 
   useEffect(() => {
     if (isOpen && containerRef.current) {
         setContainerWidth(containerRef.current.clientWidth - 64); // Minus padding
     }
-  }, [isOpen]);
+    // Initialize workflow state from note data
+    if (note?.projectData?.workflow) {
+        setWorkflowNodes(note.projectData.workflow.nodes || []);
+        setWorkflowEdges(note.projectData.workflow.edges || []);
+    } else {
+        setWorkflowNodes([]);
+        setWorkflowEdges([]);
+    }
+  }, [isOpen, note]);
 
   const handleDeepDive = async () => {
     if (!note || !onSaveExpanded) return;
@@ -232,13 +245,31 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
                     )}
 
                     {/* Gantt Chart / Timeline */}
-                    <div className="bg-white/50 dark:bg-black/20 p-4 rounded-lg border border-black/10">
+                    <div className="bg-white/50 dark:bg-black/20 p-4 rounded-lg border border-black/10 mb-4">
                         <div className="flex justify-between items-center mb-2">
                              <h3 className="text-sm font-bold uppercase tracking-wider opacity-70">📅 Project Timeline</h3>
                              {note.projectData.estimatedDuration && <span className="text-xs px-2 py-0.5 bg-black/5 rounded-full font-medium">Est: {note.projectData.estimatedDuration}</span>}
                         </div>
                         <GanttChart data={note.projectData} width={containerWidth} />
                     </div>
+
+                    {/* Workflow Editor (New) */}
+                    {(workflowNodes.length > 0 || workflowEdges.length > 0) && (
+                        <div className="bg-white/50 dark:bg-black/20 p-4 rounded-lg border border-black/10">
+                            <h3 className="text-sm font-bold uppercase tracking-wider mb-2 opacity-70">⚡ Workflow Map</h3>
+                            <WorkflowEditor 
+                                nodes={workflowNodes}
+                                edges={workflowEdges}
+                                onUpdate={(updatedNodes, updatedEdges) => {
+                                    setWorkflowNodes(updatedNodes);
+                                    // Normally we would save this back to storage here, 
+                                    // but NoteDetailModal is largely read-only except via onSaveExpanded hack.
+                                    // For a full app we'd update context/storage. 
+                                    // For this feature, changes persist only while modal is open unless we emit save.
+                                }}
+                            />
+                        </div>
+                    )}
                 </div>
              )}
 

@@ -22,10 +22,26 @@ export interface ProjectPhase {
   endDate: string;
 }
 
+export interface WorkflowNode {
+  id: string;
+  label: string;
+  rule?: string; // Workflow rule or criteria for this step
+  status: 'pending' | 'in_progress' | 'done';
+}
+
+export interface WorkflowEdge {
+  source: string;
+  target: string;
+}
+
 export interface ProjectData {
   deliverables: string[];
   milestones: ProjectMilestone[];
   timeline: ProjectPhase[];
+  workflow?: {
+      nodes: WorkflowNode[];
+      edges: WorkflowEdge[];
+  };
   estimatedDuration?: string;
 }
 

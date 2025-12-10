@@ -117,6 +117,15 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
      return dataPoints;
   }, [notes]);
 
+  // Milestone Checker
+  const milestone = useMemo(() => {
+      const count = notes.length;
+      if (count >= 100) return { title: 'Golden Archivist', emoji: '🏆', desc: '100+ Notes! Amazing dedication.', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' };
+      if (count >= 50) return { title: 'Silver Scribe', emoji: '🥈', desc: '50+ Notes! You are building a knowledge base.', color: 'bg-slate-200 text-slate-800 border-slate-300' };
+      if (count >= 10) return { title: 'Bronze Note Taker', emoji: '🥉', desc: '10+ Notes! A great start.', color: 'bg-orange-100 text-orange-800 border-orange-300' };
+      return null;
+  }, [notes.length]);
+
   // --- D3 Chart Generators ---
 
   // Pie Chart Generation
@@ -364,6 +373,17 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
         {/* Content */}
         <div className="p-6 overflow-y-auto custom-scrollbar">
             
+            {/* MILESTONE BANNER (If achieved) */}
+            {milestone && (
+                <div className={`mb-6 p-4 rounded-xl border flex items-center gap-4 shadow-sm animate-pulse ${milestone.color}`}>
+                    <div className="text-4xl">{milestone.emoji}</div>
+                    <div>
+                        <h3 className="text-lg font-bold uppercase tracking-wider">Congrats! {milestone.title}</h3>
+                        <p className="text-sm font-medium opacity-90">{milestone.desc}</p>
+                    </div>
+                </div>
+            )}
+
             {/* PERSONA CARD */}
             <div className={`mb-8 p-6 rounded-2xl flex items-center gap-6 shadow-sm border border-black/5 ${persona.color}`}>
                 <div className="text-6xl filter drop-shadow-md animate-[bounce_2s_infinite]">
@@ -586,6 +606,10 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
         @keyframes fadeIn {
           from { opacity: 0; transform: scale(0.95); }
           to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(-5%); }
+            50% { transform: translateY(0); }
         }
       `}</style>
     </div>

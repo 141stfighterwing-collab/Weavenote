@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { ProcessedNoteData, NoteType, AILogEntry } from "../types";
 import { API_KEY } from "../config";
@@ -114,6 +115,34 @@ const responseSchema: Schema = {
           },
           description: "High level phases with estimated dates if inferable."
         },
+        workflow: {
+            type: Type.OBJECT,
+            description: "A generated workflow chart nodes and connections.",
+            properties: {
+                nodes: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            id: { type: Type.STRING },
+                            label: { type: Type.STRING, description: "Step name" },
+                            rule: { type: Type.STRING, description: "Rule or criteria for this step (e.g. 'Approval required')" },
+                            status: { type: Type.STRING, enum: ['pending', 'in_progress', 'done'] }
+                        }
+                    }
+                },
+                edges: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            source: { type: Type.STRING, description: "Source Node ID" },
+                            target: { type: Type.STRING, description: "Target Node ID" }
+                        }
+                    }
+                }
+            }
+        },
         estimatedDuration: { type: Type.STRING, description: "e.g. '3 weeks' or '2 months'" }
       }
     }
@@ -154,8 +183,11 @@ export const processNoteWithAI = async (
                 3. **CRITICAL**: Extract structured data into the 'projectData' JSON object:
                    - Identify 'deliverables' (tangible results).
                    - Identify 'milestones' with dates (if no year is given, assume current year).
-                   - Identify 'timeline' phases. If exact dates aren't in text, estimate reasonable durations relative to today's date (${new Date().toISOString().split('T')[0]}) based on the tasks.
-                   - Example: If text says "Design first week, then Build for 2 weeks", create phases with estimated dates.
+                   - Identify 'timeline' phases. If exact dates aren't in text, estimate reasonable durations.
+                   - **GENERATE WORKFLOW**: Create a logical flowchart (nodes and edges) for the project execution. 
+                     - Create 3-6 Nodes representing key steps (e.g., "Drafting", "Review", "Approval", "Launch").
+                     - Include specific 'rules' for each node (e.g., "Must pass QA", "Budget < $5k").
+                     - Connect them logically in 'edges'.
                 4. Categorize by Project Name or Department.
             `;
             break;
@@ -235,6 +267,15 @@ export const processNoteWithAI = async (
     }
 
     const data = JSON.parse(response.text) as ProcessedNoteData;
+    
+    // Fallback ID generation for workflow nodes if AI missed them
+    if (data.projectData?.workflow?.nodes) {
+        data.projectData.workflow.nodes.forEach((node, idx) => {
+            if(!node.id) node.id = `node-${idx}`;
+            if(!node.status) node.status = 'pending';
+        });
+    }
+
     return data;
   } catch (error) {
     console.error("Error processing note with AI:", error);
