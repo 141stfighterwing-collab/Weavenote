@@ -15,7 +15,8 @@
     "react-markdown": "^9.0.1",
     "d3": "^7.9.0",
     "pdfjs-dist": "^4.0.379",
-    "serve": "^14.2.3"
+    "serve": "^14.2.3",
+    "jszip": "^3.10.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
@@ -23,6 +24,7 @@
     "@types/d3": "^7.4.3",
     "@vitejs/plugin-react": "^4.3.1",
     "typescript": "^5.5.3",
-    "vite": "^5.4.1"
+    "vite": "^5.4.1",
+    "@types/jszip": "^3.4.1"
   }
 }

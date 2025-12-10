@@ -28,4 +28,4 @@ const getEnvironmentKey = (): string | undefined => {
   return undefined;
 };
 
-export const API_KEY = getEnvironmentKey() || "AIzaSyCokxb-31h3lirC6M4fRdxMUdBtyDx_9-E";
+export const API_KEY = getEnvironmentKey() || "PASTE_YOUR_API_KEY_HERE";

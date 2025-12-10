@@ -1,8 +1,10 @@
 
-import React, { useMemo, useState, useCallback } from 'react';
+
+import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Note, NOTE_COLORS } from '../types';
 import { expandNoteContent } from '../services/geminiService';
+import GanttChart from './GanttChart';
 
 interface NoteDetailModalProps {
   note: Note | null;
@@ -33,6 +35,14 @@ const processContent = (text: string) => {
 
 const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose, showLinkPreviews = false, onViewImage, onToggleCheckbox, onSaveExpanded, currentUser }) => {
   const [isExpanding, setIsExpanding] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(600);
+
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+        setContainerWidth(containerRef.current.clientWidth - 64); // Minus padding
+    }
+  }, [isOpen]);
 
   const handleDeepDive = async () => {
     if (!note || !onSaveExpanded) return;
@@ -183,6 +193,7 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" onClick={onClose}>
       <div 
+        ref={containerRef}
         className={`relative w-full max-w-3xl max-h-[85vh] rounded-xl shadow-2xl flex flex-col overflow-hidden ${colorClass} font-hand dark:brightness-95`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -205,6 +216,32 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
 
         {/* Scrollable Content */}
         <div className="p-8 overflow-y-auto custom-scrollbar flex-grow">
+             {/* PROJECT SPECIFIC DASHBOARD */}
+             {note.type === 'project' && note.projectData && (
+                <div className="mb-8 font-sans">
+                     {/* Deliverables Box */}
+                    {note.projectData.deliverables && note.projectData.deliverables.length > 0 && (
+                        <div className="bg-white/50 dark:bg-black/20 p-4 rounded-lg border border-black/10 mb-4">
+                            <h3 className="text-sm font-bold uppercase tracking-wider mb-2 opacity-70">📦 Deliverables</h3>
+                            <ul className="list-disc list-inside space-y-1">
+                                {note.projectData.deliverables.map((item, idx) => (
+                                    <li key={idx} className="text-sm">{item}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
+                    {/* Gantt Chart / Timeline */}
+                    <div className="bg-white/50 dark:bg-black/20 p-4 rounded-lg border border-black/10">
+                        <div className="flex justify-between items-center mb-2">
+                             <h3 className="text-sm font-bold uppercase tracking-wider opacity-70">📅 Project Timeline</h3>
+                             {note.projectData.estimatedDuration && <span className="text-xs px-2 py-0.5 bg-black/5 rounded-full font-medium">Est: {note.projectData.estimatedDuration}</span>}
+                        </div>
+                        <GanttChart data={note.projectData} width={containerWidth} />
+                    </div>
+                </div>
+             )}
+
              {/* Deep Study - Deep Dive Button */}
              {note.type === 'deep' && onSaveExpanded && (
                 <div className="mb-6 flex justify-end">

@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { Note, NOTE_COLORS, NoteColor, Folder } from '../types';
 import ReactMarkdown from 'react-markdown';
+import { downloadNoteAsMarkdown } from '../services/storageService';
 
 interface NoteCardProps {
   note: Note;
@@ -88,9 +89,6 @@ const NoteCard: React.FC<NoteCardProps> = ({
     // Set data for drag operation
     e.dataTransfer.setData('noteId', note.id);
     e.dataTransfer.effectAllowed = 'move';
-    
-    // Create a ghost image (optional, but nice)
-    // Browser does this automatically for elements, but we can customize if needed
   };
 
   // Custom Renderer for List Items to handle Checkboxes
@@ -362,6 +360,18 @@ const NoteCard: React.FC<NoteCardProps> = ({
       {/* Actions (Hidden by default, shown on hover, hidden if readOnly) */}
       {!readOnly && (
         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+            {/* Download MD */}
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    downloadNoteAsMarkdown(note);
+                }}
+                className="p-1.5 hover:bg-black/10 hover:text-primary-800 rounded-full transition-colors"
+                title="Download as Markdown"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+
             {/* Move to Folder Button */}
             {onMoveToFolder && (
                  <div className="relative group/folder" onClick={(e) => e.stopPropagation()}>

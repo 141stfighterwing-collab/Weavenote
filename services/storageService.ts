@@ -1,6 +1,7 @@
 
 
 import { Note, NoteType, Folder } from '../types';
+import JSZip from 'jszip';
 
 const STORAGE_PREFIX = 'ideaweaver_notes_';
 const FOLDERS_PREFIX = 'ideaweaver_folders_';
@@ -133,6 +134,86 @@ export const performAutoBackup = (notes: Note[], username: string | null): boole
 };
 
 /**
+ * Convert a Note object to Markdown string
+ */
+const noteToMarkdown = (note: Note): string => {
+    const dateStr = new Date(note.createdAt).toLocaleString();
+    let md = `# ${note.title}\n\n`;
+    md += `**Date:** ${dateStr} | **Category:** ${note.category} | **Type:** ${note.type}\n`;
+    md += `**Tags:** ${note.tags.map(t => `#${t}`).join(' ')}\n\n`;
+    md += `---\n\n`;
+    md += note.content;
+    
+    // Append Project Specific Data if available
+    if (note.projectData) {
+        md += `\n\n## Project Details\n`;
+        if (note.projectData.estimatedDuration) {
+            md += `**Estimated Duration:** ${note.projectData.estimatedDuration}\n\n`;
+        }
+        
+        if (note.projectData.deliverables?.length > 0) {
+            md += `### Deliverables\n`;
+            note.projectData.deliverables.forEach(d => md += `- ${d}\n`);
+            md += `\n`;
+        }
+
+        if (note.projectData.milestones?.length > 0) {
+            md += `### Milestones\n`;
+            note.projectData.milestones.forEach(m => md += `- [${m.date || 'TBD'}] ${m.label} (${m.status})\n`);
+            md += `\n`;
+        }
+    }
+    
+    return md;
+};
+
+/**
+ * Download a single note as .md file
+ */
+export const downloadNoteAsMarkdown = (note: Note) => {
+    const mdContent = noteToMarkdown(note);
+    const blob = new Blob([mdContent], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    
+    // Sanitize filename
+    const filename = note.title.replace(/[^a-z0-9]/gi, '_').toLowerCase().substring(0, 50);
+    
+    link.href = url;
+    link.download = `${filename}.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
+
+/**
+ * Bulk download all notes as a ZIP of .md files
+ */
+export const downloadAllNotesAsZip = async (notes: Note[]) => {
+    if (notes.length === 0) return;
+    
+    const zip = new JSZip();
+    const folder = zip.folder("WeaveNote_Export");
+    
+    notes.forEach(note => {
+        const mdContent = noteToMarkdown(note);
+        const filename = `${note.title.replace(/[^a-z0-9]/gi, '_').toLowerCase().substring(0, 50)}_${note.id.substring(0,6)}.md`;
+        folder?.file(filename, mdContent);
+    });
+    
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `WeaveNote_Export_${new Date().toISOString().split('T')[0]}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
+
+/**
  * Manually export data to a JSON file
  */
 export const exportDataToFile = (notes: Note[]) => {
@@ -186,7 +267,6 @@ export const getUserStats = (username: string): UserUsageStats => {
         personaEmoji = "👋";
     } else {
         // Shared Persona Definition Logic
-        // In a real app, this would be imported from a shared constants file
         const allTags = notes.flatMap(n => n.tags.map(t => t.toLowerCase()));
         
         const personas = [

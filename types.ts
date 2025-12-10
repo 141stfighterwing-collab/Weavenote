@@ -10,6 +10,25 @@ export interface Folder {
   order: number;
 }
 
+export interface ProjectMilestone {
+  date: string; // ISO string YYYY-MM-DD
+  label: string;
+  status: 'pending' | 'completed';
+}
+
+export interface ProjectPhase {
+  name: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface ProjectData {
+  deliverables: string[];
+  milestones: ProjectMilestone[];
+  timeline: ProjectPhase[];
+  estimatedDuration?: string;
+}
+
 export interface Note {
   id: string;
   title: string;
@@ -23,6 +42,7 @@ export interface Note {
   attachments?: string[]; // Array of Base64 image strings
   accessCount?: number; // Number of times accessed/viewed
   folderId?: string; // ID of the folder this note belongs to
+  projectData?: ProjectData; // Optional specific data for Project notes
 }
 
 export enum NoteColor {
@@ -70,6 +90,7 @@ export interface ProcessedNoteData {
   formattedContent: string;
   category: string;
   tags: string[];
+  projectData?: ProjectData;
 }
 
 export interface AILogEntry {

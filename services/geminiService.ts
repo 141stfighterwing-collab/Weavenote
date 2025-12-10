@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { ProcessedNoteData, NoteType, AILogEntry } from "../types";
 import { API_KEY } from "../config";
@@ -81,6 +82,41 @@ const responseSchema: Schema = {
       items: { type: Type.STRING },
       description: "Array of 1 to 6 relevant hashtags (strings without the # symbol).",
     },
+    projectData: {
+      type: Type.OBJECT,
+      description: "Specific data for Project type notes. Only populate this if the intent is clearly a project plan.",
+      properties: {
+        deliverables: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: "List of tangible outputs or deliverables."
+        },
+        milestones: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              date: { type: Type.STRING, description: "YYYY-MM-DD format if date found, else estimate" },
+              label: { type: Type.STRING },
+              status: { type: Type.STRING, enum: ['pending', 'completed'] }
+            }
+          }
+        },
+        timeline: {
+          type: Type.ARRAY,
+          items: {
+             type: Type.OBJECT,
+             properties: {
+                name: { type: Type.STRING, description: "Phase Name" },
+                startDate: { type: Type.STRING, description: "YYYY-MM-DD" },
+                endDate: { type: Type.STRING, description: "YYYY-MM-DD" }
+             }
+          },
+          description: "High level phases with estimated dates if inferable."
+        },
+        estimatedDuration: { type: Type.STRING, description: "e.g. '3 weeks' or '2 months'" }
+      }
+    }
   },
   required: ["title", "formattedContent", "category", "tags"],
 };
@@ -114,11 +150,12 @@ export const processNoteWithAI = async (
             specificInstructions = `
                 This is a PROJECT NOTE or INGESTED FILE.
                 1. Create a clear, Action-Oriented Title.
-                2. Structure the content logically:
-                   - **Objectives**: What is the goal?
-                   - **Milestones**: Key dates or phases.
-                   - **Tasks**: Use Markdown checklists (- [ ] Task).
-                3. If this is from an imported file, extract the project requirements and clean up any parsing errors.
+                2. Structure the 'formattedContent' logically with sections for context.
+                3. **CRITICAL**: Extract structured data into the 'projectData' JSON object:
+                   - Identify 'deliverables' (tangible results).
+                   - Identify 'milestones' with dates (if no year is given, assume current year).
+                   - Identify 'timeline' phases. If exact dates aren't in text, estimate reasonable durations relative to today's date (${new Date().toISOString().split('T')[0]}) based on the tasks.
+                   - Example: If text says "Design first week, then Build for 2 weeks", create phases with estimated dates.
                 4. Categorize by Project Name or Department.
             `;
             break;
