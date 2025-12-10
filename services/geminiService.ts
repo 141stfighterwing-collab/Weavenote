@@ -1,8 +1,9 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { ProcessedNoteData, NoteType, AILogEntry } from "../types";
+import { API_KEY } from "../config";
 
-// Initialize Gemini Client with key from environment variable as per guidelines
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize Gemini Client with key from config
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 // SAFEGUARD: Self-imposed limit to prevent overuse
 export const DAILY_REQUEST_LIMIT = 800;
