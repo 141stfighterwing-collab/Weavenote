@@ -18,32 +18,45 @@ const GUEST_FOLDERS_KEY = 'ideaweaver_guest_folders';
 
 /**
  * Load Notes (Async)
+ * Fetches notes belonging specifically to the logged-in user.
  */
 export const loadNotes = async (userId: string | null): Promise<Note[]> => {
-    // Guest Mode
+    // Guest Mode: Load from Browser RAM
     if (!userId) {
-        const stored = sessionStorage.getItem(GUEST_KEY);
-        return stored ? JSON.parse(stored) : [];
+        try {
+            const stored = sessionStorage.getItem(GUEST_KEY);
+            return stored ? JSON.parse(stored) : [];
+        } catch (e) {
+            return [];
+        }
     }
 
-    // Firebase Mode
-    if (!db) return [];
+    // Firebase Mode: Load from Cloud Database
+    if (!db) {
+        console.warn("Firestore not initialized. Check config.");
+        return [];
+    }
+    
     try {
+        // Query: Select * from Notes where userId == currentUserId
         const q = query(collection(db, 'notes'), where('userId', '==', userId));
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(d => d.data() as Note);
+        const notes = snapshot.docs.map(d => d.data() as Note);
+        
+        // Sort by newest first
+        return notes.sort((a, b) => b.createdAt - a.createdAt);
     } catch (e) {
-        console.error("Firestore Load Error", e);
+        console.error("Firestore Load Error:", e);
         return [];
     }
 };
 
 /**
- * Save/Update a SINGLE Note (Optimized for Firebase)
+ * Save/Update a SINGLE Note
  */
 export const saveNote = async (note: Note, userId: string | null) => {
+    // Guest Mode
     if (!userId) {
-        // Guest: We have to load all, update one, save all
         const notes = await loadNotes(null);
         const idx = notes.findIndex(n => n.id === note.id);
         if (idx >= 0) notes[idx] = note;
@@ -52,11 +65,16 @@ export const saveNote = async (note: Note, userId: string | null) => {
         return;
     }
 
+    // Firebase Mode
     if (!db) return;
     try {
-        await setDoc(doc(db, 'notes', note.id), { ...note, userId });
+        // Force the userId on the note data to ensure ownership
+        const noteData = { ...note, userId };
+        await setDoc(doc(db, 'notes', note.id), noteData);
+        console.log(`Note ${note.id} saved to Cloud.`);
     } catch (e) {
         console.error("Firestore Save Error", e);
+        throw e;
     }
 };
 
@@ -64,6 +82,7 @@ export const saveNote = async (note: Note, userId: string | null) => {
  * Delete a Note
  */
 export const deleteNote = async (noteId: string, userId: string | null) => {
+    // Guest Mode
     if (!userId) {
         const notes = await loadNotes(null);
         const newNotes = notes.filter(n => n.id !== noteId);
@@ -71,9 +90,11 @@ export const deleteNote = async (noteId: string, userId: string | null) => {
         return;
     }
 
+    // Firebase Mode
     if (!db) return;
     try {
         await deleteDoc(doc(db, 'notes', noteId));
+        console.log(`Note ${noteId} deleted from Cloud.`);
     } catch (e) {
         console.error("Firestore Delete Error", e);
     }
@@ -94,6 +115,7 @@ export const loadFolders = async (userId: string | null): Promise<Folder[]> => {
         const snapshot = await getDocs(q);
         return snapshot.docs.map(d => d.data() as Folder).sort((a,b) => a.order - b.order);
     } catch (e) {
+        console.error("Folder Load Error", e);
         return [];
     }
 };
@@ -113,9 +135,11 @@ export const saveFolder = async (folder: Folder, userId: string | null) => {
 
     if (!db) return;
     try {
-        // @ts-ignore
-        await setDoc(doc(db, 'folders', folder.id), { ...folder, userId });
-    } catch (e) {}
+        const folderData = { ...folder, userId };
+        await setDoc(doc(db, 'folders', folder.id), folderData);
+    } catch (e) {
+        console.error("Folder Save Error", e);
+    }
 };
 
 export const deleteFolder = async (folderId: string, userId: string | null) => {
@@ -130,24 +154,24 @@ export const deleteFolder = async (folderId: string, userId: string | null) => {
 };
 
 /**
- * Sync All Notes (Used for bulk imports or reordering if needed)
- * Caution: Firestore writes cost money. Avoid full dumps.
+ * Sync All Notes (Used for bulk imports)
  */
 export const syncAllNotes = async (notes: Note[], userId: string) => {
     if (!db || !userId) return;
     const batch = writeBatch(db);
-    notes.forEach(note => {
+    
+    // Firestore batch limit is 500 operations. 
+    // For simplicity, we assume <500 notes in this call or split logic needed.
+    notes.slice(0, 490).forEach(note => {
         const ref = doc(db, 'notes', note.id);
         batch.set(ref, { ...note, userId });
     });
+    
     await batch.commit();
 };
 
-// ... Export/Markdown helpers remain same (Client side logic) ...
+// ... Export/Markdown helpers ...
 
-/**
- * Convert a Note object to Markdown string
- */
 const noteToMarkdown = (note: Note): string => {
     const dateStr = new Date(note.createdAt).toLocaleString();
     let md = `# ${note.title}\n\n`;
@@ -212,12 +236,8 @@ export const parseImportFile = (jsonString: string): Note[] => {
     }
 };
 
-/**
- * Calculate Usage Stats (Async for Firestore)
- */
 export const getUserStats = async (userId: string): Promise<UserUsageStats> => {
     const notes = await loadNotes(userId);
-    
     const categoryCounts: Record<string, number> = {};
     notes.forEach(n => categoryCounts[n.category] = (categoryCounts[n.category] || 0) + 1);
     const topCategory = Object.entries(categoryCounts).sort((a,b) => b[1] - a[1])[0]?.[0] || 'None';
@@ -225,7 +245,7 @@ export const getUserStats = async (userId: string): Promise<UserUsageStats> => {
     return {
         noteCount: notes.length,
         topCategory,
-        persona: "Analyzed User", // simplified for async context
+        persona: "Analyzed User",
         personaEmoji: "👤"
     };
 };

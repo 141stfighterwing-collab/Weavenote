@@ -1,3 +1,4 @@
+
 {
   "name": "weavenote",
   "version": "1.0.0",
@@ -14,7 +15,7 @@
     "@google/genai": "*",
     "react-markdown": "^9.0.1",
     "d3": "^7.9.0",
-    "pdfjs-dist": "^5.4.449",
+    "pdfjs-dist": "^4.10.38",
     "serve": "^14.2.3",
     "jszip": "^3.10.1",
     "firebase": "^10.12.0"

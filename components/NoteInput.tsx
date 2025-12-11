@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { NoteType } from '../types';
 import { parseDocument } from '../services/documentParser';
@@ -124,8 +125,7 @@ const NoteInput: React.FC<NoteInputProps> = ({ onAddNote, isProcessing, activeTy
         let processedCount = 0;
         setImportProgress({ current: 0, total: bulkFiles.length });
 
-        for (const item of bulkFiles) {
-            const file = item as any;
+        for (const file of bulkFiles) {
             try {
                 const content = await parseDocument(file);
                 // Prepend filename context to content
@@ -192,7 +192,7 @@ const NoteInput: React.FC<NoteInputProps> = ({ onAddNote, isProcessing, activeTy
   };
 
   const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(e.target.files || []);
+      const files = Array.from(e.target.files || []) as File[];
       if (files.length === 0) return;
 
       if (files.length > 1) {
@@ -201,7 +201,7 @@ const NoteInput: React.FC<NoteInputProps> = ({ onAddNote, isProcessing, activeTy
           setText(''); // Clear text or set initial placeholder
       } else {
           // Single File Mode (Original Behavior)
-          const file = files[0] as any;
+          const file = files[0];
           setIsParsing(true);
           try {
               const content = await parseDocument(file);
@@ -357,7 +357,7 @@ const NoteInput: React.FC<NoteInputProps> = ({ onAddNote, isProcessing, activeTy
                             <span className="text-sm font-bold text-slate-600 dark:text-slate-300">
                                 Click to Ingest Document(s)
                             </span>
-                            <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                            <span className="text-xs text-slate-400 dark:text-slate-500">
                                 Drag & Drop multiple PDF (Max 20 pages), TXT, or MD files
                             </span>
                         </div>

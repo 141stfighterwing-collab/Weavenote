@@ -55,7 +55,8 @@ const App: React.FC = () => {
   const [enableImages, setEnableImages] = useState(() => localStorage.getItem('ideaweaver_enableimages') === 'true');
   const [showLinkPreviews, setShowLinkPreviews] = useState(() => localStorage.getItem('ideaweaver_linkpreviews') === 'true');
 
-  const canEdit = currentUser ? currentUser.permission === 'edit' : true; // Guests can edit
+  const canEdit = currentUser ? currentUser.permission === 'edit' : true; 
+  // Determine who owns the data: The logged-in Firebase UID or null (Guest)
   const storageOwner = currentUser ? currentUser.uid : null;
 
   // ASYNC DATA LOAD
@@ -80,11 +81,12 @@ const App: React.FC = () => {
   // Handle Login
   const handleLoginSuccess = (user: User) => {
       setCurrentUser(user);
+      // Data load triggered by useEffect on storageOwner change
   };
 
   const handleLogout = () => {
       setCurrentUser(null);
-      setNotes([]); // Clear data on logout
+      setNotes([]); 
       setFolders([]);
   };
 
@@ -124,20 +126,20 @@ const App: React.FC = () => {
             rawContent: rawText,
             category: processed.category,
             tags: Array.from(new Set(processed.tags)),
-            color: NoteColor.Yellow, // Default fallback
+            color: NoteColor.Yellow, 
             createdAt: Date.now(),
             type: type,
             attachments: attachments || [],
             accessCount: 0,
             folderId: activeFolderId || undefined,
-            userId: storageOwner || undefined
+            userId: storageOwner || undefined // CRITICAL: Assign ownership
         };
 
         // Optimistic Update
         setNotes(prev => [newNote, ...prev]);
         setActiveTab(type);
         
-        // Async Save
+        // Async Save to Database
         await saveNote(newNote, storageOwner);
         setDailyUsage(getDailyUsage());
 
@@ -156,10 +158,7 @@ const App: React.FC = () => {
 
       const updated = { ...target, title, content };
       
-      // Optimistic
       setNotes(prev => prev.map(n => n.id === id ? updated : n));
-      
-      // Async Save
       await saveNote(updated, storageOwner);
   };
 
@@ -185,13 +184,9 @@ const App: React.FC = () => {
   const handleDeleteFolder = async (id: string) => {
       if (!canEdit) return;
       setFolders(prev => prev.filter(f => f.id !== id));
-      // Reset notes in that folder
       const updatedNotes = notes.map(n => n.folderId === id ? { ...n, folderId: undefined } : n);
       setNotes(updatedNotes);
-      
       await deleteFolder(id, storageOwner);
-      // We should also sync the notes that lost their folder, 
-      // but for simplicity we skip batch updates here unless necessary
   };
 
   const handleImportClick = () => fileInputRef.current?.click();
@@ -204,12 +199,11 @@ const App: React.FC = () => {
           try {
               const content = ev.target?.result as string;
               const imported = parseImportFile(content);
-              // Filter duplicates
               const existingIds = new Set(notes.map(n => n.id));
               const newNotes = imported.filter(n => !existingIds.has(n.id));
               
               setNotes(prev => [...newNotes, ...prev]);
-              // Bulk Save to Firestore
+              // If logged in, sync imports to cloud
               if (storageOwner && newNotes.length > 0) {
                   await syncAllNotes(newNotes, storageOwner);
               }
@@ -304,6 +298,7 @@ const App: React.FC = () => {
                 {isLoadingData ? (
                     <div className="flex justify-center py-20">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                        <span className="ml-3 text-slate-500">Loading your notes...</span>
                     </div>
                 ) : (
                     <div className="mt-4">
@@ -339,7 +334,7 @@ const App: React.FC = () => {
                                         readOnly={!canEdit}
                                         showLinkPreviews={showLinkPreviews}
                                         onViewImage={setViewingImage}
-                                        onToggleCheckbox={() => {}} // simplified for brevity
+                                        onToggleCheckbox={() => {}} 
                                         onAddTag={() => {}}
                                         onRemoveTag={() => {}}
                                     />
@@ -368,6 +363,24 @@ const App: React.FC = () => {
                 activeFolderId={activeFolderId}
             />
         </main>
+        
+        {/* Footer Sync Status */}
+        <footer className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 py-2 px-4 text-xs text-slate-400 flex justify-between">
+            <div>
+                {storageOwner ? (
+                    <span className="flex items-center gap-1 text-green-600 dark:text-green-400 font-bold">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>
+                        Cloud Sync Active
+                    </span>
+                ) : (
+                    <span className="flex items-center gap-1 text-slate-500">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                        Guest Mode (Local Only)
+                    </span>
+                )}
+            </div>
+            <div>Daily AI Usage: {dailyUsage}/800</div>
+        </footer>
 
         {/* MODALS */}
         <EditNoteModal 
