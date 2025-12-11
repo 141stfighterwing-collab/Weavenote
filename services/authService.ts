@@ -111,6 +111,7 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
                 if (authError.code === 'auth/configuration-not-found' || authError.code === 'auth/operation-not-allowed') {
                     throw new Error("Enable 'Email/Password' in Firebase Console > Authentication.");
                 }
+                // Try to create if user not found or invalid credential (which might mean not found in some API versions)
                 if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential') {
                     console.log("Bootstrapping Admin Account...");
                     try {
@@ -133,6 +134,10 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
                     } catch (createError: any) {
                          if (createError.code === 'auth/configuration-not-found' || createError.code === 'auth/operation-not-allowed') {
                             throw new Error("Enable 'Email/Password' in Firebase Console > Authentication.");
+                        }
+                        if (createError.code === 'auth/email-already-in-use') {
+                            // If create fails because it exists, and signIn failed earlier, it implies WRONG PASSWORD.
+                            throw new Error("Invalid Admin Password.");
                         }
                         throw createError;
                     }
@@ -191,15 +196,26 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
 
     } catch (e: any) {
         console.error("Login Error", e);
-        if (e.message.includes("Enable 'Email/Password'")) {
+        
+        // Handle explicit errors thrown from admin block
+        if (e.message.includes("Enable 'Email/Password'") || e.message === "Invalid Admin Password.") {
             return { success: false, error: e.message };
         }
+
+        // Firebase Auth Errors
         if (e.code === 'auth/configuration-not-found' || e.code === 'auth/operation-not-allowed') {
              return { success: false, error: "Firebase Auth not enabled in Console." };
         }
-        if (e.code === 'auth/wrong-password') {
-             return { success: false, error: "Incorrect Password." };
+        if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential' || e.code === 'auth/user-not-found') {
+             return { success: false, error: "Invalid Email or Password." };
         }
+        if (e.code === 'auth/too-many-requests') {
+             return { success: false, error: "Too many failed attempts. Try again later." };
+        }
+        if (e.code === 'auth/network-request-failed') {
+             return { success: false, error: "Network error. Check your internet connection." };
+        }
+
         return { success: false, error: e.message || "Login failed" };
     }
 };
@@ -246,6 +262,12 @@ export const requestAccount = async (username: string, password: string, email: 
     } catch (e: any) {
         if (e.code === 'auth/configuration-not-found' || e.code === 'auth/operation-not-allowed') {
              return { success: false, message: "Admin must enable Email/Password in Firebase Console." };
+        }
+        if (e.code === 'auth/email-already-in-use') {
+             return { success: false, message: "Email is already registered." };
+        }
+        if (e.code === 'auth/weak-password') {
+             return { success: false, message: "Password is too weak (min 6 chars)." };
         }
         return { success: false, message: e.message || "Registration failed" };
     }

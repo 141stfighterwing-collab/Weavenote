@@ -10,6 +10,12 @@ const initAI = () => {
     if (!API_KEY || API_KEY.includes("PASTE_YOUR_API_KEY_HERE") || API_KEY.includes("your_key_here")) {
         throw new Error("API Key is missing or invalid. Please check your Vercel/Cloud Run Environment Variables (VITE_API_KEY).");
     }
+    
+    // Validate Key Format (Basic check for accidental spaces or short keys)
+    if (API_KEY.length < 30 || API_KEY.includes(" ")) {
+         throw new Error("API Key seems invalid (contains spaces or too short). Please check for whitespace.");
+    }
+
     if (!ai) {
         ai = new GoogleGenAI({ apiKey: API_KEY });
     }
@@ -131,7 +137,7 @@ export const runConnectivityTest = async (): Promise<{ success: boolean; status:
             if (response.status === 403) {
                 friendlyMessage = "403 FORBIDDEN: Your API Key is valid but restricted. Go to Google AI Studio > API Key > Restrictions. If 'HTTP Referrers' is checked, you MUST add this website's URL to the allowed list (or set it to None).";
             } else if (response.status === 400) {
-                friendlyMessage = "400 BAD REQUEST: The API Key format might be invalid.";
+                friendlyMessage = "400 BAD REQUEST: The API Key format might be invalid or expired.";
             }
 
             return { 
@@ -142,6 +148,9 @@ export const runConnectivityTest = async (): Promise<{ success: boolean; status:
             };
         }
     } catch (e: any) {
+         if (e.name === 'TypeError' && e.message.includes('fetch')) {
+             return { success: false, status: 0, message: "Network Blocked. Please check Ad Blockers, Privacy Extensions (like Privacy Badger), or Firewall settings. Google API domains are being blocked.", details: e.message };
+         }
         return { success: false, status: 0, message: "Network Error: Could not reach Google servers.", details: e.message };
     }
 };
@@ -325,100 +334,77 @@ export const processNoteWithAI = async (
       - If you find any URLs (especially image URLs ending in .jpg, .png, etc), please format them as Markdown links: [Link Text](URL) or just [Image](URL).
       - Bold key terms.
       
-      Also generate 1 to 6 short, relevant tags (hashtags) that connect key concepts.
-      Try to use one of these existing categories if it fits perfectly: [${existingCategories.join(', ')}]. Otherwise, create a new suitable one.
-
-      Raw Text:
-      """
+      Raw Content:
       ${text}
-      """
+      
+      Existing Categories: ${existingCategories.join(', ')}
     `;
 
+    if (!aiClient) throw new Error("AI Client not initialized");
+
     const response = await aiClient.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: responseSchema,
-        systemInstruction: "You are an expert personal knowledge assistant. Your goal is to organize messy thoughts and raw file dumps into structured, colorful digital post-it notes.",
-        // Explicitly lower safety settings to prevent "No response" on benign but complex text
-        safetySettings: [
-            { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-            { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-            { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-            { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-        ]
-      },
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+            responseMimeType: 'application/json',
+            responseSchema: responseSchema,
+        }
     });
 
-    // 3. Increment Usage & Log
     incrementUsage();
-    logAIUsage(username, `Organize: ${noteType}`, `Input length: ${text.length} chars`);
+    logAIUsage(username, 'Process Note', noteType);
 
-    if (!response.text) {
-      throw new Error("No response from AI. Content might have been blocked by safety filters.");
-    }
+    const resultText = response.text;
+    if (!resultText) throw new Error("Empty response from AI");
 
-    const data = JSON.parse(response.text) as ProcessedNoteData;
-    
-    // Fallback ID generation for workflow nodes if AI missed them
-    if (data.projectData?.workflow?.nodes) {
-        data.projectData.workflow.nodes.forEach((node, idx) => {
-            if(!node.id) node.id = `node-${idx}`;
-            if(!node.status) node.status = 'pending';
-        });
-    }
+    return JSON.parse(resultText) as ProcessedNoteData;
 
-    return data;
   } catch (error: any) {
-    // LOG THE ERROR so it can be viewed in settings
-    logError("processNoteWithAI", error);
-    console.error("Error processing note with AI:", error);
-    throw error; // Re-throw to be handled by UI
+    logError('processNoteWithAI', error);
+    // Fallback if AI fails or returns invalid JSON
+    return {
+        title: text.split('\n')[0].substring(0, 50) || "New Note",
+        formattedContent: text,
+        category: "Manual",
+        tags: ["error-processing"]
+    };
   }
 };
 
-export const expandNoteContent = async (originalContent: string, username: string): Promise<string> => {
+export const expandNoteContent = async (content: string, username: string): Promise<string | null> => {
     try {
         const aiClient = initAI();
+        const currentUsage = getDailyUsage();
+        if (currentUsage >= DAILY_REQUEST_LIMIT) {
+             throw new Error(`Daily limit reached.`);
+        }
+
         const prompt = `
-            Act as an expert researcher and educational content creator.
-            I have a research note with the following content:
-            """
-            ${originalContent}
-            """
-
-            Please perform a "Deep Dive" expansion on this topic. 
-            Return the output in Markdown format to be appended to the existing note.
+            You are a helpful research assistant. 
+            Perform a "Deep Dive" expansion on the following text.
             
-            The output must include:
-            1. **Deep Dive Analysis**: A deeper explanation of the core concepts found in the note.
-            2. **Key Resources**: A list of 3-5 recommended articles, books, or documentation links (you can simulate relevant links if you don't have internet access, label them clearly).
-            3. **Audio Overview Script (NotebookLLM Style)**: Write a dialogue script between two hosts (Host A and Host B) summarizing this topic in a podcast style. Make it conversational, engaging, and about 200-300 words.
-
-            Format the output with a horizontal rule (---) at the start to separate it from original content.
+            1. Elaborate on the main concepts.
+            2. Add historical context or technical details if relevant.
+            3. Structure with Markdown headers.
+            4. Provide a "Key Takeaways" bullet list.
+            
+            Original Content:
+            ${content}
         `;
 
+        if (!aiClient) throw new Error("AI Client not initialized");
+
         const response = await aiClient.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: 'gemini-2.5-flash',
             contents: prompt,
-            config: {
-                safetySettings: [
-                    { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-                    { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-                    { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-                    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-                ]
-            }
         });
 
         incrementUsage();
-        logAIUsage(username, "Deep Dive", `Content length: ${originalContent.length} chars`);
-        
-        return response.text || "";
+        logAIUsage(username, 'Deep Dive', 'Content Expansion');
+
+        return response.text || null;
     } catch (error: any) {
-        logError("expandNoteContent", error);
-        console.error("Error expanding note:", error);
-        throw new Error("Failed to perform Deep Dive.");
+        logError('expandNoteContent', error);
+        return null;
     }
-}
+};

@@ -160,12 +160,19 @@ const App: React.FC = () => {
   };
 
   // Update Note
-  const handleUpdateNote = async (id: string, title: string, content: string) => {
+  const handleUpdateNote = async (id: string, title: string, content: string, category?: string, tags?: string[]) => {
       if (!canEdit) return;
       const target = notes.find(n => n.id === id);
       if (!target) return;
 
-      const updated = { ...target, title, content };
+      const updated = { 
+          ...target, 
+          title, 
+          content,
+          // Only overwrite if provided
+          ...(category ? { category } : {}),
+          ...(tags ? { tags } : {})
+      };
       
       setNotes(prev => prev.map(n => n.id === id ? updated : n));
       await saveNote(updated, storageOwner);
@@ -436,6 +443,7 @@ const App: React.FC = () => {
             isOpen={!!editingNote} 
             onClose={() => setEditingNote(null)} 
             onSave={handleUpdateNote} 
+            currentUser={currentUser?.username || 'Guest'}
         />
         <NoteDetailModal 
             note={expandedNote}

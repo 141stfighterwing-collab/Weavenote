@@ -19,7 +19,29 @@ const getEnvironmentKey = (key: string): string | undefined => {
 };
 
 // 1. GEMINI API KEY
-export const API_KEY = getEnvironmentKey('VITE_API_KEY') || "PASTE_YOUR_GEMINI_API_KEY_HERE";
+// We check multiple common names to make setup easier and trim whitespace
+const findApiKey = () => {
+    const candidates = [
+        'VITE_API_KEY',
+        'GOOGLE_API_KEY',
+        'GEMINI_API_KEY',
+        'VITE_GOOGLE_API_KEY',
+        'VITE_GEMINI_API_KEY'
+    ];
+    
+    for (const key of candidates) {
+        const val = getEnvironmentKey(key);
+        // Ensure we don't return undefined or a placeholder if a better key exists
+        if (val && !val.includes("PASTE_") && !val.includes("your_key")) {
+            return val;
+        }
+    }
+    
+    // Fallback if nothing found
+    return getEnvironmentKey('VITE_API_KEY') || "PASTE_YOUR_GEMINI_API_KEY_HERE";
+};
+
+export const API_KEY = findApiKey().trim();
 
 // 2. FIREBASE CONFIGURATION
 // Updated with your provided keys
