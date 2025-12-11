@@ -43,21 +43,15 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   
-  // Mind Map Filters
-  const [mmTypeFilter, setMmTypeFilter] = useState<NoteType | 'all'>('all');
-  const [mmStartDate, setMmStartDate] = useState('');
-  const [mmEndDate, setMmEndDate] = useState('');
-  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load Preferences
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('ideaweaver_darkmode') !== 'false');
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('ideaweaver_theme') as Theme) || 'default');
   const [reducedMotion, setReducedMotion] = useState(() => localStorage.getItem('ideaweaver_reducedmotion') === 'true');
   const [enableImages, setEnableImages] = useState(() => localStorage.getItem('ideaweaver_enableimages') === 'true');
   const [showLinkPreviews, setShowLinkPreviews] = useState(() => localStorage.getItem('ideaweaver_linkpreviews') === 'true');
 
-  // Handle Authentication State (Persistence)
+  // PERSISTENCE LISTENER
   useEffect(() => {
       const unsubscribe = subscribeToAuthChanges((user) => {
           setCurrentUser(user);
@@ -67,14 +61,10 @@ const App: React.FC = () => {
   }, []);
 
   const canEdit = currentUser ? currentUser.permission === 'edit' : true; 
-  // Determine who owns the data: The logged-in Firebase UID or null (Guest)
   const storageOwner = currentUser ? currentUser.uid : null;
 
-  // ASYNC DATA LOAD
   useEffect(() => {
-    // Wait for auth check to complete before loading data
     if (isAuthChecking) return;
-
     const fetchData = async () => {
         setIsLoadingData(true);
         try {
@@ -92,10 +82,8 @@ const App: React.FC = () => {
     setDailyUsage(getDailyUsage());
   }, [storageOwner, isAuthChecking]);
 
-  // Handle Login
   const handleLoginSuccess = (user: User) => {
       setCurrentUser(user);
-      // Data load triggered by useEffect on storageOwner change
   };
 
   const handleLogout = () => {
@@ -104,7 +92,6 @@ const App: React.FC = () => {
       setFolders([]);
   };
 
-  // Add Note
   const handleAddNote = async (
     rawText: string, 
     type: NoteType, 
@@ -120,9 +107,8 @@ const App: React.FC = () => {
         let processed;
         let tags = [...forcedTags];
 
-        // AUTO-TAG LOGIC: Quick notes get today's date
         if (type === 'quick') {
-            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            const today = new Date().toISOString().split('T')[0]; 
             if (!tags.includes(today)) {
                 tags.push(today);
             }
@@ -147,21 +133,18 @@ const App: React.FC = () => {
             content: processed.formattedContent,
             rawContent: rawText,
             category: processed.category,
-            tags: Array.from(new Set(tags)), // Ensure unique tags
+            tags: Array.from(new Set(tags)), 
             color: NoteColor.Yellow, 
             createdAt: Date.now(),
             type: type,
             attachments: attachments || [],
             accessCount: 0,
             folderId: activeFolderId || undefined,
-            userId: storageOwner || undefined // CRITICAL: Assign ownership
+            userId: storageOwner || undefined
         };
 
-        // Optimistic Update
         setNotes(prev => [newNote, ...prev]);
         setActiveTab(type);
-        
-        // Async Save to Database
         await saveNote(newNote, storageOwner);
         setDailyUsage(getDailyUsage());
 
@@ -172,7 +155,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Update Note
   const handleUpdateNote = async (id: string, title: string, content: string, category?: string, tags?: string[]) => {
       if (!canEdit) return;
       const target = notes.find(n => n.id === id);
@@ -182,7 +164,6 @@ const App: React.FC = () => {
           ...target, 
           title, 
           content,
-          // Only overwrite if provided
           ...(category ? { category } : {}),
           ...(tags ? { tags } : {})
       };
@@ -191,22 +172,16 @@ const App: React.FC = () => {
       await saveNote(updated, storageOwner);
   };
 
-  // Handle Checkbox Toggles
   const handleToggleCheckbox = async (noteId: string, lineIndex: number, checked: boolean) => {
       if (!canEdit) return;
       const targetNote = notes.find(n => n.id === noteId);
       if (!targetNote) return;
 
-      // Split content by newlines to find the correct line
       const lines = targetNote.content.split('\n');
-      
-      // Ensure the line exists
       if (lines[lineIndex] !== undefined) {
           const line = lines[lineIndex];
           let newLine = line;
 
-          // Replace regex for strict match at start or after list marker
-          // Matches "- [ ]" or "* [ ]" or "1. [ ]"
           if (checked) {
               newLine = line.replace(/\[ \]/, '[x]');
           } else {
@@ -216,33 +191,24 @@ const App: React.FC = () => {
           if (newLine !== line) {
               lines[lineIndex] = newLine;
               const newContent = lines.join('\n');
-              
-              // Optimistic update
               const updatedNote = { ...targetNote, content: newContent };
               setNotes(prev => prev.map(n => n.id === noteId ? updatedNote : n));
               if (expandedNote?.id === noteId) setExpandedNote(updatedNote);
-              
-              // Save to backend (no await to keep UI snappy)
               saveNote(updatedNote, storageOwner);
           }
       }
   };
 
-  // Move Note to Folder
   const handleMoveNote = async (noteId: string, folderId: string | undefined) => {
       if (!canEdit) return;
       const target = notes.find(n => n.id === noteId);
       if (!target) return;
 
       const updated = { ...target, folderId };
-      // Optimistic update
       setNotes(prev => prev.map(n => n.id === noteId ? updated : n));
-      
-      // Async Save
       await saveNote(updated, storageOwner);
   };
 
-  // Delete Note
   const handleDeleteNote = async (id: string) => {
       if (!canEdit) return;
       setNotes(prev => prev.filter(n => n.id !== id));
@@ -266,15 +232,12 @@ const App: React.FC = () => {
       setFolders(prev => prev.filter(f => f.id !== id));
       const updatedNotes = notes.map(n => n.folderId === id ? { ...n, folderId: undefined } : n);
       setNotes(updatedNotes);
-      // We must check if any notes were updated and save them
       const notesToUpdate = notes.filter(n => n.folderId === id);
       for (const note of notesToUpdate) {
           await saveNote({ ...note, folderId: undefined }, storageOwner);
       }
       await deleteFolder(id, storageOwner);
   };
-
-  const handleImportClick = () => fileInputRef.current?.click();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -286,9 +249,7 @@ const App: React.FC = () => {
               const imported = parseImportFile(content);
               const existingIds = new Set(notes.map(n => n.id));
               const newNotes = imported.filter(n => !existingIds.has(n.id));
-              
               setNotes(prev => [...newNotes, ...prev]);
-              // If logged in, sync imports to cloud
               if (storageOwner && newNotes.length > 0) {
                   await syncAllNotes(newNotes, storageOwner);
               }
@@ -302,7 +263,6 @@ const App: React.FC = () => {
 
   const handleSidebarTagClick = (tag: string) => setActiveTagFilter(tag === activeTagFilter ? null : tag);
 
-  // Filters
   const filteredNotes = useMemo(() => {
       let result = notes.filter(n => n.type === activeTab);
       if (activeFolderId) result = result.filter(n => n.folderId === activeFolderId);
@@ -314,7 +274,6 @@ const App: React.FC = () => {
       return result;
   }, [notes, activeTab, activeFolderId, activeTagFilter, searchQuery]);
 
-  // Loading Screen for Auth Check
   if (isAuthChecking) {
       return (
           <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
@@ -328,10 +287,8 @@ const App: React.FC = () => {
 
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors duration-300 ${darkMode ? 'dark bg-slate-900 text-slate-100' : 'bg-slate-100 text-slate-800'}`}>
-        {/* Style injection for themes */}
         <style>{`body { background-color: var(--color-primary-50); } .dark body { background-color: #0f172a; }`}</style>
         
-        {/* HEADER */}
         <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50 shadow-sm">
             <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
@@ -362,7 +319,6 @@ const App: React.FC = () => {
             </div>
         </header>
 
-        {/* TAB NAV */}
         <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
             <div className="max-w-7xl mx-auto px-4 flex gap-6 overflow-x-auto">
                 {(['quick', 'deep', 'project', 'contact', 'document'] as NoteType[]).map(type => (
@@ -377,10 +333,7 @@ const App: React.FC = () => {
             </div>
         </div>
 
-        {/* MAIN LAYOUT: Sidebar | Content | RightSidebar */}
         <main className="flex-grow max-w-[1400px] mx-auto px-4 py-6 w-full flex flex-col lg:flex-row gap-6">
-            
-            {/* LEFT CONTENT (Note List & Input) */}
             <div className="flex-1 min-w-0 order-2 lg:order-2">
                 {viewMode === 'grid' && (
                     <>
@@ -457,7 +410,6 @@ const App: React.FC = () => {
                 )}
             </div>
 
-            {/* LEFT SIDEBAR (Navigation) */}
             <Sidebar 
                 className="order-1 lg:order-1"
                 notes={notes}
@@ -473,7 +425,6 @@ const App: React.FC = () => {
                 activeFolderId={activeFolderId}
             />
 
-            {/* RIGHT SIDEBAR (Today's Agenda) */}
             <RightSidebar 
                 className="hidden xl:block order-3 lg:order-3"
                 notes={notes}
@@ -481,7 +432,6 @@ const App: React.FC = () => {
             />
         </main>
         
-        {/* Footer Sync Status */}
         <footer className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 py-2 px-4 text-xs text-slate-400 flex justify-between">
             <div>
                 {storageOwner ? (
@@ -499,7 +449,6 @@ const App: React.FC = () => {
             <div>Daily AI Usage: {dailyUsage}/800</div>
         </footer>
 
-        {/* MODALS */}
         <EditNoteModal 
             note={editingNote} 
             isOpen={!!editingNote} 
@@ -542,7 +491,6 @@ const App: React.FC = () => {
             notes={notes}
         />
         
-        {/* Hidden Import Input */}
         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".json" />
     </div>
   );

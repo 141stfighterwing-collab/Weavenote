@@ -36,7 +36,6 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
       setIsProcessing(true);
       setError(null);
       try {
-          // Pass empty array for existing categories as we just want it to do its best on this single note
           const processed = await processNoteWithAI(content, [], note.type, currentUser);
           setTitle(processed.title);
           setContent(processed.formattedContent);
@@ -138,7 +137,6 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
           </button>
         </div>
         
-        {/* Error Banner */}
         {error && (
             <div className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 p-4 m-4 mb-0">
                 <div className="flex">
@@ -182,7 +180,6 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
           <div className="mb-4 flex-grow flex flex-col min-h-0">
             <div className="flex justify-between items-center mb-1">
                 <label htmlFor="content" className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Content</label>
-                {/* Formatting Toolbar */}
                 <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
                     <button type="button" onClick={() => applyFormat('bold')} disabled={isProcessing} className="p-1 hover:bg-white dark:hover:bg-slate-600 rounded text-slate-600 dark:text-slate-300 disabled:opacity-50" title="Bold">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg>

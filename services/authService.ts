@@ -26,11 +26,10 @@ export interface AuditLogEntry {
     timestamp: number;
     action: string;
     actor: string;
-    target?: string | null; // Allow null for Firestore compatibility
+    target?: string | null;
     details?: string | null;
 }
 
-// Local storage fallback for Guest Mode audit logs only
 const LOCAL_AUDIT_KEY = 'ideaweaver_audit_logs';
 
 const fetchClientInfo = async (): Promise<{ ip: string; country: string; flag: string }> => {
@@ -51,9 +50,7 @@ export const isAdmin = (user: User | null) => {
     return user?.role === 'admin' || user?.username === 'admin';
 };
 
-// Log security events (Uses Firestore if available, else local)
 const logAudit = async (action: string, actor: string, target?: string, details?: string) => {
-    // Firestore crashes on 'undefined', so we fallback to null
     const entry: AuditLogEntry = {
         id: crypto.randomUUID(),
         timestamp: Date.now(),
@@ -70,7 +67,6 @@ const logAudit = async (action: string, actor: string, target?: string, details?
             console.error("Failed to log audit to DB", e);
         }
     } else {
-        // Fallback for local
         const logsStr = localStorage.getItem(LOCAL_AUDIT_KEY);
         const logs = logsStr ? JSON.parse(logsStr) : [];
         logs.unshift(entry);
@@ -78,12 +74,8 @@ const logAudit = async (action: string, actor: string, target?: string, details?
     }
 };
 
-/**
- * Subscribe to Auth Changes (Persistence)
- */
 export const subscribeToAuthChanges = (callback: (user: User | null) => void) => {
     if (!auth || !db) {
-        // If Firebase isn't configured, we just return a no-op unsubscribe
         callback(null);
         return () => {};
     }
@@ -96,17 +88,14 @@ export const subscribeToAuthChanges = (callback: (user: User | null) => void) =>
                 
                 if (userDoc.exists()) {
                     const userData = userDoc.data() as User;
-                    // Check status
                     if (userData.status === 'suspended') {
                         await signOut(auth);
                         callback(null);
                     } else {
-                        // Update last login silently
                         updateDoc(userDocRef, { lastLogin: Date.now() }).catch(() => {});
                         callback(userData);
                     }
                 } else {
-                    // Auth exists but no DB record (orphan)
                     await signOut(auth);
                     callback(null);
                 }
@@ -120,15 +109,11 @@ export const subscribeToAuthChanges = (callback: (user: User | null) => void) =>
     });
 };
 
-/**
- * DIAGNOSTIC: Check Firestore Connection & Latency
- */
 export const checkDatabaseConnection = async (): Promise<{ success: boolean; latency: number; message: string }> => {
     if (!isFirebaseReady || !db) return { success: false, latency: 0, message: "Firebase not configured" };
     
     const start = Date.now();
     try {
-        // Attempt a lightweight read (limit 1) just to verify connection
         await getDocs(query(collection(db, 'users'), limit(1)));
         const end = Date.now();
         return { success: true, latency: end - start, message: "Connected" };
@@ -145,7 +130,6 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
     try {
         let email = usernameOrEmail;
 
-        // --- ADMIN BOOTSTRAP LOGIC ---
         if (usernameOrEmail === 'admin' && password === 'Zaqxsw12!gobeavers') {
             email = 'admin@weavenote.com'; 
             try {
@@ -154,9 +138,7 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
                 if (authError.code === 'auth/configuration-not-found' || authError.code === 'auth/operation-not-allowed') {
                     throw new Error("Enable 'Email/Password' in Firebase Console > Authentication.");
                 }
-                // Try to create if user not found or invalid credential (which might mean not found in some API versions)
                 if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential') {
-                    console.log("Bootstrapping Admin Account...");
                     try {
                         const newCred = await createUserWithEmailAndPassword(auth, email, password);
                         const clientInfo = await fetchClientInfo();
@@ -175,20 +157,12 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
                         await setDoc(doc(db, 'users', newCred.user.uid), adminUser);
                         return { success: true, user: adminUser };
                     } catch (createError: any) {
-                         if (createError.code === 'auth/configuration-not-found' || createError.code === 'auth/operation-not-allowed') {
-                            throw new Error("Enable 'Email/Password' in Firebase Console > Authentication.");
-                        }
-                        if (createError.code === 'auth/email-already-in-use') {
-                            // If create fails because it exists, and signIn failed earlier, it implies WRONG PASSWORD.
-                            throw new Error("Invalid Admin Password.");
-                        }
                         throw createError;
                     }
                 }
                 throw authError;
             }
         }
-        // -----------------------------
 
         if (!email.includes('@')) {
             const q = query(collection(db, 'users'), where('username', '==', usernameOrEmail));
@@ -223,7 +197,6 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
             return { success: false, error: "Account Pending Approval." };
         }
 
-        // UPDATE INFO ON LOGIN: Capture IP/Location every time
         const clientInfo = await fetchClientInfo();
         await updateDoc(userDocRef, { 
             lastLogin: Date.now(),
@@ -234,33 +207,12 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
         
         await logAudit('LOGIN_SUCCESS', userData.username);
 
-        // Return updated user object
         return { success: true, user: { ...userData, ...clientInfo, lastLogin: Date.now() } };
 
     } catch (e: any) {
         console.error("Login Error", e);
-        
-        // Handle explicit errors thrown from admin block
-        if (e.message.includes("Enable 'Email/Password'") || e.message === "Invalid Admin Password.") {
-            return { success: false, error: e.message };
-        }
-
-        // Firebase Auth Errors
-        if (e.code === 'auth/configuration-not-found' || e.code === 'auth/operation-not-allowed') {
-             return { success: false, error: "Firebase Auth not enabled in Console." };
-        }
-        // Handle auth/invalid-credential here specifically
-        if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential' || e.code === 'auth/user-not-found') {
-             return { success: false, error: "Invalid Email or Password." };
-        }
-        if (e.code === 'auth/too-many-requests') {
-             return { success: false, error: "Too many failed attempts. Try again later." };
-        }
-        if (e.code === 'auth/network-request-failed') {
-             return { success: false, error: "Network error. Check your internet connection." };
-        }
-
-        return { success: false, error: e.message || "Login failed" };
+        if (e.message.includes("Enable 'Email/Password'")) return { success: false, error: e.message };
+        return { success: false, error: "Login failed. Check credentials." };
     }
 };
 
@@ -279,7 +231,6 @@ export const requestAccount = async (username: string, password: string, email: 
         }
 
         const clientInfo = await fetchClientInfo();
-
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const uid = userCredential.user.uid;
 
@@ -298,21 +249,10 @@ export const requestAccount = async (username: string, password: string, email: 
 
         await setDoc(doc(db, 'users', uid), newUser);
         await logAudit('REGISTER_REQUEST', username, 'System', `New account request from ${clientInfo.ip}`);
-
         await signOut(auth);
-
         return { success: true, message: "Account requested. Please wait for Admin approval." };
 
     } catch (e: any) {
-        if (e.code === 'auth/configuration-not-found' || e.code === 'auth/operation-not-allowed') {
-             return { success: false, message: "Admin must enable Email/Password in Firebase Console." };
-        }
-        if (e.code === 'auth/email-already-in-use') {
-             return { success: false, message: "Email is already registered." };
-        }
-        if (e.code === 'auth/weak-password') {
-             return { success: false, message: "Password is too weak (min 6 chars)." };
-        }
         return { success: false, message: e.message || "Registration failed" };
     }
 };
@@ -369,7 +309,6 @@ export const getAuditLogs = async (): Promise<AuditLogEntry[]> => {
         const snapshot = await getDocs(q);
         return snapshot.docs.map(d => d.data() as AuditLogEntry);
     } catch (e) {
-        // Fallback if index not created yet
         const snapshot = await getDocs(collection(db, 'audit_logs'));
         return snapshot.docs.map(d => d.data() as AuditLogEntry).sort((a,b) => b.timestamp - a.timestamp);
     }
