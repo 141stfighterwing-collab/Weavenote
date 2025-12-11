@@ -3,29 +3,33 @@
  * 
  * HOW TO USE:
  * 1. Get a free Gemini API Key from https://aistudio.google.com/
- * 2. Paste it below where it says "PASTE_YOUR_API_KEY_HERE" inside the quotes.
+ * 2. Get Firebase Config from https://console.firebase.google.com/
  * 
- * Alternatively, if your environment supports .env files, the app will try to read 
- * process.env.API_KEY or VITE_API_KEY first.
+ * PASTE YOUR KEYS BELOW.
  */
 
-// Helper to safely check environment variables in different bundlers (Vite/Webpack)
-const getEnvironmentKey = (): string | undefined => {
+// Helper to safely check environment variables
+const getEnvironmentKey = (key: string): string | undefined => {
   try {
-    // Check for standard node process.env (Webpack/CRA)
-    if (typeof process !== 'undefined' && process.env?.API_KEY) {
-      return process.env.API_KEY;
-    }
-    // Check for Vite specific env vars
-    // @ts-ignore - import.meta is a Vite/ESM feature
-    if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_KEY) {
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env?.[key]) {
       // @ts-ignore
-      return import.meta.env.VITE_API_KEY;
+      return import.meta.env[key];
     }
-  } catch (e) {
-    // Ignore errors if environment objects aren't available
-  }
+    if (typeof process !== 'undefined' && process.env?.[key]) {
+      return process.env[key];
+    }
+  } catch (e) {}
   return undefined;
 };
 
-export const API_KEY = getEnvironmentKey() || "PASTE_YOUR_API_KEY_HERE";
+export const API_KEY = getEnvironmentKey('VITE_API_KEY') || "PASTE_YOUR_GEMINI_API_KEY_HERE";
+
+export const FIREBASE_CONFIG = {
+  apiKey: getEnvironmentKey('VITE_FIREBASE_API_KEY') || "PASTE_FIREBASE_API_KEY",
+  authDomain: getEnvironmentKey('VITE_FIREBASE_AUTH_DOMAIN') || "your-app.firebaseapp.com",
+  projectId: getEnvironmentKey('VITE_FIREBASE_PROJECT_ID') || "your-app-id",
+  storageBucket: getEnvironmentKey('VITE_FIREBASE_STORAGE_BUCKET') || "your-app.appspot.com",
+  messagingSenderId: getEnvironmentKey('VITE_FIREBASE_MESSAGING_SENDER_ID') || "123456789",
+  appId: getEnvironmentKey('VITE_FIREBASE_APP_ID') || "1:123456789:web:abcdef"
+};

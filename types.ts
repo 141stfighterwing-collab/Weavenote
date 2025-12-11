@@ -25,7 +25,7 @@ export interface ProjectPhase {
 export interface WorkflowNode {
   id: string;
   label: string;
-  rule?: string; // Workflow rule or criteria for this step
+  rule?: string; 
   status: 'pending' | 'in_progress' | 'done';
 }
 
@@ -48,17 +48,18 @@ export interface ProjectData {
 export interface Note {
   id: string;
   title: string;
-  content: string; // Formatted markdown content
-  rawContent: string; // Original input
+  content: string; 
+  rawContent: string; 
   category: string;
   tags: string[];
   color: NoteColor;
   createdAt: number;
   type: NoteType;
-  attachments?: string[]; // Array of Base64 image strings
-  accessCount?: number; // Number of times accessed/viewed
-  folderId?: string; // ID of the folder this note belongs to
-  projectData?: ProjectData; // Optional specific data for Project notes
+  attachments?: string[]; 
+  accessCount?: number; 
+  folderId?: string; 
+  projectData?: ProjectData;
+  userId?: string; // Owner ID for Firebase
 }
 
 export enum NoteColor {
@@ -123,4 +124,27 @@ export interface ErrorLogEntry {
     context: string;
     message: string;
     stack?: string;
+}
+
+export type Permission = 'read' | 'edit';
+export type UserStatus = 'active' | 'suspended' | 'pending';
+
+export interface User {
+  uid: string; // Firebase Auth ID
+  username: string;
+  email: string;
+  permission: Permission;
+  status: UserStatus;
+  role?: 'admin' | 'user'; 
+  ipAddress?: string;
+  country?: string;
+  countryFlag?: string;
+  lastLogin?: number;
+}
+
+export interface UserUsageStats {
+  noteCount: number;
+  topCategory: string;
+  persona: string;
+  personaEmoji: string;
 }

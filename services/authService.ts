@@ -1,30 +1,23 @@
-
-
-export type Permission = 'read' | 'edit';
-export type UserStatus = 'active' | 'suspended';
-
-export interface User {
-  username: string;
-  email?: string;
-  passwordHash: string; // Simulated hash
-  permission: Permission;
-  status: UserStatus;
-  parentUser?: string; // If set, this user shares the parent's workspace
-  ipAddress?: string;
-  country?: string;
-  countryFlag?: string;
-  lastLogin?: number;
-}
-
-export interface AccountRequest {
-  username: string;
-  email?: string;
-  passwordHash: string;
-  timestamp: number;
-  ipAddress?: string;
-  country?: string;
-  countryFlag?: string;
-}
+import { auth, db, isFirebaseReady } from './firebase';
+import { 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    signOut, 
+    User as FirebaseUser 
+} from 'firebase/auth';
+import { 
+    doc, 
+    getDoc, 
+    setDoc, 
+    updateDoc, 
+    collection, 
+    query, 
+    where, 
+    getDocs,
+    deleteDoc,
+    limit
+} from 'firebase/firestore';
+import { User, Permission, UserStatus } from '../types';
 
 export interface AuditLogEntry {
     id: string;
@@ -35,354 +28,249 @@ export interface AuditLogEntry {
     details?: string;
 }
 
-const USERS_KEY = 'ideaweaver_users';
-const REQUESTS_KEY = 'ideaweaver_account_requests';
-const AUDIT_LOG_KEY = 'ideaweaver_audit_logs';
-const SESSION_TIMEOUT_KEY = 'ideaweaver_session_timeout'; // in minutes
+// Local storage fallback for Guest Mode audit logs only
+const LOCAL_AUDIT_KEY = 'ideaweaver_audit_logs';
 
-// Hardcoded Admin Credentials
-const ADMIN_USER = 'admin';
-const ADMIN_PASS = 'Zaqxsw12!gobeavers';
-const MAX_ACCOUNTS_PER_IP = 4;
-
-export const isAdmin = (username: string | null) => username === ADMIN_USER;
-
-// Helper to log security events
-const logAudit = (action: string, actor: string, target?: string, details?: string) => {
-    try {
-        const logsStr = localStorage.getItem(AUDIT_LOG_KEY);
-        const logs: AuditLogEntry[] = logsStr ? JSON.parse(logsStr) : [];
-        
-        const newEntry: AuditLogEntry = {
-            id: crypto.randomUUID(),
-            timestamp: Date.now(),
-            action,
-            actor,
-            target,
-            details
-        };
-
-        // Keep last 100 logs
-        const updatedLogs = [newEntry, ...logs].slice(0, 100);
-        localStorage.setItem(AUDIT_LOG_KEY, JSON.stringify(updatedLogs));
-    } catch (e) {
-        console.error("Audit Log Error", e);
-    }
-};
-
-export const getAuditLogs = (): AuditLogEntry[] => {
-    const logsStr = localStorage.getItem(AUDIT_LOG_KEY);
-    return logsStr ? JSON.parse(logsStr) : [];
-};
-
-export const clearAuditLogs = () => {
-    localStorage.removeItem(AUDIT_LOG_KEY);
-    logAudit('CLEAR_LOGS', ADMIN_USER, 'System', 'Audit logs cleared');
-};
-
-// Helper to fetch IP and Location
 const fetchClientInfo = async (): Promise<{ ip: string; country: string; flag: string }> => {
     try {
         const res = await fetch('https://ipapi.co/json/');
         const data = await res.json();
-        if (data.error) throw new Error("API Error");
         return {
             ip: data.ip || 'Unknown',
             country: data.country_name || 'Unknown',
-            flag: getFlagEmoji(data.country_code) || '🌐'
+            flag: '🌐'
         };
     } catch (e) {
         return { ip: 'Unknown', country: 'Unknown', flag: '🌐' };
     }
 };
 
-// Convert Country Code to Emoji
-const getFlagEmoji = (countryCode: string) => {
-  if(!countryCode) return '🌐';
-  const codePoints = countryCode
-    .toUpperCase()
-    .split('')
-    .map(char =>  127397 + char.charCodeAt(0));
-  return String.fromCodePoint(...codePoints);
+export const isAdmin = (user: User | null) => {
+    return user?.role === 'admin' || user?.username === 'admin';
 };
 
-/**
- * Returns the login result object
- */
-export const login = (username: string, password: string): { success: boolean; user?: User; error?: string } => {
-  // 1. Check Admin
-  if (username === ADMIN_USER) {
-      if (password === ADMIN_PASS) {
-        logAudit('LOGIN_SUCCESS', ADMIN_USER, ADMIN_USER, 'Admin login');
-        return { 
-            success: true, 
-            user: { 
-                username: ADMIN_USER, 
-                email: 'admin@weavenote.ai',
-                passwordHash: ADMIN_PASS, 
-                permission: 'edit',
-                status: 'active',
-                lastLogin: Date.now()
-            } 
-        };
-      } else {
-          logAudit('LOGIN_FAIL', 'Unknown', ADMIN_USER, 'Invalid admin password attempt');
-          return { success: false, error: 'Invalid credentials' };
-      }
-  }
-
-  // 2. Check Local Users
-  try {
-    const usersStr = localStorage.getItem(USERS_KEY);
-    let users: User[] = usersStr ? JSON.parse(usersStr) : [];
-    const userIndex = users.findIndex(u => u.username === username);
-    const user = users[userIndex];
-
-    if (!user) {
-        return { success: false, error: 'User not found' };
-    }
-
-    if (user.passwordHash !== password) {
-        logAudit('LOGIN_FAIL', 'Unknown', username, 'Invalid password');
-        return { success: false, error: 'Invalid credentials' };
-    }
-
-    if (user.status === 'suspended') {
-        logAudit('LOGIN_BLOCK', username, username, 'Suspended user attempted login');
-        return { success: false, error: 'Account Suspended. Contact Admin.' };
-    }
-
-    // Update lastLogin
-    users[userIndex] = { ...user, lastLogin: Date.now() };
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-
-    logAudit('LOGIN_SUCCESS', username, username, 'User login');
-    return { success: true, user: users[userIndex] };
-
-  } catch (e) {
-    return { success: false, error: 'System error' };
-  }
-};
-
-/**
- * Submit a request for a new account.
- * Async because it checks IP info.
- */
-export const requestAccount = async (username: string, password: string, email: string): Promise<{ success: boolean; message: string }> => {
-  if (!username || !password) return { success: false, message: 'Missing fields' };
-  if (username === ADMIN_USER) return { success: false, message: 'Username taken' };
-
-  try {
-    // Check existing users
-    const usersStr = localStorage.getItem(USERS_KEY);
-    const users: User[] = usersStr ? JSON.parse(usersStr) : [];
-    if (users.find(u => u.username === username)) {
-      return { success: false, message: 'Username already exists' };
-    }
-
-    // Check existing requests
-    const reqStr = localStorage.getItem(REQUESTS_KEY);
-    const requests: AccountRequest[] = reqStr ? JSON.parse(reqStr) : [];
-    if (requests.find(r => r.username === username)) {
-        return { success: false, message: 'A request for this username is already pending.' };
-    }
-
-    // IP Check
-    const clientInfo = await fetchClientInfo();
-    
-    // Count accounts from this IP (Active + Pending)
-    const activeCount = users.filter(u => u.ipAddress === clientInfo.ip).length;
-    const pendingCount = requests.filter(r => r.ipAddress === clientInfo.ip).length;
-    const totalCount = activeCount + pendingCount;
-
-    if (totalCount >= MAX_ACCOUNTS_PER_IP && clientInfo.ip !== 'Unknown') {
-        logAudit('REGISTRATION_BLOCK', 'System', username, `Blocked IP ${clientInfo.ip} (Count: ${totalCount})`);
-        return { success: false, message: `Registration blocked. Too many accounts from IP: ${clientInfo.ip}` };
-    }
-
-    const newRequest: AccountRequest = {
-        username,
-        email,
-        passwordHash: password,
+// Log security events (Uses Firestore if available, else local)
+const logAudit = async (action: string, actor: string, target?: string, details?: string) => {
+    const entry: AuditLogEntry = {
+        id: crypto.randomUUID(),
         timestamp: Date.now(),
-        ipAddress: clientInfo.ip,
-        country: clientInfo.country,
-        countryFlag: clientInfo.flag
+        action,
+        actor,
+        target,
+        details
     };
 
-    requests.push(newRequest);
-    localStorage.setItem(REQUESTS_KEY, JSON.stringify(requests));
-    
-    return { success: true, message: 'Request sent to Admin for approval.' };
-  } catch (e) {
-    console.error(e);
-    return { success: false, message: 'Storage error' };
-  }
+    if (db) {
+        try {
+            await setDoc(doc(collection(db, 'audit_logs')), entry);
+        } catch (e) {
+            console.error("Failed to log audit to DB", e);
+        }
+    } else {
+        // Fallback for local
+        const logsStr = localStorage.getItem(LOCAL_AUDIT_KEY);
+        const logs = logsStr ? JSON.parse(logsStr) : [];
+        logs.unshift(entry);
+        localStorage.setItem(LOCAL_AUDIT_KEY, JSON.stringify(logs.slice(0, 100)));
+    }
 };
 
 /**
- * Admin function to create a user (Directly, or approves a request)
+ * DIAGNOSTIC: Check Firestore Connection & Latency
  */
-export const createUser = (
-    username: string, 
-    password: string, 
-    permission: Permission, 
-    parentUser?: string,
-    ipAddress?: string,
-    country?: string,
-    countryFlag?: string,
-    email?: string
-): { success: boolean; message: string } => {
-  if (!username || !password) return { success: false, message: 'Missing fields' };
-  
-  try {
-    const usersStr = localStorage.getItem(USERS_KEY);
-    const users: User[] = usersStr ? JSON.parse(usersStr) : [];
-
-    if (users.find(u => u.username === username)) {
-      return { success: false, message: 'Username already exists' };
-    }
-
-    const newUser: User = { 
-        username, 
-        email,
-        passwordHash: password,
-        permission,
-        status: 'active',
-        parentUser,
-        ipAddress,
-        country,
-        countryFlag
-    };
+export const checkDatabaseConnection = async (): Promise<{ success: boolean; latency: number; message: string }> => {
+    if (!isFirebaseReady || !db) return { success: false, latency: 0, message: "Firebase not configured" };
     
-    users.push(newUser);
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    logAudit('USER_CREATED', parentUser || ADMIN_USER, username, `Role: ${permission}`);
-    
-    return { success: true, message: 'User created successfully' };
-  } catch (e) {
-    return { success: false, message: 'Storage error' };
-  }
-};
-
-export const getRequests = (): AccountRequest[] => {
+    const start = Date.now();
     try {
-        const reqStr = localStorage.getItem(REQUESTS_KEY);
-        return reqStr ? JSON.parse(reqStr) : [];
-    } catch (e) {
-        return [];
+        // Attempt a lightweight read (limit 1) just to verify connection
+        await getDocs(query(collection(db, 'users'), limit(1)));
+        const end = Date.now();
+        return { success: true, latency: end - start, message: "Connected" };
+    } catch (e: any) {
+        return { success: false, latency: 0, message: e.message || "Connection Failed" };
     }
 };
 
-export const approveRequest = (username: string): boolean => {
-    const requests = getRequests();
-    const req = requests.find(r => r.username === username);
-    if (!req) return false;
+export const login = async (usernameOrEmail: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> => {
+    if (!isFirebaseReady || !auth || !db) {
+        return { success: false, error: "Firebase not configured. Check config.ts" };
+    }
 
-    // Pass IP info and Email to the created user
-    const result = createUser(
-        req.username, 
-        req.passwordHash, 
-        'edit', 
-        undefined, 
-        req.ipAddress, 
-        req.country,
-        req.countryFlag,
-        req.email
-    );
+    try {
+        // 1. Authenticate with Firebase Auth
+        // Note: Firebase requires Email. If user entered username, this might fail unless we lookup email first.
+        // For simplicity, we assume input is Email for Firebase.
+        // If it's a username, this demo assumes email = username for the 'admin' local fallback, but for real usage, user must input email.
+        
+        let email = usernameOrEmail;
+        if (!email.includes('@')) {
+            // Attempt to resolve username to email via Firestore (Reverse lookup)
+            const q = query(collection(db, 'users'), where('username', '==', usernameOrEmail));
+            const snapshot = await getDocs(q);
+            if (!snapshot.empty) {
+                email = snapshot.docs[0].data().email;
+            } else {
+                return { success: false, error: "Username not found. Please use Email." };
+            }
+        }
 
-    if (result.success) {
-        const newRequests = requests.filter(r => r.username !== username);
-        localStorage.setItem(REQUESTS_KEY, JSON.stringify(newRequests));
-        logAudit('REQUEST_APPROVED', ADMIN_USER, username);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const fbUser = userCredential.user;
+
+        // 2. Fetch User Profile from Firestore
+        const userDocRef = doc(db, 'users', fbUser.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (!userDoc.exists()) {
+            await signOut(auth);
+            return { success: false, error: "User profile missing in database." };
+        }
+
+        const userData = userDoc.data() as User;
+
+        // 3. Check Status
+        if (userData.status === 'suspended') {
+            await signOut(auth);
+            await logAudit('LOGIN_BLOCK', userData.username, 'System', 'Suspended user tried to login');
+            return { success: false, error: "Account Suspended." };
+        }
+        if (userData.status === 'pending') {
+            await signOut(auth);
+            return { success: false, error: "Account Pending Approval." };
+        }
+
+        // 4. Update Last Login
+        await updateDoc(userDocRef, { lastLogin: Date.now() });
+        await logAudit('LOGIN_SUCCESS', userData.username);
+
+        return { success: true, user: userData };
+
+    } catch (e: any) {
+        console.error("Login Error", e);
+        return { success: false, error: e.message || "Login failed" };
+    }
+};
+
+export const logout = async () => {
+    if (auth) await signOut(auth);
+};
+
+export const requestAccount = async (username: string, password: string, email: string): Promise<{ success: boolean; message: string }> => {
+    if (!isFirebaseReady || !auth || !db) return { success: false, message: "DB Connection Error" };
+
+    try {
+        // 1. Check if username taken
+        const q = query(collection(db, 'users'), where('username', '==', username));
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+            return { success: false, message: "Username already taken" };
+        }
+
+        // 2. IP Check
+        const clientInfo = await fetchClientInfo();
+        // (Simplified IP check for Firestore: querying by IP is costly without an index, skipping for this demo)
+
+        // 3. Create Auth User
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const uid = userCredential.user.uid;
+
+        // 4. Create Firestore Document (Pending)
+        const newUser: User = {
+            uid,
+            username,
+            email,
+            permission: 'read', // Default
+            status: 'pending', // Requires Approval
+            role: 'user',
+            ipAddress: clientInfo.ip,
+            country: clientInfo.country,
+            countryFlag: clientInfo.flag,
+            lastLogin: 0
+        };
+
+        await setDoc(doc(db, 'users', uid), newUser);
+        await logAudit('REGISTER_REQUEST', username, 'System', 'New account request');
+
+        // Sign out immediately so they can't use the app until approved
+        await signOut(auth);
+
+        return { success: true, message: "Account requested. Please wait for Admin approval." };
+
+    } catch (e: any) {
+        return { success: false, message: e.message || "Registration failed" };
+    }
+};
+
+// --- ADMIN FUNCTIONS (Async) ---
+
+export const getRequests = async (): Promise<User[]> => {
+    if (!db) return [];
+    const q = query(collection(db, 'users'), where('status', '==', 'pending'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => d.data() as User);
+};
+
+export const approveRequest = async (uid: string): Promise<boolean> => {
+    if (!db) return false;
+    try {
+        await updateDoc(doc(db, 'users', uid), { status: 'active', permission: 'edit' });
+        await logAudit('APPROVE_USER', 'Admin', uid);
         return true;
-    }
-    return false;
-};
-
-export const denyRequest = (username: string) => {
-    const requests = getRequests();
-    const newRequests = requests.filter(r => r.username !== username);
-    localStorage.setItem(REQUESTS_KEY, JSON.stringify(newRequests));
-    logAudit('REQUEST_DENIED', ADMIN_USER, username);
-};
-
-export const getUsers = (): User[] => {
-    try {
-        const usersStr = localStorage.getItem(USERS_KEY);
-        // Migration support: ensure all users have a status
-        const users: User[] = usersStr ? JSON.parse(usersStr) : [];
-        return users.map(u => ({ ...u, status: u.status || 'active' }));
     } catch (e) {
-        return [];
+        return false;
     }
 };
 
-export const deleteUser = (username: string) => {
+export const denyRequest = async (uid: string) => {
+    if (!db) return;
     try {
-        const usersStr = localStorage.getItem(USERS_KEY);
-        if (!usersStr) return;
-        let users: User[] = JSON.parse(usersStr);
-        users = users.filter(u => u.username !== username);
-        localStorage.setItem(USERS_KEY, JSON.stringify(users));
-        logAudit('USER_DELETED', ADMIN_USER, username);
-    } catch (e) {
-        console.error(e);
-    }
+        // For denial, we delete the Firestore doc. 
+        // Note: The Auth user still exists in Firebase. 
+        // A real app would use a Cloud Function to delete the Auth user too.
+        await deleteDoc(doc(db, 'users', uid));
+        await logAudit('DENY_USER', 'Admin', uid);
+    } catch (e) { console.error(e) }
 };
 
-export const updateUserPermission = (username: string, permission: Permission) => {
-    try {
-        const usersStr = localStorage.getItem(USERS_KEY);
-        if (!usersStr) return;
-        let users: User[] = JSON.parse(usersStr);
-        users = users.map(u => u.username === username ? { ...u, permission } : u);
-        localStorage.setItem(USERS_KEY, JSON.stringify(users));
-        logAudit('PERM_UPDATED', ADMIN_USER, username, `New perm: ${permission}`);
-    } catch (e) {
-        console.error(e);
-    }
+export const getUsers = async (): Promise<User[]> => {
+    if (!db) return [];
+    const snapshot = await getDocs(collection(db, 'users'));
+    return snapshot.docs.map(d => d.data() as User);
 };
 
-export const toggleUserStatus = (username: string) => {
-    try {
-        const usersStr = localStorage.getItem(USERS_KEY);
-        if (!usersStr) return;
-        let users: User[] = JSON.parse(usersStr);
-        
-        const targetUser = users.find(u => u.username === username);
-        if (!targetUser) return;
-        
-        const newStatus: UserStatus = targetUser.status === 'active' ? 'suspended' : 'active';
-        
-        users = users.map(u => u.username === username ? { ...u, status: newStatus } : u);
-        
-        localStorage.setItem(USERS_KEY, JSON.stringify(users));
-        logAudit(newStatus === 'suspended' ? 'USER_SUSPENDED' : 'USER_ACTIVATED', ADMIN_USER, username);
-    } catch (e) {
-        console.error(e);
-    }
+export const toggleUserStatus = async (uid: string, currentStatus: UserStatus) => {
+    if (!db) return;
+    const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
+    await updateDoc(doc(db, 'users', uid), { status: newStatus });
+    await logAudit('TOGGLE_STATUS', 'Admin', uid, newStatus);
 };
 
-export const adminResetPassword = (username: string, newPass: string) => {
-    try {
-        const usersStr = localStorage.getItem(USERS_KEY);
-        if (!usersStr) return;
-        let users: User[] = JSON.parse(usersStr);
-        users = users.map(u => u.username === username ? { ...u, passwordHash: newPass } : u);
-        localStorage.setItem(USERS_KEY, JSON.stringify(users));
-        logAudit('PASSWORD_RESET', ADMIN_USER, username);
-    } catch (e) {
-        console.error(e);
-    }
+export const updateUserPermission = async (uid: string, permission: Permission) => {
+    if (!db) return;
+    await updateDoc(doc(db, 'users', uid), { permission });
+    await logAudit('UPDATE_PERM', 'Admin', uid, permission);
+};
+
+export const getAuditLogs = async (): Promise<AuditLogEntry[]> => {
+    if (!db) return [];
+    // Ideally use orderBy('timestamp', 'desc') but requires index
+    const snapshot = await getDocs(collection(db, 'audit_logs'));
+    const logs = snapshot.docs.map(d => d.data() as AuditLogEntry);
+    return logs.sort((a,b) => b.timestamp - a.timestamp);
+};
+
+export const clearAuditLogs = async () => {
+    // In Firestore, deleting collection is hard from client. 
+    // We'll just ignore this for now or implement batch delete.
+    console.log("Log clearing not supported in client-side Firestore for safety.");
 };
 
 export const getSessionTimeout = (): number => {
-    const val = localStorage.getItem(SESSION_TIMEOUT_KEY);
-    return val ? parseInt(val, 10) : 30; // Default 30 mins
+    const val = localStorage.getItem('ideaweaver_session_timeout');
+    return val ? parseInt(val, 10) : 30;
 };
 
 export const setSessionTimeout = (minutes: number) => {
-    localStorage.setItem(SESSION_TIMEOUT_KEY, minutes.toString());
-    logAudit('POLICY_CHANGE', ADMIN_USER, 'System', `Session timeout set to ${minutes}m`);
+    localStorage.setItem('ideaweaver_session_timeout', minutes.toString());
 };
