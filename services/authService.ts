@@ -3,6 +3,7 @@ import {
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword, 
     signOut, 
+    onAuthStateChanged,
     User as FirebaseUser 
 } from 'firebase/auth';
 import { 
@@ -75,6 +76,48 @@ const logAudit = async (action: string, actor: string, target?: string, details?
         logs.unshift(entry);
         localStorage.setItem(LOCAL_AUDIT_KEY, JSON.stringify(logs.slice(0, 100)));
     }
+};
+
+/**
+ * Subscribe to Auth Changes (Persistence)
+ */
+export const subscribeToAuthChanges = (callback: (user: User | null) => void) => {
+    if (!auth || !db) {
+        // If Firebase isn't configured, we just return a no-op unsubscribe
+        callback(null);
+        return () => {};
+    }
+
+    return onAuthStateChanged(auth, async (firebaseUser) => {
+        if (firebaseUser) {
+            try {
+                const userDocRef = doc(db, 'users', firebaseUser.uid);
+                const userDoc = await getDoc(userDocRef);
+                
+                if (userDoc.exists()) {
+                    const userData = userDoc.data() as User;
+                    // Check status
+                    if (userData.status === 'suspended') {
+                        await signOut(auth);
+                        callback(null);
+                    } else {
+                        // Update last login silently
+                        updateDoc(userDocRef, { lastLogin: Date.now() }).catch(() => {});
+                        callback(userData);
+                    }
+                } else {
+                    // Auth exists but no DB record (orphan)
+                    await signOut(auth);
+                    callback(null);
+                }
+            } catch (e) {
+                console.error("Auth state sync error", e);
+                callback(null);
+            }
+        } else {
+            callback(null);
+        }
+    });
 };
 
 /**

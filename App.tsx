@@ -6,7 +6,7 @@ import {
     loadFolders, saveFolder, deleteFolder, 
     exportDataToFile, parseImportFile, syncAllNotes 
 } from './services/storageService';
-import { getSessionTimeout } from './services/authService';
+import { getSessionTimeout, subscribeToAuthChanges } from './services/authService';
 import NoteCard from './components/NoteCard';
 import NoteInput from './components/NoteInput';
 import MindMap from './components/MindMap';
@@ -23,6 +23,7 @@ import { Logo } from './components/Logo';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [notes, setNotes] = useState<Note[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -56,12 +57,24 @@ const App: React.FC = () => {
   const [enableImages, setEnableImages] = useState(() => localStorage.getItem('ideaweaver_enableimages') === 'true');
   const [showLinkPreviews, setShowLinkPreviews] = useState(() => localStorage.getItem('ideaweaver_linkpreviews') === 'true');
 
+  // Handle Authentication State (Persistence)
+  useEffect(() => {
+      const unsubscribe = subscribeToAuthChanges((user) => {
+          setCurrentUser(user);
+          setIsAuthChecking(false);
+      });
+      return () => unsubscribe();
+  }, []);
+
   const canEdit = currentUser ? currentUser.permission === 'edit' : true; 
   // Determine who owns the data: The logged-in Firebase UID or null (Guest)
   const storageOwner = currentUser ? currentUser.uid : null;
 
   // ASYNC DATA LOAD
   useEffect(() => {
+    // Wait for auth check to complete before loading data
+    if (isAuthChecking) return;
+
     const fetchData = async () => {
         setIsLoadingData(true);
         try {
@@ -77,7 +90,7 @@ const App: React.FC = () => {
     };
     fetchData();
     setDailyUsage(getDailyUsage());
-  }, [storageOwner]);
+  }, [storageOwner, isAuthChecking]);
 
   // Handle Login
   const handleLoginSuccess = (user: User) => {
@@ -300,6 +313,18 @@ const App: React.FC = () => {
       }
       return result;
   }, [notes, activeTab, activeFolderId, activeTagFilter, searchQuery]);
+
+  // Loading Screen for Auth Check
+  if (isAuthChecking) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+              <div className="flex flex-col items-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mb-4"></div>
+                  <p className="text-slate-500 dark:text-slate-400">Loading WeaveNote...</p>
+              </div>
+          </div>
+      );
+  }
 
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors duration-300 ${darkMode ? 'dark bg-slate-900 text-slate-100' : 'bg-slate-100 text-slate-800'}`}>
