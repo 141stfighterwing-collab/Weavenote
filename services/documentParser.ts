@@ -1,10 +1,9 @@
-
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Set up the worker source using the dynamic version from the library itself
-// This prevents "API version does not match Worker version" errors by ensuring they are always synced.
+// Set up the worker source using unpkg to ensure strict version matching
+// This fixes the "API version does not match Worker version" error.
 // @ts-ignore
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://esm.sh/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 export const parseDocument = async (file: File): Promise<string> => {
   try {
@@ -46,9 +45,9 @@ const parsePDF = async (file: File): Promise<string> => {
   // Load the PDF document
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   
-  // Check Page Limit (Increased to 100)
-  if (pdf.numPages > 100) {
-    throw new Error(`PDF exceeds the 100-page limit (Has ${pdf.numPages} pages). Please upload a smaller document.`);
+  // Check Page Limit (Increased to 1000 for large study guides)
+  if (pdf.numPages > 1000) {
+    throw new Error(`PDF exceeds the 1000-page limit (Has ${pdf.numPages} pages). Please upload a smaller document.`);
   }
 
   let fullText = "";

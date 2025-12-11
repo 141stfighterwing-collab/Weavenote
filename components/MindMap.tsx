@@ -1,5 +1,3 @@
-
-
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { Note } from '../types';
@@ -260,19 +258,19 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
       .force("link", d3.forceLink<GraphNode, GraphLink>(links)
         .id(d => d.id)
         .distance(d => {
-            // Strong links pull closer, but spread slightly more than before
-            if (d.connectionType === 'strong') return 80; 
-            if (d.connectionType === 'weak') return 250; 
-            return 110; // tag links
+            // Updated distances for slightly more spread
+            if (d.connectionType === 'strong') return 100; // was 80
+            if (d.connectionType === 'weak') return 300; // was 250
+            return 140; // tag links, was 110
         })
         .strength(d => {
             if (d.connectionType === 'strong') return 0.5;
-            if (d.connectionType === 'weak') return 0.03; // weak links barely pull
+            if (d.connectionType === 'weak') return 0.03; 
             return 0.3;
         })
       )
       // Increased repulsion slightly to space things out
-      .force("charge", d3.forceManyBody().strength(-400).distanceMax(600))
+      .force("charge", d3.forceManyBody().strength(-600).distanceMax(800)) // was -400/600
       .force("center", d3.forceCenter(width / 2, height / 2).strength(0.05))
       .force("x", d3.forceX(width / 2).strength(0.04))
       .force("y", d3.forceY(height / 2).strength(0.04))
@@ -339,20 +337,14 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
       .attr("font-weight", d => d.type === 'tag' ? "500" : "700")
       .attr("fill", "#1e293b") 
       .attr("class", "fill-slate-800 dark:fill-slate-200 pointer-events-none")
-      .style("transition", "all 0.2s ease"); // Smooth transition for text stroke
+      .style("transition", "all 0.2s ease");
 
     // Hover Interaction
     nodeGroup
         .on("mouseover", function(event, d) {
             const group = d3.select(this);
-            
-            // Bring to front
             group.raise();
-            
-            // Add Hover Class
             group.classed("node-hover", true);
-
-            // Animate Size (Scale up)
             group.select("circle")
                 .transition()
                 .duration(200)
@@ -360,11 +352,7 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
         })
         .on("mouseout", function(event, d) {
             const group = d3.select(this);
-            
-            // Remove Hover Class
             group.classed("node-hover", false);
-
-            // Animate Size (Restore)
             group.select("circle")
                 .transition()
                 .duration(200)
