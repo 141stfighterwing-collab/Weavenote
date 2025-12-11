@@ -1,9 +1,10 @@
 
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Set up the worker source using the same CDN version
+// Set up the worker source using the dynamic version from the library itself
+// This prevents "API version does not match Worker version" errors by ensuring they are always synced.
 // @ts-ignore
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://esm.sh/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 export const parseDocument = async (file: File): Promise<string> => {
   try {

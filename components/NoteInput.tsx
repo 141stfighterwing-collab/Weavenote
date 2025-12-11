@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { NoteType } from '../types';
 import { parseDocument } from '../services/documentParser';
@@ -126,7 +125,7 @@ const NoteInput: React.FC<NoteInputProps> = ({ onAddNote, isProcessing, activeTy
         setImportProgress({ current: 0, total: bulkFiles.length });
 
         for (const item of bulkFiles) {
-            const file = item as File;
+            const file = item as any;
             try {
                 const content = await parseDocument(file);
                 // Prepend filename context to content
@@ -202,7 +201,7 @@ const NoteInput: React.FC<NoteInputProps> = ({ onAddNote, isProcessing, activeTy
           setText(''); // Clear text or set initial placeholder
       } else {
           // Single File Mode (Original Behavior)
-          const file = files[0];
+          const file = files[0] as any;
           setIsParsing(true);
           try {
               const content = await parseDocument(file);
