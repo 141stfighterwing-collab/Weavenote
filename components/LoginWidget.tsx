@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { login, requestAccount, logout } from '../services/authService';
 import { User } from '../types';
@@ -10,7 +11,7 @@ interface LoginWidgetProps {
 
 const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, onLogout }) => {
   const [isRegistering, setIsRegistering] = useState(false);
-  const [email, setEmail] = useState('');
+  const [emailOrUsername, setEmailOrUsername] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [msg, setMsg] = useState<{ type: 'error' | 'success', text: string } | null>(null);
@@ -35,7 +36,7 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
     try {
         if (isRegistering) {
             // Registration
-            const res = await requestAccount(username, password, email);
+            const res = await requestAccount(username, password, emailOrUsername);
             if (res.success) {
                 setMsg({ type: 'success', text: res.message });
                 setIsRegistering(false);
@@ -44,7 +45,7 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
             }
         } else {
             // Login
-            const res = await login(email, password);
+            const res = await login(emailOrUsername, password);
             if (res.success && res.user) {
                 onLoginSuccess(res.user);
                 setIsOpen(false);
@@ -87,10 +88,10 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
                 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-3">
                     <input 
-                        type="email" 
-                        placeholder="Email" 
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
+                        type="text" 
+                        placeholder={isRegistering ? "Email" : "Email or 'admin'"} 
+                        value={emailOrUsername}
+                        onChange={e => setEmailOrUsername(e.target.value)}
                         className="px-3 py-2 border rounded-lg text-sm dark:bg-slate-700 dark:text-white"
                         required
                     />

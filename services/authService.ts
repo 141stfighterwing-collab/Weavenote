@@ -1,3 +1,4 @@
+
 import { auth, db, isFirebaseReady } from './firebase';
 import { 
     signInWithEmailAndPassword, 
@@ -98,12 +99,38 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
     }
 
     try {
-        // 1. Authenticate with Firebase Auth
-        // Note: Firebase requires Email. If user entered username, this might fail unless we lookup email first.
-        // For simplicity, we assume input is Email for Firebase.
-        // If it's a username, this demo assumes email = username for the 'admin' local fallback, but for real usage, user must input email.
-        
         let email = usernameOrEmail;
+
+        // --- ADMIN BOOTSTRAP LOGIC ---
+        // If user enters legacy admin credentials, we auto-create/login the admin in Firebase
+        if (usernameOrEmail === 'admin' && password === 'Zaqxsw12!gobeavers') {
+            email = 'admin@weavenote.com'; // Reserved admin email
+            try {
+                // Try logging in regularly first
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                // If successful, proceed to normal flow below
+            } catch (authError: any) {
+                // If user doesn't exist, Create it on the fly
+                if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential') {
+                    console.log("Bootstrapping Admin Account...");
+                    const newCred = await createUserWithEmailAndPassword(auth, email, password);
+                    const adminUser: User = {
+                        uid: newCred.user.uid,
+                        username: 'admin',
+                        email: email,
+                        permission: 'edit',
+                        status: 'active',
+                        role: 'admin',
+                        lastLogin: Date.now()
+                    };
+                    await setDoc(doc(db, 'users', newCred.user.uid), adminUser);
+                    return { success: true, user: adminUser };
+                }
+                throw authError;
+            }
+        }
+        // -----------------------------
+
         if (!email.includes('@')) {
             // Attempt to resolve username to email via Firestore (Reverse lookup)
             const q = query(collection(db, 'users'), where('username', '==', usernameOrEmail));
@@ -123,6 +150,8 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
         const userDoc = await getDoc(userDocRef);
 
         if (!userDoc.exists()) {
+            // Edge case: Auth user exists but Firestore doc missing. Re-create or fail.
+            // For now, fail to be safe.
             await signOut(auth);
             return { success: false, error: "User profile missing in database." };
         }
