@@ -1,5 +1,3 @@
-
-
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Note, NOTE_COLORS, WorkflowNode, WorkflowEdge } from '../types';
@@ -77,7 +75,8 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
   const colorClass = note ? NOTE_COLORS[note.color] : "";
 
   // Custom Renderer for List Items (Same as NoteCard to keep consistent behavior)
-  const LiRenderer = useCallback(({children}: any) => {
+  const LiRenderer = useCallback((props: any) => {
+      const { children, node } = props;
       const childrenArray = React.Children.toArray(children);
       const firstChild = childrenArray[0];
 
@@ -91,8 +90,10 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
                     type="checkbox" 
                     checked={isChecked} 
                     onChange={(e) => {
-                        // Pass -1 and toggle state to let App handle the regex replacement logic
-                        if (note) onToggleCheckbox(note.id, -1, !isChecked);
+                        if (note && node && node.position) {
+                            const lineIndex = node.position.start.line - 1;
+                            onToggleCheckbox(note.id, lineIndex, !isChecked);
+                        }
                     }}
                     className="mt-1.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer flex-shrink-0"
                   />
@@ -155,7 +156,7 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
                       <div className="bg-white/60 dark:bg-slate-800/60 border border-black/5 dark:border-white/10 rounded-lg overflow-hidden hover:bg-white/80 dark:hover:bg-slate-800/80 hover:shadow-sm transition-all flex h-16">
                           {/* Icon Section */}
                           <div className="w-14 bg-black/5 dark:bg-white/5 flex items-center justify-center text-slate-500 dark:text-slate-400 shrink-0 border-r border-black/5 dark:border-white/5">
-                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                           </div>
                           
                           {/* Text Content */}

@@ -1,5 +1,3 @@
-
-
 import React, { useMemo, useState, useCallback } from 'react';
 import { Note, NOTE_COLORS, NoteColor, Folder } from '../types';
 import ReactMarkdown from 'react-markdown';
@@ -92,7 +90,8 @@ const NoteCard: React.FC<NoteCardProps> = ({
   };
 
   // Custom Renderer for List Items to handle Checkboxes
-  const LiRenderer = useCallback(({children}: any) => {
+  const LiRenderer = useCallback((props: any) => {
+      const { children, node } = props;
       const childrenArray = React.Children.toArray(children);
       const firstChild = childrenArray[0];
 
@@ -107,8 +106,12 @@ const NoteCard: React.FC<NoteCardProps> = ({
                     type="checkbox" 
                     checked={isChecked} 
                     onChange={(e) => {
-                        e.stopPropagation(); // Don't trigger expand
-                        onToggleCheckbox(note.id, -1, !isChecked); // -1 triggers a content search update
+                        e.stopPropagation(); 
+                        if (node && node.position) {
+                            // node.position.start.line is 1-based index in the original source
+                            const lineIndex = node.position.start.line - 1;
+                            onToggleCheckbox(note.id, lineIndex, !isChecked); 
+                        }
                     }}
                     onClick={(e) => e.stopPropagation()}
                     className="mt-1.5 h-3.5 w-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer flex-shrink-0"

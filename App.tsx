@@ -178,6 +178,43 @@ const App: React.FC = () => {
       await saveNote(updated, storageOwner);
   };
 
+  // Handle Checkbox Toggles
+  const handleToggleCheckbox = async (noteId: string, lineIndex: number, checked: boolean) => {
+      if (!canEdit) return;
+      const targetNote = notes.find(n => n.id === noteId);
+      if (!targetNote) return;
+
+      // Split content by newlines to find the correct line
+      const lines = targetNote.content.split('\n');
+      
+      // Ensure the line exists
+      if (lines[lineIndex] !== undefined) {
+          const line = lines[lineIndex];
+          let newLine = line;
+
+          // Replace regex for strict match at start or after list marker
+          // Matches "- [ ]" or "* [ ]" or "1. [ ]"
+          if (checked) {
+              newLine = line.replace(/\[ \]/, '[x]');
+          } else {
+              newLine = line.replace(/\[x\]/i, '[ ]');
+          }
+
+          if (newLine !== line) {
+              lines[lineIndex] = newLine;
+              const newContent = lines.join('\n');
+              
+              // Optimistic update
+              const updatedNote = { ...targetNote, content: newContent };
+              setNotes(prev => prev.map(n => n.id === noteId ? updatedNote : n));
+              if (expandedNote?.id === noteId) setExpandedNote(updatedNote);
+              
+              // Save to backend (no await to keep UI snappy)
+              saveNote(updatedNote, storageOwner);
+          }
+      }
+  };
+
   // Move Note to Folder
   const handleMoveNote = async (noteId: string, folderId: string | undefined) => {
       if (!canEdit) return;
@@ -379,7 +416,7 @@ const App: React.FC = () => {
                                             readOnly={!canEdit}
                                             showLinkPreviews={showLinkPreviews}
                                             onViewImage={setViewingImage}
-                                            onToggleCheckbox={() => {}} 
+                                            onToggleCheckbox={handleToggleCheckbox} 
                                             onAddTag={() => {}}
                                             onRemoveTag={() => {}}
                                             onMoveToFolder={handleMoveNote}
@@ -451,7 +488,8 @@ const App: React.FC = () => {
             onClose={() => setExpandedNote(null)}
             currentUser={currentUser?.username || 'Guest'}
             onViewImage={setViewingImage}
-            onToggleCheckbox={() => {}}
+            onToggleCheckbox={handleToggleCheckbox}
+            onSaveExpanded={(id, content) => handleUpdateNote(id, expandedNote?.title || '', content)}
         />
         <ImageViewerModal 
             src={viewingImage} 
