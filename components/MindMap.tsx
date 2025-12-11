@@ -260,10 +260,10 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
       .force("link", d3.forceLink<GraphNode, GraphLink>(links)
         .id(d => d.id)
         .distance(d => {
-            // Strong links pull closer
-            if (d.connectionType === 'strong') return 60;
-            if (d.connectionType === 'weak') return 220;
-            return 90; // tag links
+            // Strong links pull closer, but spread slightly more than before
+            if (d.connectionType === 'strong') return 80; 
+            if (d.connectionType === 'weak') return 250; 
+            return 110; // tag links
         })
         .strength(d => {
             if (d.connectionType === 'strong') return 0.5;
@@ -271,7 +271,8 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
             return 0.3;
         })
       )
-      .force("charge", d3.forceManyBody().strength(-300).distanceMax(500))
+      // Increased repulsion slightly to space things out
+      .force("charge", d3.forceManyBody().strength(-400).distanceMax(600))
       .force("center", d3.forceCenter(width / 2, height / 2).strength(0.05))
       .force("x", d3.forceX(width / 2).strength(0.04))
       .force("y", d3.forceY(height / 2).strength(0.04))

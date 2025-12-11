@@ -46,9 +46,9 @@ const parsePDF = async (file: File): Promise<string> => {
   // Load the PDF document
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   
-  // Check Page Limit
-  if (pdf.numPages > 20) {
-    throw new Error(`PDF exceeds the 20-page limit (Has ${pdf.numPages} pages). Please upload a smaller document.`);
+  // Check Page Limit (Increased to 100)
+  if (pdf.numPages > 100) {
+    throw new Error(`PDF exceeds the 100-page limit (Has ${pdf.numPages} pages). Please upload a smaller document.`);
   }
 
   let fullText = "";

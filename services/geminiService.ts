@@ -1,6 +1,4 @@
-
-
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { GoogleGenAI, Type, Schema, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { ProcessedNoteData, NoteType, AILogEntry, ErrorLogEntry } from "../types";
 import { API_KEY } from "../config";
 
@@ -343,6 +341,13 @@ export const processNoteWithAI = async (
         responseMimeType: "application/json",
         responseSchema: responseSchema,
         systemInstruction: "You are an expert personal knowledge assistant. Your goal is to organize messy thoughts and raw file dumps into structured, colorful digital post-it notes.",
+        // Explicitly lower safety settings to prevent "No response" on benign but complex text
+        safetySettings: [
+            { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+            { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+            { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+            { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+        ]
       },
     });
 
@@ -351,7 +356,7 @@ export const processNoteWithAI = async (
     logAIUsage(username, `Organize: ${noteType}`, `Input length: ${text.length} chars`);
 
     if (!response.text) {
-      throw new Error("No response from AI");
+      throw new Error("No response from AI. Content might have been blocked by safety filters.");
     }
 
     const data = JSON.parse(response.text) as ProcessedNoteData;
@@ -397,6 +402,14 @@ export const expandNoteContent = async (originalContent: string, username: strin
         const response = await aiClient.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
+            config: {
+                safetySettings: [
+                    { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                    { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+                    { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                ]
+            }
         });
 
         incrementUsage();

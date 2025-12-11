@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Note, NoteColor, NoteType, ViewMode, Theme, Folder, User } from './types';
 import { processNoteWithAI, getDailyUsage } from './services/geminiService';
@@ -162,6 +163,20 @@ const App: React.FC = () => {
       await saveNote(updated, storageOwner);
   };
 
+  // Move Note to Folder
+  const handleMoveNote = async (noteId: string, folderId: string | undefined) => {
+      if (!canEdit) return;
+      const target = notes.find(n => n.id === noteId);
+      if (!target) return;
+
+      const updated = { ...target, folderId };
+      // Optimistic update
+      setNotes(prev => prev.map(n => n.id === noteId ? updated : n));
+      
+      // Async Save
+      await saveNote(updated, storageOwner);
+  };
+
   // Delete Note
   const handleDeleteNote = async (id: string) => {
       if (!canEdit) return;
@@ -186,6 +201,11 @@ const App: React.FC = () => {
       setFolders(prev => prev.filter(f => f.id !== id));
       const updatedNotes = notes.map(n => n.folderId === id ? { ...n, folderId: undefined } : n);
       setNotes(updatedNotes);
+      // We must check if any notes were updated and save them
+      const notesToUpdate = notes.filter(n => n.folderId === id);
+      for (const note of notesToUpdate) {
+          await saveNote({ ...note, folderId: undefined }, storageOwner);
+      }
       await deleteFolder(id, storageOwner);
   };
 
@@ -243,6 +263,9 @@ const App: React.FC = () => {
                 </div>
                 
                 <div className="flex items-center gap-4 flex-1 justify-end">
+                    <button onClick={() => setShowAnalytics(true)} className="flex items-center gap-1 text-sm font-bold text-slate-600 hover:text-primary-600 dark:text-slate-300">
+                        <span>📊</span> Analytics
+                    </button>
                     <input 
                         type="text" 
                         placeholder="Search..." 
@@ -316,33 +339,42 @@ const App: React.FC = () => {
                                 />
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
-                                {filteredNotes.map(note => (
-                                    <NoteCard 
-                                        key={note.id}
-                                        note={note}
-                                        folders={folders}
-                                        onDelete={handleDeleteNote}
-                                        onTagClick={handleSidebarTagClick}
-                                        onChangeColor={async (id, c) => {
-                                            const n = notes.find(n => n.id === id);
-                                            if (n) await saveNote({ ...n, color: c }, storageOwner);
-                                            setNotes(prev => prev.map(n => n.id === id ? { ...n, color: c } : n));
-                                        }}
-                                        onEdit={setEditingNote}
-                                        onExpand={setExpandedNote}
-                                        readOnly={!canEdit}
-                                        showLinkPreviews={showLinkPreviews}
-                                        onViewImage={setViewingImage}
-                                        onToggleCheckbox={() => {}} 
-                                        onAddTag={() => {}}
-                                        onRemoveTag={() => {}}
-                                    />
-                                ))}
-                                {filteredNotes.length === 0 && (
-                                    <p className="col-span-full text-center text-slate-400 py-10">No notes found.</p>
-                                )}
-                            </div>
+                            activeTab === 'contact' && contactViewMode === 'table' ? (
+                                <ContactsTable 
+                                    contacts={filteredNotes} 
+                                    onEdit={setEditingNote} 
+                                    onDelete={handleDeleteNote}
+                                />
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+                                    {filteredNotes.map(note => (
+                                        <NoteCard 
+                                            key={note.id}
+                                            note={note}
+                                            folders={folders}
+                                            onDelete={handleDeleteNote}
+                                            onTagClick={handleSidebarTagClick}
+                                            onChangeColor={async (id, c) => {
+                                                const n = notes.find(n => n.id === id);
+                                                if (n) await saveNote({ ...n, color: c }, storageOwner);
+                                                setNotes(prev => prev.map(n => n.id === id ? { ...n, color: c } : n));
+                                            }}
+                                            onEdit={setEditingNote}
+                                            onExpand={setExpandedNote}
+                                            readOnly={!canEdit}
+                                            showLinkPreviews={showLinkPreviews}
+                                            onViewImage={setViewingImage}
+                                            onToggleCheckbox={() => {}} 
+                                            onAddTag={() => {}}
+                                            onRemoveTag={() => {}}
+                                            onMoveToFolder={handleMoveNote}
+                                        />
+                                    ))}
+                                    {filteredNotes.length === 0 && (
+                                        <p className="col-span-full text-center text-slate-400 py-10">No notes found.</p>
+                                    )}
+                                </div>
+                            )
                         )}
                     </div>
                 )}
@@ -359,7 +391,7 @@ const App: React.FC = () => {
                 onCreateFolder={handleCreateFolder}
                 onDeleteFolder={handleDeleteFolder}
                 onReorderFolders={() => {}}
-                onMoveNote={() => {}}
+                onMoveNote={handleMoveNote}
                 activeFolderId={activeFolderId}
             />
         </main>
@@ -416,6 +448,11 @@ const App: React.FC = () => {
             toggleEnableImages={() => setEnableImages(!enableImages)}
             showLinkPreviews={showLinkPreviews}
             toggleShowLinkPreviews={() => setShowLinkPreviews(!showLinkPreviews)}
+        />
+        <AnalyticsModal
+            isOpen={showAnalytics}
+            onClose={() => setShowAnalytics(false)}
+            notes={notes}
         />
         
         {/* Hidden Import Input */}

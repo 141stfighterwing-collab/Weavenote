@@ -1,3 +1,4 @@
+
 import { Note, Folder, UserUsageStats, NoteType } from '../types';
 import JSZip from 'jszip';
 import { db } from './firebase';
@@ -15,6 +16,13 @@ import {
 // Keys for Guest Mode (Session Storage)
 const GUEST_KEY = 'ideaweaver_guest_session';
 const GUEST_FOLDERS_KEY = 'ideaweaver_guest_folders';
+
+// Helper: Firestore throws error if a field is 'undefined'. 
+// We must strip undefined keys or convert them to null.
+// JSON.stringify automatically removes keys with undefined values.
+const sanitizeForFirestore = <T>(data: T): T => {
+    return JSON.parse(JSON.stringify(data));
+};
 
 /**
  * Load Notes (Async)
@@ -70,7 +78,10 @@ export const saveNote = async (note: Note, userId: string | null) => {
     try {
         // Force the userId on the note data to ensure ownership
         const noteData = { ...note, userId };
-        await setDoc(doc(db, 'notes', note.id), noteData);
+        // Sanitize to remove 'undefined' fields (like folderId) which crash Firestore
+        const cleanData = sanitizeForFirestore(noteData);
+        
+        await setDoc(doc(db, 'notes', note.id), cleanData);
         console.log(`Note ${note.id} saved to Cloud.`);
     } catch (e) {
         console.error("Firestore Save Error", e);
@@ -136,7 +147,8 @@ export const saveFolder = async (folder: Folder, userId: string | null) => {
     if (!db) return;
     try {
         const folderData = { ...folder, userId };
-        await setDoc(doc(db, 'folders', folder.id), folderData);
+        const cleanData = sanitizeForFirestore(folderData);
+        await setDoc(doc(db, 'folders', folder.id), cleanData);
     } catch (e) {
         console.error("Folder Save Error", e);
     }
@@ -164,7 +176,8 @@ export const syncAllNotes = async (notes: Note[], userId: string) => {
     // For simplicity, we assume <500 notes in this call or split logic needed.
     notes.slice(0, 490).forEach(note => {
         const ref = doc(db, 'notes', note.id);
-        batch.set(ref, { ...note, userId });
+        const cleanData = sanitizeForFirestore({ ...note, userId });
+        batch.set(ref, cleanData);
     });
     
     await batch.commit();
