@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Note, NoteColor, NoteType, ViewMode, Theme, Folder, User } from './types';
 import { processNoteWithAI, getDailyUsage } from './services/geminiService';
@@ -18,6 +17,7 @@ import SettingsPanel from './components/SettingsPanel';
 import ImageViewerModal from './components/ImageViewerModal';
 import AnalyticsModal from './components/AnalyticsModal';
 import Sidebar from './components/Sidebar';
+import RightSidebar from './components/RightSidebar';
 import ContactsTable from './components/ContactsTable';
 import { Logo } from './components/Logo';
 
@@ -107,6 +107,14 @@ const App: React.FC = () => {
         let processed;
         let tags = [...forcedTags];
 
+        // AUTO-TAG LOGIC: Quick notes get today's date
+        if (type === 'quick') {
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            if (!tags.includes(today)) {
+                tags.push(today);
+            }
+        }
+
         if (useAI) {
             const username = currentUser?.username || 'Guest';
             processed = await processNoteWithAI(rawText, [], type, username);
@@ -126,7 +134,7 @@ const App: React.FC = () => {
             content: processed.formattedContent,
             rawContent: rawText,
             category: processed.category,
-            tags: Array.from(new Set(processed.tags)),
+            tags: Array.from(new Set(tags)), // Ensure unique tags
             color: NoteColor.Yellow, 
             createdAt: Date.now(),
             type: type,
@@ -300,11 +308,11 @@ const App: React.FC = () => {
             </div>
         </div>
 
-        {/* MAIN */}
-        <main className="flex-grow max-w-7xl mx-auto px-4 py-6 w-full flex flex-col lg:flex-row gap-6">
+        {/* MAIN LAYOUT: Sidebar | Content | RightSidebar */}
+        <main className="flex-grow max-w-[1400px] mx-auto px-4 py-6 w-full flex flex-col lg:flex-row gap-6">
             
-            {/* LEFT CONTENT */}
-            <div className="flex-1 min-w-0">
+            {/* LEFT CONTENT (Note List & Input) */}
+            <div className="flex-1 min-w-0 order-2 lg:order-2">
                 {viewMode === 'grid' && (
                     <>
                         <NoteInput 
@@ -346,7 +354,7 @@ const App: React.FC = () => {
                                     onDelete={handleDeleteNote}
                                 />
                             ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-6 items-start">
                                     {filteredNotes.map(note => (
                                         <NoteCard 
                                             key={note.id}
@@ -380,8 +388,9 @@ const App: React.FC = () => {
                 )}
             </div>
 
-            {/* SIDEBAR */}
+            {/* LEFT SIDEBAR (Navigation) */}
             <Sidebar 
+                className="order-1 lg:order-1"
                 notes={notes}
                 folders={folders}
                 onTagClick={handleSidebarTagClick}
@@ -393,6 +402,13 @@ const App: React.FC = () => {
                 onReorderFolders={() => {}}
                 onMoveNote={handleMoveNote}
                 activeFolderId={activeFolderId}
+            />
+
+            {/* RIGHT SIDEBAR (Today's Agenda) */}
+            <RightSidebar 
+                className="hidden xl:block order-3 lg:order-3"
+                notes={notes}
+                onNoteClick={setExpandedNote}
             />
         </main>
         
