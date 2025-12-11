@@ -237,6 +237,27 @@ const responseSchema: Schema = {
   required: ["title", "formattedContent", "category", "tags"],
 };
 
+// Retry helper function
+const retryOperation = async <T>(
+    operation: () => Promise<T>, 
+    retries: number = 2, 
+    delay: number = 1000
+): Promise<T> => {
+    try {
+        return await operation();
+    } catch (error: any) {
+        if (retries > 0) {
+            // Check for transient errors or network errors
+            if (error.message && (error.message.includes("fetch") || error.message.includes("Network") || error.status === 503 || error.status === 429)) {
+                console.warn(`Retrying AI operation... attempts left: ${retries}`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                return retryOperation(operation, retries - 1, delay * 2);
+            }
+        }
+        throw error;
+    }
+};
+
 export const processNoteWithAI = async (
   text: string,
   existingCategories: string[],
@@ -271,26 +292,34 @@ export const processNoteWithAI = async (
             break;
     }
 
+    // Truncate text if absolutely massive to prevent HTTP 413 or browser crash
+    // 300,000 chars is roughly 75k tokens, well within Gemini Flash's 1M limit,
+    // but browser fetch bodies can be sensitive.
+    const safeText = text.length > 300000 ? text.substring(0, 300000) + "\n...[Content Truncated due to browser upload size limits]..." : text;
+
     const prompt = `
       Analyze the following raw text note.
       ${specificInstructions}
       Important: Bold key terms. Format URLs as [Link](URL).
       
       Raw Content:
-      ${text}
+      ${safeText}
       
       Existing Categories: ${existingCategories.join(', ')}
     `;
 
     if (!aiClient) throw new Error("AI Client not initialized");
 
-    const response = await aiClient.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: responseSchema,
-        }
+    // Wrap the API call in retry logic
+    const response = await retryOperation(async () => {
+        return await aiClient!.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: responseSchema,
+            }
+        });
     });
 
     incrementUsage();
@@ -318,7 +347,7 @@ export const processNoteWithAI = async (
             if (diagRes.ok) {
                 // Case A: Probe Succeeded, but POST failed. 
                 // This usually means the Payload was too large (Timeout) or the specific endpoint had an issue.
-                detailedErrorMessage = `Connection Established, but Processing Failed. \n\nPOSSIBLE CAUSES:\n1. The document is too large (Timeout).\n2. The content was flagged by safety filters.\n\nTry splitting the document into smaller parts.`;
+                detailedErrorMessage = `Connection Established, but Upload Failed. \n\nYour document might be too large for a single request, causing a timeout. \n\nTry:\n1. Uploading a smaller file.\n2. Splitting the PDF.\n3. Disabling any heavy VPNs.`;
             } else {
                  // Case B: Probe Failed with HTTP Status
                  if (diagRes.status === 403) {
@@ -353,9 +382,11 @@ export const expandNoteContent = async (content: string, username: string): Prom
         const prompt = `Deep Dive Expansion. Elaborate on concepts. Add context. Markdown headers. Key Takeaways list.\n\nContent:\n${content}`;
         if (!aiClient) throw new Error("AI Client not initialized");
 
-        const response = await aiClient.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
+        const response = await retryOperation(async () => {
+            return await aiClient!.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+            });
         });
 
         incrementUsage();
