@@ -26,7 +26,9 @@ const findApiKey = () => {
         'GOOGLE_API_KEY',
         'GEMINI_API_KEY',
         'VITE_GOOGLE_API_KEY',
-        'VITE_GEMINI_API_KEY'
+        'VITE_GEMINI_API_KEY',
+        'CLIENT_KEY', // Added per user request
+        'NEXT_PUBLIC_API_KEY'
     ];
     
     for (const key of candidates) {
