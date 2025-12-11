@@ -41,7 +41,16 @@ const findApiKey = () => {
     return getEnvironmentKey('VITE_API_KEY') || "PASTE_YOUR_GEMINI_API_KEY_HERE";
 };
 
-export const API_KEY = findApiKey().trim();
+// Sanitize key: remove quotes if user included them, and trim whitespace
+let rawKey = findApiKey();
+if (rawKey.startsWith('"') && rawKey.endsWith('"')) {
+    rawKey = rawKey.slice(1, -1);
+}
+if (rawKey.startsWith("'") && rawKey.endsWith("'")) {
+    rawKey = rawKey.slice(1, -1);
+}
+
+export const API_KEY = rawKey.trim();
 
 // 2. FIREBASE CONFIGURATION
 // Updated with your provided keys

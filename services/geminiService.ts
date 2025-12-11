@@ -361,7 +361,13 @@ export const processNoteWithAI = async (
 
   } catch (error: any) {
     logError('processNoteWithAI', error);
-    // Fallback if AI fails or returns invalid JSON
+    
+    // Critical Error Handling: If it's a fetch error, do not fail silently. Propagate it.
+    if (error.message && (error.message.includes("Failed to fetch") || error.message.includes("NetworkError"))) {
+        throw new Error("Connection Failed. This is usually caused by Ad Blockers (e.g. uBlock Origin) blocking Google AI, or an invalid API Key format. Please check your extensions and API key.");
+    }
+
+    // Fallback if AI fails (e.g. model overload) but network is fine
     return {
         title: text.split('\n')[0].substring(0, 50) || "New Note",
         formattedContent: text,

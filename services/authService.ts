@@ -206,6 +206,7 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
         if (e.code === 'auth/configuration-not-found' || e.code === 'auth/operation-not-allowed') {
              return { success: false, error: "Firebase Auth not enabled in Console." };
         }
+        // Handle auth/invalid-credential here specifically
         if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential' || e.code === 'auth/user-not-found') {
              return { success: false, error: "Invalid Email or Password." };
         }
