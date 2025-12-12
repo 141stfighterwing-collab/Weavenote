@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { Note, NOTE_COLORS, NoteColor, Folder } from '../types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -15,7 +15,7 @@ interface NoteCardProps {
   readOnly?: boolean;
   showLinkPreviews?: boolean;
   onViewImage: (src: string) => void;
-  onToggleCheckbox: (noteId: string, lineIndex: number) => void;
+  onToggleCheckbox: (noteId: string, index: number) => void;
   onAddTag: (noteId: string, tag: string) => void;
   onRemoveTag: (noteId: string, tag: string) => void;
   onMoveToFolder?: (noteId: string, folderId: string | undefined) => void;
@@ -55,6 +55,10 @@ const NoteCard: React.FC<NoteCardProps> = ({
 
   const processedContent = useMemo(() => processContent(note.content), [note.content]);
 
+  // Ref to track checkbox index during render pass
+  const checkboxCounter = useRef(0);
+  checkboxCounter.current = 0; // Reset on every render
+
   const dateStr = useMemo(() => {
     const d = new Date(note.createdAt);
     const now = new Date();
@@ -80,7 +84,8 @@ const NoteCard: React.FC<NoteCardProps> = ({
   };
 
   // Custom Components for Markdown
-  const markdownComponents = useMemo(() => ({
+  // Note: We avoid useMemo here to ensure we always capture the fresh ref for checkboxes
+  const markdownComponents = {
       // Custom Link Renderer
       a: (props: any) => {
           if (!props.href) return <a {...props} />;
@@ -113,16 +118,15 @@ const NoteCard: React.FC<NoteCardProps> = ({
       // Native Input (Checkbox) Renderer
       input: (props: any) => {
           if (props.type === 'checkbox') {
+              // Capture index at render time
+              const index = checkboxCounter.current++;
               return (
                   <input
                     type="checkbox"
                     checked={props.checked || false}
                     onChange={() => {
                         if (readOnly) return;
-                        // Use position from GFM. Line is 1-based index from parser.
-                        if (props.node && props.node.position) {
-                            onToggleCheckbox(note.id, props.node.position.start.line - 1);
-                        }
+                        onToggleCheckbox(note.id, index);
                     }}
                     className={`mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                     onClick={(e) => e.stopPropagation()}
@@ -131,7 +135,7 @@ const NoteCard: React.FC<NoteCardProps> = ({
           }
           return <input {...props} />;
       }
-  }), [note.id, onToggleCheckbox, readOnly, onViewImage]);
+  };
 
   return (
     <div

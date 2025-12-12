@@ -178,48 +178,46 @@ const App: React.FC = () => {
       await saveNote(updated, storageOwner);
   };
 
-  const handleToggleCheckbox = async (noteId: string, lineIndex: number) => {
+  const handleToggleCheckbox = async (noteId: string, checkboxIndex: number) => {
       if (!canEdit) return;
       const targetNote = notes.find(n => n.id === noteId);
       if (!targetNote) return;
 
-      // Handle both CRLF and LF
-      const lines = targetNote.content.split(/\r?\n/);
+      const content = targetNote.content;
+      // Regex to find occurrences of checkboxes [ ] or [x]
+      // We look for brackets with a space or x inside, possibly preceded by a list marker
+      const regex = /\[([ xX]?)\]/g;
       
-      // Simple logic: If we find [ ] replace with [x]. If we find [x] replace with [ ].
-      // We check exact line first, then neighbor lines if parser index is slightly off.
-      
-      const tryToggleLine = (idx: number): boolean => {
-          if (idx < 0 || idx >= lines.length) return false;
-          const line = lines[idx];
-          
-          if (line.match(/\[\s+\]/)) {
-              lines[idx] = line.replace(/\[\s+\]/, '[x]');
-              return true;
-          } else if (line.match(/\[[xX]\]/)) {
-              lines[idx] = line.replace(/\[[xX]\]/, '[ ]');
-              return true;
-          }
-          return false;
-      };
+      let match;
+      let currentIdx = 0;
+      let newContent = content;
+      let found = false;
 
-      let toggled = tryToggleLine(lineIndex);
-      
-      if (!toggled) {
-          // Fallback: check neighbors
-          toggled = tryToggleLine(lineIndex - 1) || tryToggleLine(lineIndex + 1);
+      // Iterate matches to find the Nth one
+      while ((match = regex.exec(content)) !== null) {
+          if (currentIdx === checkboxIndex) {
+              const isChecked = match[1].trim().length > 0; // if it has x or X, it's checked
+              const newStatus = isChecked ? '[ ]' : '[x]';
+              
+              // Replace the specific match in the string
+              newContent = 
+                  content.substring(0, match.index) + 
+                  newStatus + 
+                  content.substring(match.index + match[0].length);
+              
+              found = true;
+              break;
+          }
+          currentIdx++;
       }
 
-      if (toggled) {
-          const newContent = lines.join('\n');
+      if (found && newContent !== content) {
           const updatedNote = { ...targetNote, content: newContent };
           
           setNotes(prev => prev.map(n => n.id === noteId ? updatedNote : n));
           if (expandedNote?.id === noteId) setExpandedNote(updatedNote);
           
           await saveNote(updatedNote, storageOwner);
-      } else {
-          console.warn(`Checkbox toggle failed for line ${lineIndex}`);
       }
   };
 

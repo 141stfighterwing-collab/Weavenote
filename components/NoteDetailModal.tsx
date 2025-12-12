@@ -12,7 +12,7 @@ interface NoteDetailModalProps {
   onClose: () => void;
   showLinkPreviews?: boolean;
   onViewImage: (src: string) => void;
-  onToggleCheckbox: (noteId: string, lineIndex: number) => void;
+  onToggleCheckbox: (noteId: string, index: number) => void;
   onSaveExpanded?: (id: string, content: string) => void;
   currentUser: string;
 }
@@ -38,6 +38,10 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
   
   const [workflowNodes, setWorkflowNodes] = useState<WorkflowNode[]>([]);
   const [workflowEdges, setWorkflowEdges] = useState<WorkflowEdge[]>([]);
+
+  // Track checkboxes
+  const checkboxCounter = useRef(0);
+  checkboxCounter.current = 0;
 
   useEffect(() => {
     if (isOpen && containerRef.current) {
@@ -72,7 +76,7 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
   const colorClass = note ? NOTE_COLORS[note.color] : "";
 
   // Custom Components
-  const markdownComponents = useMemo(() => ({
+  const markdownComponents = {
       a: (props: any) => {
           if (!props.href) return <a {...props} />;
           if (isImageUrl(props.href)) {
@@ -121,14 +125,13 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
       },
       input: (props: any) => {
           if (props.type === 'checkbox') {
+              const index = checkboxCounter.current++;
               return (
                   <input
                     type="checkbox"
                     checked={props.checked || false}
                     onChange={() => {
-                        if (props.node?.position && note) {
-                            onToggleCheckbox(note.id, props.node.position.start.line - 1);
-                        }
+                        if (note) onToggleCheckbox(note.id, index);
                     }}
                     className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
                     onClick={(e) => e.stopPropagation()}
@@ -137,7 +140,7 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
           }
           return <input {...props} />;
       }
-  }), [note, onToggleCheckbox, showLinkPreviews, onViewImage]);
+  };
 
   if (!isOpen || !note) return null;
 
