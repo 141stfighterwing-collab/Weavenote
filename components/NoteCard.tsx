@@ -102,7 +102,7 @@ const NoteCard: React.FC<NoteCardProps> = ({
             </a>
           );
       },
-      // Custom List Item Renderer (Optional Strikethrough)
+      // Custom List Item Renderer
       li: (props: any) => {
         return (
             <li className="flex items-start gap-2 my-1">
@@ -110,7 +110,7 @@ const NoteCard: React.FC<NoteCardProps> = ({
             </li>
         );
       },
-      // SIMPLE NATIVE CHECKBOX RENDERER
+      // Native Input (Checkbox) Renderer
       input: (props: any) => {
           if (props.type === 'checkbox') {
               return (
@@ -118,13 +118,14 @@ const NoteCard: React.FC<NoteCardProps> = ({
                     type="checkbox"
                     checked={props.checked || false}
                     onChange={() => {
-                        // Rely on parser position (1-based index) -> convert to 0-based
-                        if (!readOnly && props.node?.position) {
+                        if (readOnly) return;
+                        // Use position from GFM. Line is 1-based index from parser.
+                        if (props.node && props.node.position) {
                             onToggleCheckbox(note.id, props.node.position.start.line - 1);
                         }
                     }}
                     className={`mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={(e) => e.stopPropagation()} // Stop note expansion on click
+                    onClick={(e) => e.stopPropagation()}
                   />
               );
           }

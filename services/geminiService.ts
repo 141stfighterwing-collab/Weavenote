@@ -2,26 +2,6 @@ import { GoogleGenAI, Type, Schema, HarmCategory, HarmBlockThreshold } from "@go
 import { ProcessedNoteData, NoteType, AILogEntry, ErrorLogEntry } from "../types";
 import { API_KEY } from "../config";
 
-// Initialize Gemini Client with key from config
-let ai: GoogleGenAI | null = null;
-
-const initAI = () => {
-    // Check if key is the placeholder
-    if (!API_KEY || API_KEY.includes("PASTE_YOUR_API_KEY_HERE") || API_KEY.includes("your_key_here")) {
-        throw new Error("API Key is missing or invalid. Please check your Vercel/Cloud Run Environment Variables.");
-    }
-    
-    // Validate Key Format (Basic check for accidental spaces or short keys)
-    if (API_KEY.length < 30 || API_KEY.includes(" ")) {
-         throw new Error("API Key seems invalid (contains spaces or too short). Please check for whitespace.");
-    }
-
-    if (!ai) {
-        ai = new GoogleGenAI({ apiKey: API_KEY });
-    }
-    return ai;
-}
-
 // SAFEGUARD: Self-imposed limit to prevent overuse
 export const DAILY_REQUEST_LIMIT = 800;
 
@@ -108,6 +88,27 @@ export const clearAIUsageLogs = () => {
 
 export const clearErrorLogs = () => {
     localStorage.removeItem(ERROR_LOG_KEY);
+};
+
+/**
+ * Validates the API Key and returns a fresh client instance.
+ * Throws an error if the key is missing or invalid.
+ */
+const getAIClient = () => {
+    // Check if key is the placeholder or missing
+    if (!API_KEY || 
+        API_KEY.includes("PASTE_YOUR_GEMINI_API_KEY_HERE") || 
+        API_KEY.includes("PASTE_YOUR_API_KEY_HERE") || 
+        API_KEY.includes("your_key_here")) {
+        throw new Error("API Key is missing. Please add your GEMINI_API_KEY to .env or config.ts");
+    }
+    
+    // Validate Key Format (Basic check for accidental spaces or short keys)
+    if (API_KEY.length < 30 || API_KEY.includes(" ")) {
+         throw new Error("API Key seems invalid (contains spaces or too short).");
+    }
+
+    return new GoogleGenAI({ apiKey: API_KEY });
 };
 
 /**
@@ -265,7 +266,7 @@ export const processNoteWithAI = async (
   username: string
 ): Promise<ProcessedNoteData> => {
   try {
-    const aiClient = initAI();
+    const aiClient = getAIClient();
     const currentUsage = getDailyUsage();
     if (currentUsage >= DAILY_REQUEST_LIMIT) {
         throw new Error(`Daily safeguard limit reached (${DAILY_REQUEST_LIMIT} requests).`);
@@ -308,11 +309,9 @@ export const processNoteWithAI = async (
       Existing Categories: ${existingCategories.join(', ')}
     `;
 
-    if (!aiClient) throw new Error("AI Client not initialized");
-
     // Wrap the API call in retry logic
     const response = await retryOperation(async () => {
-        return await aiClient!.models.generateContent({
+        return await aiClient.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
             config: {
@@ -376,14 +375,13 @@ export const processNoteWithAI = async (
 
 export const expandNoteContent = async (content: string, username: string): Promise<string | null> => {
     try {
-        const aiClient = initAI();
+        const aiClient = getAIClient();
         if (getDailyUsage() >= DAILY_REQUEST_LIMIT) throw new Error(`Daily limit reached.`);
 
         const prompt = `Deep Dive Expansion. Elaborate on concepts. Add context. Markdown headers. Key Takeaways list.\n\nContent:\n${content}`;
-        if (!aiClient) throw new Error("AI Client not initialized");
-
+        
         const response = await retryOperation(async () => {
-            return await aiClient!.models.generateContent({
+            return await aiClient.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: prompt,
             });
