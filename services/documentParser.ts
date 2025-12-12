@@ -2,8 +2,10 @@ import * as pdfjsLib from 'pdfjs-dist';
 
 // Set up the worker source using unpkg to ensure strict version matching
 // This fixes the "API version does not match Worker version" error.
+const version = pdfjsLib.version || '4.10.38';
+
 // @ts-ignore
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
 
 export const parseDocument = async (file: File): Promise<string> => {
   try {

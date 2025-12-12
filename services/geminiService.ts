@@ -55,18 +55,42 @@ export const logError = (context: string, error: any) => {
         const logsStr = localStorage.getItem(ERROR_LOG_KEY);
         const logs: ErrorLogEntry[] = logsStr ? JSON.parse(logsStr) : [];
         
+        // Handle object logging better to avoid [object Object]
+        let message = '';
+        let stack = '';
+
+        if (error && typeof error === 'object') {
+            if (error.analysis && error.original) {
+                // Handle our custom error object from processNoteWithAI
+                message = `${error.analysis} (Original: ${error.original})`;
+            } else if (error.message) {
+                message = error.message;
+                stack = error.stack;
+            } else {
+                try {
+                    message = JSON.stringify(error);
+                } catch (err) {
+                    message = String(error);
+                }
+            }
+        } else {
+            message = String(error);
+        }
+
         const newEntry: ErrorLogEntry = {
             id: crypto.randomUUID(),
             timestamp: Date.now(),
             context,
-            message: error?.message || String(error),
-            stack: error?.stack
+            message: message,
+            stack: stack
         };
 
         // Keep last 50 errors
         const updatedLogs = [newEntry, ...logs].slice(0, 50);
         localStorage.setItem(ERROR_LOG_KEY, JSON.stringify(updatedLogs));
-        console.error(`[WeaveNote Error - ${context}]`, error);
+        
+        // Log to console with context
+        console.error(`[WeaveNote Error - ${context}]`, message);
     } catch (e) {
         console.error("Failed to log error", e);
     }
@@ -103,10 +127,8 @@ const getAIClient = () => {
         throw new Error("API Key is missing. Please add your GEMINI_API_KEY to .env or config.ts");
     }
     
-    // Validate Key Format (Basic check for accidental spaces or short keys)
-    if (API_KEY.length < 30 || API_KEY.includes(" ")) {
-         throw new Error("API Key seems invalid (contains spaces or too short).");
-    }
+    // REMOVED: Strict validation that blocks short keys or keys with spaces.
+    // Let the API reject it if it's invalid, to avoid false positives.
 
     return new GoogleGenAI({ apiKey: API_KEY });
 };
@@ -366,6 +388,7 @@ export const processNoteWithAI = async (
     }
     // --- DEEP ERROR ANALYSIS END ---
 
+    // Correctly log the error object structure we created
     logError('processNoteWithAI', { original: error.message, analysis: detailedErrorMessage });
 
     // Fallback logic for UI consistency, but throw specific error for user feedback
