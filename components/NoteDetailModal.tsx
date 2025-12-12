@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Note, NOTE_COLORS, WorkflowNode, WorkflowEdge } from '../types';
 import { expandNoteContent } from '../services/geminiService';
 import GanttChart from './GanttChart';
@@ -11,7 +12,7 @@ interface NoteDetailModalProps {
   onClose: () => void;
   showLinkPreviews?: boolean;
   onViewImage: (src: string) => void;
-  onToggleCheckbox: (noteId: string, lineIndex: number, checked: boolean) => void;
+  onToggleCheckbox: (noteId: string, lineIndex: number) => void;
   onSaveExpanded?: (id: string, content: string) => void;
   currentUser: string;
 }
@@ -70,80 +71,73 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
   const processedContent = useMemo(() => note ? processContent(note.content) : "", [note]);
   const colorClass = note ? NOTE_COLORS[note.color] : "";
 
-  const LinkRenderer = useCallback((props: any) => {
-      if (!props.href) return <a {...props} />;
-
-      if (isImageUrl(props.href)) {
-          return (
-              <div 
-                onClick={(e) => e.stopPropagation()} 
-                className="my-4 block select-none group/img-link"
-              >
-                  <div 
-                    className="relative rounded-lg overflow-hidden border border-black/10 dark:border-white/10 bg-slate-100 dark:bg-slate-800 transition-all hover:shadow-lg cursor-zoom-in"
-                    onClick={() => onViewImage(props.href)}
-                  >
-                    <img 
-                        src={props.href} 
-                        alt="Link Preview" 
-                        className="w-full max-h-96 object-contain bg-slate-200 dark:bg-slate-700" 
-                        loading="lazy"
-                    />
-                  </div>
-                  <div className="text-center mt-1">
-                    <a href={props.href} target="_blank" rel="noreferrer" className="text-xs text-slate-500 hover:text-primary-600 underline">
-                        {props.children || 'Open Image Link'}
-                    </a>
-                  </div>
-              </div>
-          );
-      }
-
-      if (showLinkPreviews) {
-          try {
-              const url = new URL(props.href);
-              return (
-                  <a 
-                    href={props.href} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="block my-3 no-underline group/link select-none"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                      <div className="bg-white/60 dark:bg-slate-800/60 border border-black/5 dark:border-white/10 rounded-lg overflow-hidden hover:bg-white/80 dark:hover:bg-slate-800/80 hover:shadow-sm transition-all flex h-16">
-                          <div className="w-14 bg-black/5 dark:bg-white/5 flex items-center justify-center text-slate-500 dark:text-slate-400 shrink-0 border-r border-black/5 dark:border-white/5">
-                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                          </div>
-                          <div className="px-4 py-2 flex-grow min-w-0 flex flex-col justify-center">
-                              <div className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
-                                  {props.children || url.hostname}
-                              </div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
-                                  <span className="opacity-75">{url.hostname}</span>
-                              </div>
-                          </div>
-                      </div>
-                  </a>
-              );
-          } catch(e) {}
-      }
-
-      return (
-        <a 
-          href={props.href} 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="text-primary-700 underline decoration-primary-300 dark:text-primary-300 hover:text-primary-900 transition-colors font-medium"
-          onClick={(e) => e.stopPropagation()}
-        >
-            {props.children}
-        </a>
-      );
-  }, [showLinkPreviews, onViewImage]);
-
+  // Custom Components
   const markdownComponents = useMemo(() => ({
-      a: LinkRenderer
-  }), [LinkRenderer]);
+      a: (props: any) => {
+          if (!props.href) return <a {...props} />;
+          if (isImageUrl(props.href)) {
+              return (
+                  <div onClick={(e) => e.stopPropagation()} className="my-4 block select-none group/img-link">
+                      <div className="relative rounded-lg overflow-hidden border border-black/10 dark:border-white/10 bg-slate-100 dark:bg-slate-800 transition-all hover:shadow-lg cursor-zoom-in"
+                        onClick={() => onViewImage(props.href)}>
+                        <img src={props.href} alt="Link Preview" className="w-full max-h-96 object-contain bg-slate-200 dark:bg-slate-700" loading="lazy" />
+                      </div>
+                      <div className="text-center mt-1">
+                        <a href={props.href} target="_blank" rel="noreferrer" className="text-xs text-slate-500 hover:text-primary-600 underline">{props.children || 'Open Image Link'}</a>
+                      </div>
+                  </div>
+              );
+          }
+          if (showLinkPreviews) {
+              try {
+                  const url = new URL(props.href);
+                  return (
+                      <a href={props.href} target="_blank" rel="noopener noreferrer" className="block my-3 no-underline group/link select-none" onClick={(e) => e.stopPropagation()}>
+                          <div className="bg-white/60 dark:bg-slate-800/60 border border-black/5 dark:border-white/10 rounded-lg overflow-hidden hover:bg-white/80 dark:hover:bg-slate-800/80 hover:shadow-sm transition-all flex h-16">
+                              <div className="w-14 bg-black/5 dark:bg-white/5 flex items-center justify-center text-slate-500 dark:text-slate-400 shrink-0 border-r border-black/5 dark:border-white/5">
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                              </div>
+                              <div className="px-4 py-2 flex-grow min-w-0 flex flex-col justify-center">
+                                  <div className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{props.children || url.hostname}</div>
+                                  <div className="text-xs text-slate-500 dark:text-slate-400 truncate flex items-center gap-1"><span className="opacity-75">{url.hostname}</span></div>
+                              </div>
+                          </div>
+                      </a>
+                  );
+              } catch(e) {}
+          }
+          return (
+            <a href={props.href} target="_blank" rel="noopener noreferrer" className="text-primary-700 underline decoration-primary-300 dark:text-primary-300 hover:text-primary-900 transition-colors font-medium" onClick={(e) => e.stopPropagation()}>
+                {props.children}
+            </a>
+          );
+      },
+      li: (props: any) => {
+          return (
+              <li className="flex items-start gap-2 my-1">
+                  {props.children}
+              </li>
+          );
+      },
+      input: (props: any) => {
+          if (props.type === 'checkbox') {
+              return (
+                  <input
+                    type="checkbox"
+                    checked={props.checked || false}
+                    onChange={() => {
+                        if (props.node?.position && note) {
+                            onToggleCheckbox(note.id, props.node.position.start.line - 1);
+                        }
+                    }}
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+              );
+          }
+          return <input {...props} />;
+      }
+  }), [note, onToggleCheckbox, showLinkPreviews, onViewImage]);
 
   if (!isOpen || !note) return null;
 
@@ -236,7 +230,10 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
             )}
 
             <div className="prose prose-lg max-w-none font-sans opacity-90 prose-headings:font-hand prose-headings:font-bold prose-p:my-2 prose-li:my-1 break-words">
-                <ReactMarkdown components={markdownComponents}>
+                <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={markdownComponents}
+                >
                     {processedContent}
                 </ReactMarkdown>
             </div>

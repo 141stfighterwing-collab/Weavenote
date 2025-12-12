@@ -1,6 +1,7 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Note, NOTE_COLORS, NoteColor, Folder } from '../types';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { downloadNoteAsMarkdown } from '../services/storageService';
 
 interface NoteCardProps {
@@ -14,13 +15,12 @@ interface NoteCardProps {
   readOnly?: boolean;
   showLinkPreviews?: boolean;
   onViewImage: (src: string) => void;
-  onToggleCheckbox: (noteId: string, lineIndex: number, checked: boolean) => void;
+  onToggleCheckbox: (noteId: string, lineIndex: number) => void;
   onAddTag: (noteId: string, tag: string) => void;
   onRemoveTag: (noteId: string, tag: string) => void;
   onMoveToFolder?: (noteId: string, folderId: string | undefined) => void;
 }
 
-// Helper to detect image URLs
 const isImageUrl = (url: string) => {
     try {
         const u = new URL(url);
@@ -30,7 +30,6 @@ const isImageUrl = (url: string) => {
     }
 };
 
-// Helper for Color Coded Hashtags
 const getHashColor = (str: string) => {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -40,7 +39,6 @@ const getHashColor = (str: string) => {
     return `hsl(${hue}, 70%, 45%)`; 
   };
 
-// Helper to auto-link raw URLs that aren't already in markdown link format
 const processContent = (text: string) => {
     if (!text) return "";
     return text.replace(/([^\S]|^)(https?:\/\/[^\s]+)(?=[^\S]|$)/g, '$1[$2]($2)');
@@ -81,87 +79,58 @@ const NoteCard: React.FC<NoteCardProps> = ({
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  // Custom Link Renderer for "Previews"
-  const LinkRenderer = useCallback((props: any) => {
-      if (!props.href) return <a {...props} />;
-
-      // 1. Always render Image Previews if URL is an image
-      if (isImageUrl(props.href)) {
-          return (
-            <div 
-                onClick={(e) => e.stopPropagation()} 
-                className="my-3 block select-none group/img-link"
-            >
-                <div 
-                    className="relative rounded-lg overflow-hidden border border-black/10 dark:border-white/10 bg-slate-100 dark:bg-slate-800 transition-all hover:shadow-md cursor-zoom-in"
-                    onClick={() => onViewImage(props.href)}
-                >
-                    <img 
-                        src={props.href} 
-                        alt="Link Preview" 
-                        className="w-full h-32 object-cover bg-slate-200 dark:bg-slate-700" 
-                        loading="lazy"
-                        onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                    />
-                    <div className="absolute inset-0 ring-1 ring-inset ring-black/5 pointer-events-none rounded-lg"></div>
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 pt-6 flex items-end justify-between">
-                            <span className="text-[10px] text-white font-medium truncate max-w-[80%]">
-                                {props.children || 'Image Link'}
-                            </span>
+  // Custom Components for Markdown
+  const markdownComponents = useMemo(() => ({
+      // Custom Link Renderer
+      a: (props: any) => {
+          if (!props.href) return <a {...props} />;
+          if (isImageUrl(props.href)) {
+              return (
+                <div onClick={(e) => e.stopPropagation()} className="my-3 block select-none group/img-link">
+                    <div className="relative rounded-lg overflow-hidden border border-black/10 dark:border-white/10 bg-slate-100 dark:bg-slate-800 transition-all hover:shadow-md cursor-zoom-in"
+                        onClick={() => onViewImage(props.href)}>
+                        <img src={props.href} alt="Link Preview" className="w-full h-32 object-cover bg-slate-200 dark:bg-slate-700" loading="lazy" />
                     </div>
                 </div>
-            </div>
-          );
-      }
-
-      // 2. Standard Web Link Preview
-      if (showLinkPreviews) {
-          try {
-              const url = new URL(props.href);
-              return (
-                  <a 
-                    href={props.href} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="block my-3 no-underline group/link select-none"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                      <div className="bg-white/60 dark:bg-slate-800/60 border border-black/5 dark:border-white/10 rounded-lg overflow-hidden hover:bg-white/80 dark:hover:bg-slate-800/80 hover:shadow-sm transition-all flex h-14">
-                          <div className="w-12 bg-black/5 dark:bg-white/5 flex items-center justify-center text-slate-500 dark:text-slate-400 shrink-0 border-r border-black/5 dark:border-white/5">
-                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                          </div>
-                          <div className="px-3 py-2 flex-grow min-w-0 flex flex-col justify-center">
-                              <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                                  {props.children || url.hostname}
-                              </div>
-                              <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
-                                  <span className="opacity-75">{url.hostname}</span>
-                              </div>
-                          </div>
-                      </div>
-                  </a>
               );
-          } catch(e) {}
+          }
+          return (
+            <a href={props.href} target="_blank" rel="noopener noreferrer" 
+               className="text-primary-700 underline decoration-primary-300 dark:text-primary-300 hover:text-primary-900 transition-colors font-medium"
+               onClick={(e) => e.stopPropagation()}>
+                {props.children}
+            </a>
+          );
+      },
+      // Custom List Item Renderer (Optional Strikethrough)
+      li: (props: any) => {
+        return (
+            <li className="flex items-start gap-2 my-1">
+                {props.children}
+            </li>
+        );
+      },
+      // SIMPLE NATIVE CHECKBOX RENDERER
+      input: (props: any) => {
+          if (props.type === 'checkbox') {
+              return (
+                  <input
+                    type="checkbox"
+                    checked={props.checked || false}
+                    onChange={() => {
+                        // Rely on parser position (1-based index) -> convert to 0-based
+                        if (!readOnly && props.node?.position) {
+                            onToggleCheckbox(note.id, props.node.position.start.line - 1);
+                        }
+                    }}
+                    className={`mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={(e) => e.stopPropagation()} // Stop note expansion on click
+                  />
+              );
+          }
+          return <input {...props} />;
       }
-      
-      return (
-        <a 
-          href={props.href} 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="text-primary-700 underline decoration-primary-300 dark:text-primary-300 hover:text-primary-900 transition-colors font-medium"
-          onClick={(e) => e.stopPropagation()}
-        >
-            {props.children}
-        </a>
-      );
-  }, [showLinkPreviews, onViewImage]);
-
-  const markdownComponents = useMemo(() => ({
-      a: LinkRenderer
-  }), [LinkRenderer]);
+  }), [note.id, onToggleCheckbox, readOnly, onViewImage]);
 
   return (
     <div
@@ -202,8 +171,12 @@ const NoteCard: React.FC<NoteCardProps> = ({
           </div>
       )}
 
+      {/* Content Area */}
       <div className="prose prose-sm prose-p:my-1 prose-headings:my-2 prose-ul:my-1 flex-grow opacity-90 font-sans text-sm break-words line-clamp-[12] overflow-hidden list-none">
-         <ReactMarkdown components={markdownComponents}>
+         <ReactMarkdown 
+            remarkPlugins={[remarkGfm]}
+            components={markdownComponents}
+         >
              {processedContent}
          </ReactMarkdown>
       </div>
@@ -279,14 +252,7 @@ const NoteCard: React.FC<NoteCardProps> = ({
 
       {!readOnly && (
         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    downloadNoteAsMarkdown(note);
-                }}
-                className="p-1.5 hover:bg-black/10 hover:text-primary-800 rounded-full transition-colors"
-                title="Download as Markdown"
-            >
+            <button onClick={(e) => { e.stopPropagation(); downloadNoteAsMarkdown(note); }} className="p-1.5 hover:bg-black/10 hover:text-primary-800 rounded-full transition-colors" title="Download as Markdown">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             </button>
 
@@ -296,24 +262,13 @@ const NoteCard: React.FC<NoteCardProps> = ({
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                     </button>
                     <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 shadow-xl rounded-lg p-1 w-32 hidden group-hover/folder:block border border-slate-100 dark:border-slate-700 z-30">
-                        <button 
-                            onClick={() => onMoveToFolder(note.id, undefined)}
-                            className="w-full text-left px-2 py-1 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 italic"
-                        >
-                            Remove from Folder
-                        </button>
+                        <button onClick={() => onMoveToFolder(note.id, undefined)} className="w-full text-left px-2 py-1 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 italic">Remove from Folder</button>
                         <div className="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
                         {folders.length > 0 ? folders.map(f => (
-                            <button
-                                key={f.id}
-                                onClick={() => onMoveToFolder(note.id, f.id)}
-                                className={`w-full text-left px-2 py-1 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 rounded ${note.folderId === f.id ? 'font-bold text-primary-600' : 'text-slate-600 dark:text-slate-300'}`}
-                            >
+                            <button key={f.id} onClick={() => onMoveToFolder(note.id, f.id)} className={`w-full text-left px-2 py-1 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 rounded ${note.folderId === f.id ? 'font-bold text-primary-600' : 'text-slate-600 dark:text-slate-300'}`}>
                                 {f.name}
                             </button>
-                        )) : (
-                            <div className="px-2 py-1 text-[10px] text-slate-400">No folders</div>
-                        )}
+                        )) : (<div className="px-2 py-1 text-[10px] text-slate-400">No folders</div>)}
                     </div>
                  </div>
             )}
@@ -324,35 +279,17 @@ const NoteCard: React.FC<NoteCardProps> = ({
                 </button>
                 <div className="absolute right-0 top-full mt-1 bg-white shadow-xl rounded-lg p-2 flex gap-1 z-20 hidden group-hover/color:flex border border-slate-100 flex-wrap w-32">
                     {(Object.keys(NOTE_COLORS) as NoteColor[]).map(c => (
-                        <button
-                            key={c}
-                            onClick={() => onChangeColor(note.id, c)}
-                            className={`w-4 h-4 rounded-full border border-gray-300 ${NOTE_COLORS[c].split(' ')[0]}`}
-                        />
+                        <button key={c} onClick={() => onChangeColor(note.id, c)} className={`w-4 h-4 rounded-full border border-gray-300 ${NOTE_COLORS[c].split(' ')[0]}`}/>
                     ))}
                 </div>
             </div>
             
-            <button
-            onClick={(e) => {
-                e.stopPropagation();
-                onEdit(note);
-            }}
-            className="p-1.5 hover:bg-black/10 hover:text-primary-800 rounded-full transition-colors"
-            title="Edit Note"
-            >
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            <button onClick={(e) => { e.stopPropagation(); onEdit(note); }} className="p-1.5 hover:bg-black/10 hover:text-primary-800 rounded-full transition-colors" title="Edit Note">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
             </button>
 
-            <button
-            onClick={(e) => {
-                e.stopPropagation();
-                onDelete(note.id);
-            }}
-            className="p-1.5 hover:bg-red-500/20 hover:text-red-700 rounded-full transition-colors"
-            title="Delete Note"
-            >
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(note.id); }} className="p-1.5 hover:bg-red-500/20 hover:text-red-700 rounded-full transition-colors" title="Delete Note">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
             </button>
         </div>
       )}

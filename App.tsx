@@ -4,9 +4,9 @@ import { processNoteWithAI, getDailyUsage } from './services/geminiService';
 import { 
     loadNotes, saveNote, deleteNote, 
     loadFolders, saveFolder, deleteFolder, 
-    exportDataToFile, parseImportFile, syncAllNotes 
+    parseImportFile, syncAllNotes 
 } from './services/storageService';
-import { getSessionTimeout, subscribeToAuthChanges } from './services/authService';
+import { subscribeToAuthChanges } from './services/authService';
 import NoteCard from './components/NoteCard';
 import NoteInput from './components/NoteInput';
 import MindMap from './components/MindMap';
@@ -172,30 +172,48 @@ const App: React.FC = () => {
       await saveNote(updated, storageOwner);
   };
 
-  const handleToggleCheckbox = async (noteId: string, lineIndex: number, checked: boolean) => {
+  const handleToggleCheckbox = async (noteId: string, lineIndex: number) => {
       if (!canEdit) return;
       const targetNote = notes.find(n => n.id === noteId);
       if (!targetNote) return;
 
-      const lines = targetNote.content.split('\n');
-      if (lines[lineIndex] !== undefined) {
-          const line = lines[lineIndex];
-          let newLine = line;
-
-          if (checked) {
-              newLine = line.replace(/\[ \]/, '[x]');
-          } else {
-              newLine = line.replace(/\[x\]/i, '[ ]');
+      // Handle both CRLF and LF
+      const lines = targetNote.content.split(/\r?\n/);
+      
+      // Simple logic: If we find [ ] replace with [x]. If we find [x] replace with [ ].
+      // We check exact line first, then neighbor lines if parser index is slightly off.
+      
+      const tryToggleLine = (idx: number): boolean => {
+          if (idx < 0 || idx >= lines.length) return false;
+          const line = lines[idx];
+          
+          if (line.match(/\[\s+\]/)) {
+              lines[idx] = line.replace(/\[\s+\]/, '[x]');
+              return true;
+          } else if (line.match(/\[[xX]\]/)) {
+              lines[idx] = line.replace(/\[[xX]\]/, '[ ]');
+              return true;
           }
+          return false;
+      };
 
-          if (newLine !== line) {
-              lines[lineIndex] = newLine;
-              const newContent = lines.join('\n');
-              const updatedNote = { ...targetNote, content: newContent };
-              setNotes(prev => prev.map(n => n.id === noteId ? updatedNote : n));
-              if (expandedNote?.id === noteId) setExpandedNote(updatedNote);
-              saveNote(updatedNote, storageOwner);
-          }
+      let toggled = tryToggleLine(lineIndex);
+      
+      if (!toggled) {
+          // Fallback: check neighbors
+          toggled = tryToggleLine(lineIndex - 1) || tryToggleLine(lineIndex + 1);
+      }
+
+      if (toggled) {
+          const newContent = lines.join('\n');
+          const updatedNote = { ...targetNote, content: newContent };
+          
+          setNotes(prev => prev.map(n => n.id === noteId ? updatedNote : n));
+          if (expandedNote?.id === noteId) setExpandedNote(updatedNote);
+          
+          await saveNote(updatedNote, storageOwner);
+      } else {
+          console.warn(`Checkbox toggle failed for line ${lineIndex}`);
       }
   };
 

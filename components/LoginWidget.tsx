@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { login, requestAccount, logout } from '../services/authService';
 import { User } from '../types';
@@ -17,7 +16,7 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
   const [msg, setMsg] = useState<{ type: 'error' | 'success', text: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const timeoutRef = useRef<number>();
+  const timeoutRef = useRef<number | undefined>(undefined);
 
   const handleMouseEnter = () => {
     clearTimeout(timeoutRef.current);
