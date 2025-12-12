@@ -1,10 +1,9 @@
-
 import React, { useState, useRef } from 'react';
 import { NoteType } from '../types';
 import { parseDocument } from '../services/documentParser';
 
 interface NoteInputProps {
-  onAddNote: (text: string, type: NoteType, attachments?: string[], forcedTags?: string[], useAI?: boolean) => Promise<void>;
+  onAddNote: (text: string, type: NoteType, attachments?: string[], forcedTags?: string[], useAI?: boolean, manualTitle?: string) => Promise<void>;
   isProcessing: boolean;
   activeType: NoteType;
   readOnly?: boolean;
@@ -19,6 +18,7 @@ const POPULAR_EMOJIS = [
 
 const NoteInput: React.FC<NoteInputProps> = ({ onAddNote, isProcessing, activeType: initialActiveType, readOnly = false, enableImages = false }) => {
   const [text, setText] = useState('');
+  const [title, setTitle] = useState('');
   const [selectedType, setSelectedType] = useState<NoteType>(initialActiveType);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
@@ -146,9 +146,10 @@ const NoteInput: React.FC<NoteInputProps> = ({ onAddNote, isProcessing, activeTy
         return;
     }
 
-    if (!text.trim() && attachments.length === 0) return;
-    await onAddNote(text, selectedType, attachments, [], useAI);
+    if (!text.trim() && attachments.length === 0 && !title.trim()) return;
+    await onAddNote(text, selectedType, attachments, [], useAI, title);
     setText('');
+    setTitle('');
     setAttachments([]);
   };
 
@@ -244,7 +245,7 @@ const NoteInput: React.FC<NoteInputProps> = ({ onAddNote, isProcessing, activeTy
       }`;
   };
 
-  const isDisabled = (!text.trim() && attachments.length === 0 && bulkFiles.length === 0) || isProcessing || isParsing;
+  const isDisabled = (!text.trim() && attachments.length === 0 && bulkFiles.length === 0 && !title.trim()) || isProcessing || isParsing;
   
   const getPlaceholder = () => {
       if (bulkFiles.length > 0) {
@@ -366,8 +367,17 @@ const NoteInput: React.FC<NoteInputProps> = ({ onAddNote, isProcessing, activeTy
             </div>
         )}
 
+        <input 
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => { if(e.key === 'Enter') textareaRef.current?.focus(); }}
+            placeholder="Title (optional)"
+            className="w-full px-4 py-3 bg-transparent border-b border-slate-100 dark:border-slate-700 focus:outline-none font-bold text-lg text-slate-800 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600"
+        />
+
         {/* Formatting Toolbar */}
-        <div className="flex items-center gap-1 p-2 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 rounded-t-lg overflow-x-auto">
+        <div className="flex items-center gap-1 p-2 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 overflow-x-auto">
             <button onClick={() => applyFormat('bold')} className="p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 transition-colors" title="Bold">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg>
             </button>

@@ -97,7 +97,8 @@ const App: React.FC = () => {
     type: NoteType, 
     attachments: string[] = [], 
     forcedTags: string[] = [],
-    useAI: boolean = true
+    useAI: boolean = true,
+    manualTitle: string = ''
   ) => {
     if (!canEdit) return;
     setIsProcessing(true);
@@ -118,9 +119,14 @@ const App: React.FC = () => {
             const username = currentUser?.username || 'Guest';
             processed = await processNoteWithAI(rawText, [], type, username);
             tags = [...processed.tags.map(t => t.toLowerCase().replace('#', '')), ...tags];
+            
+            // Override title if manual title provided
+            if (manualTitle.trim()) {
+                processed.title = manualTitle.trim();
+            }
         } else {
             processed = {
-                title: rawText.split('\n')[0].substring(0, 40) || 'New Note',
+                title: manualTitle.trim() || rawText.split('\n')[0].substring(0, 40) || 'New Note',
                 formattedContent: rawText,
                 category: 'Manual',
                 tags: [...tags]
@@ -315,6 +321,23 @@ const App: React.FC = () => {
                 </div>
                 
                 <div className="flex items-center gap-4 flex-1 justify-end">
+                    <div className="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1 mr-2">
+                        <button 
+                            onClick={() => setViewMode('grid')}
+                            className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600 dark:text-primary-300' : 'text-slate-400 hover:text-slate-600'}`}
+                            title="Grid View"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                        </button>
+                        <button 
+                            onClick={() => setViewMode('mindmap')}
+                            className={`p-1.5 rounded-md transition-all ${viewMode === 'mindmap' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600 dark:text-primary-300' : 'text-slate-400 hover:text-slate-600'}`}
+                            title="Mind Map View"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 9V3"></path><path d="M12 21v-6"></path><path d="M9 12H3"></path><path d="M21 12h-6"></path></svg>
+                        </button>
+                    </div>
+
                     <button onClick={() => setShowAnalytics(true)} className="flex items-center gap-1 text-sm font-bold text-slate-600 hover:text-primary-600 dark:text-slate-300">
                         <span>📊</span> Analytics
                     </button>
