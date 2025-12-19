@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { NoteType } from '../types';
+import { parseDocument } from '../services/documentParser';
 
 interface NoteInputProps {
   onAddNote: (text: string, type: NoteType, attachments?: string[], forcedTags?: string[], useAI?: boolean, manualTitle?: string, extraProjectData?: { manualProgress?: number, isCompleted?: boolean }) => Promise<void>;
@@ -21,8 +22,13 @@ const NoteInput: React.FC<NoteInputProps> = ({ onAddNote, isProcessing, activeTy
   const [manualProgress, setManualProgress] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   
+  // Document ingest state
+  const [isParsing, setIsParsing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+
   const [selectedType, setSelectedType] = useState<NoteType>(initialActiveType);
   const mainTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   React.useEffect(() => { setSelectedType(initialActiveType); }, [initialActiveType]);
 
@@ -52,6 +58,27 @@ ${text}`;
     } : undefined);
     
     setText(''); setCode(''); setTitle(''); setMilestones(''); setDeliverables(''); setTimeline(''); setManualProgress(0); setIsCompleted(false);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsParsing(true);
+    setUploadProgress(`Reading ${file.name}...`);
+    try {
+      const content = await parseDocument(file);
+      setText(content);
+      setTitle(file.name.split('.')[0]);
+      setUploadProgress(null);
+      // Automatically switch to AI mode for large docs usually
+    } catch (err: any) {
+      alert(err.message || "Failed to parse document.");
+      setUploadProgress(null);
+    } finally {
+      setIsParsing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const applyFormat = (format: 'bold' | 'italic' | 'bullet' | 'checkbox') => {
@@ -109,11 +136,12 @@ ${text}`;
           case 'deep': return 'bg-blue-50 border-blue-200 dark:bg-blue-900/10';
           case 'code': return 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/10';
           case 'project': return 'bg-green-50 border-green-200 dark:bg-green-900/10';
+          case 'document': return 'bg-slate-100 border-slate-300 dark:bg-slate-800/50';
           default: return 'bg-slate-50 border-slate-200';
       }
   };
 
-  const isDisabled = (!text.trim() && !code.trim() && !title.trim()) || isProcessing;
+  const isDisabled = (!text.trim() && !code.trim() && !title.trim()) || isProcessing || isParsing;
 
   if (readOnly) return <div className="p-6 text-center border-dashed border rounded-xl text-slate-400">🔒 Read Only</div>;
 
@@ -131,7 +159,7 @@ ${text}`;
         <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={selectedType === 'project' ? "Project Name..." : "Title (optional)"} className="w-full px-4 py-3 bg-transparent border-b border-slate-100 dark:border-slate-700 focus:outline-none font-bold text-lg text-slate-800 dark:text-white" />
 
         {/* Formatting Toolbar */}
-        {selectedType !== 'project' && (
+        {selectedType !== 'project' && selectedType !== 'document' && (
           <div className="flex items-center gap-1 p-2 bg-slate-50 dark:bg-slate-900/50 border-b dark:border-slate-700 overflow-x-auto no-scrollbar">
               <button onClick={() => applyFormat('bold')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs font-bold" title="Bold">B</button>
               <button onClick={() => applyFormat('italic')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs italic" title="Italic">I</button>
@@ -145,7 +173,49 @@ ${text}`;
         )}
 
         <div className="flex flex-col">
-            {selectedType === 'project' ? (
+            {selectedType === 'document' ? (
+              <div className="p-8">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileUpload} 
+                  className="hidden" 
+                  accept=".pdf,.txt,.md,.json,.csv"
+                />
+                {!text ? (
+                  <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="group border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-12 flex flex-col items-center justify-center cursor-pointer hover:border-primary-500 hover:bg-primary-50/10 transition-all"
+                  >
+                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      {isParsing ? (
+                        <svg className="animate-spin h-8 w-8 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                      ) : (
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-400 group-hover:text-primary-500"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+                      )}
+                    </div>
+                    <p className="text-sm font-bold text-slate-600 dark:text-slate-300">{isParsing ? 'Processing Document...' : 'Click to Upload Document'}</p>
+                    <p className="text-xs text-slate-400 mt-1">PDF, TXT, MD, JSON, CSV (up to 1000 pages)</p>
+                    {uploadProgress && <p className="text-xs text-primary-500 font-bold mt-2 animate-pulse">{uploadProgress}</p>}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border dark:border-slate-700">
+                      <div className="flex items-center gap-2">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary-500"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span className="text-xs font-bold truncate max-w-[200px]">{title}</span>
+                      </div>
+                      <button onClick={() => {setText(''); setTitle('');}} className="text-[10px] font-bold text-red-500 hover:underline">Remove</button>
+                    </div>
+                    <textarea 
+                      value={text} 
+                      onChange={(e) => setText(e.target.value)} 
+                      className="w-full h-40 bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-xs font-mono outline-none focus:ring-1 focus:ring-primary-500 resize-none"
+                    />
+                  </div>
+                )}
+              </div>
+            ) : selectedType === 'project' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50/50 dark:bg-slate-900/30">
                     <div className="space-y-3">
                         <div>

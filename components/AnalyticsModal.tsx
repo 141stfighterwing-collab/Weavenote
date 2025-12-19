@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import * as d3 from 'd3';
 import { Note, NoteType } from '../types';
@@ -42,7 +41,6 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
 
   // 3. Type Counts & Distribution
   const typeCounts = useMemo(() => {
-    // FIX: Added missing 'code' property to match NoteType record
     const counts: Record<NoteType, number> = {
         quick: 0,
         deep: 0,
@@ -67,12 +65,10 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
         counts[cat] = (counts[cat] || 0) + 1;
     });
     
-    // Convert to array and sort
     let data = Object.entries(counts)
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
 
-    // Group smaller categories into "Other" if too many
     if (data.length > 6) {
         const top5 = data.slice(0, 5);
         const otherValue = data.slice(5).reduce((sum, d) => sum + d.value, 0);
@@ -81,9 +77,8 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
     return data;
   }, [notes]);
 
-  // 5. Deep Note Trend for Line Chart (Dense Information)
+  // 5. Deep Note Trend for Line Chart
   const trendData = useMemo(() => {
-     // Filter only Deep notes
      const deepNotes = notes
         .filter(n => n.type === 'deep' || n.type === 'document' || n.type === 'project' || n.type === 'code')
         .sort((a, b) => a.createdAt - b.createdAt);
@@ -93,15 +88,13 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
      const dataPoints: { date: Date, value: number }[] = [];
      let cumulative = 0;
      
-     // Group by date to smooth the line
      const groupedByDate = new Map<string, number>();
      deepNotes.forEach(n => {
-         const d = new Date(n.createdAt).toLocaleDateString();
+         const d = new Date(n.createdAt).toDateString();
          groupedByDate.set(d, (groupedByDate.get(d) || 0) + 1);
      });
 
-     // Create cumulative data points
-     Array.from(groupedByDate.entries()).forEach(([dateStr, count], index) => {
+     Array.from(groupedByDate.entries()).forEach(([dateStr, count]) => {
          cumulative += count;
          dataPoints.push({
              date: new Date(dateStr),
@@ -109,7 +102,6 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
          });
      });
 
-     // Ensure we have a start point if only one point
      if (dataPoints.length === 1) {
          const first = dataPoints[0];
          dataPoints.unshift({ date: new Date(first.date.getTime() - 86400000), value: 0 });
@@ -118,7 +110,6 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
      return dataPoints;
   }, [notes]);
 
-  // Milestone Checker
   const milestone = useMemo(() => {
       const count = notes.length;
       if (count >= 100) return { title: 'Golden Archivist', emoji: '🏆', desc: '100+ Notes! Amazing dedication.', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' };
@@ -127,15 +118,11 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
       return null;
   }, [notes.length]);
 
-  // --- D3 Chart Generators ---
-
-  // Pie Chart Generation
   const pieArcs = useMemo(() => {
     const radius = 80;
     const pie = d3.pie<{name: string, value: number}>().value(d => d.value).sort(null);
     const arc = d3.arc<d3.PieArcDatum<{name: string, value: number}>>().innerRadius(40).outerRadius(radius);
     const data = pie(categoryData);
-    // Color scale
     const colors = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#64748b'];
     return data.map((d, i) => ({
         path: arc(d) || undefined,
@@ -145,7 +132,6 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
     }));
   }, [categoryData]);
 
-  // Line Chart Generation
   const lineChartPath = useMemo(() => {
       if (trendData.length === 0) return '';
       const width = 300;
@@ -170,7 +156,6 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
   }, [trendData]);
 
 
-  // 6. Determine Persona (Character)
   const persona: Persona = useMemo(() => {
     if (notes.length === 0) {
         return { title: "The Blank Canvas", emoji: "🎨", description: "Ready to start creating ideas.", color: "bg-slate-100 text-slate-600" };
@@ -307,7 +292,6 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
         }
     }
 
-    // FIX: Added 'code' persona logic based on NoteType
     if (maxType === 'code') {
         return { 
             title: "The Code Sorcerer", 
@@ -367,7 +351,6 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh]">
         
-        {/* Header */}
         <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
           <h2 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
             <span className="text-primary-500">📊</span> Analytics & Persona
@@ -380,10 +363,8 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
           </button>
         </div>
 
-        {/* Content */}
         <div className="p-6 overflow-y-auto custom-scrollbar">
             
-            {/* MILESTONE BANNER (If achieved) */}
             {milestone && (
                 <div className={`mb-6 p-4 rounded-xl border flex items-center gap-4 shadow-sm animate-pulse ${milestone.color}`}>
                     <div className="text-4xl">{milestone.emoji}</div>
@@ -394,7 +375,6 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
                 </div>
             )}
 
-            {/* PERSONA CARD */}
             <div className={`mb-8 p-6 rounded-2xl flex items-center gap-6 shadow-sm border border-black/5 ${persona.color}`}>
                 <div className="text-6xl filter drop-shadow-md animate-[bounce_2s_infinite]">
                     {persona.emoji}
@@ -406,9 +386,7 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
                 </div>
             </div>
 
-            {/* CHARTS GRID 1: Bars & Tags */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                {/* GRAPH ANALYTICS: TYPE DISTRIBUTION */}
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
                     <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-6">Note Distribution</h3>
                     <div className="flex items-end justify-between h-40 gap-2 px-2">
@@ -420,12 +398,12 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
                             { label: 'Contact', count: typeCounts.contact, color: 'bg-orange-400' },
                             { label: 'Doc', count: typeCounts.document, color: 'bg-slate-400' },
                         ].map((item) => (
-                            <div key={item.label} className="flex flex-col items-center justify-end w-full group">
+                            <div key={item.label} className="flex flex-col items-center justify-end w-full group h-full">
                                 <div className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     {item.count}
                                 </div>
                                 <div 
-                                    className={`w-full max-w-[40px] rounded-t-lg transition-all duration-700 ${item.color} hover:brightness-110`}
+                                    className={`w-full max-w-[40px] rounded-t-lg transition-all duration-700 ${item.color} hover:brightness-110 shadow-sm`}
                                     style={{ height: maxTypeCount > 0 ? `${(item.count / maxTypeCount) * 100}%` : '4px', minHeight: '4px' }}
                                 ></div>
                                 <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-2 uppercase">{item.label}</div>
@@ -434,12 +412,11 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
                     </div>
                 </div>
 
-                 {/* TOP TAGS GRAPH */}
                  <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
                     <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">Top Tags</h3>
                     {tagStats.length > 0 ? (
                         <div className="space-y-4">
-                            {tagStats.map(([tag, count], index) => (
+                            {tagStats.map(([tag, count]) => (
                                 <div key={tag} className="group">
                                     <div className="flex justify-between text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
                                         <span>#{tag}</span>
@@ -464,9 +441,7 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
                 </div>
             </div>
 
-            {/* CHARTS GRID 2: Pie & Line */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                {/* CATEGORY DONUT CHART */}
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col">
                      <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">Category Breakdown</h3>
                      <div className="flex items-center justify-center gap-6 flex-1 min-h-[160px]">
@@ -505,14 +480,12 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
                      </div>
                 </div>
 
-                {/* DENSE INFO LINE GRAPH */}
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col">
                     <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">Dense Info Growth (Deep/Docs)</h3>
                     <div className="flex-1 min-h-[160px] flex items-center justify-center">
                         {lineChartPath ? (
                             <div className="w-full h-full relative">
                                 <svg width="100%" height="100%" viewBox={`0 0 ${lineChartPath.width} ${lineChartPath.height}`} preserveAspectRatio="none">
-                                    {/* Grid Lines */}
                                     {lineChartPath.y.ticks(5).map(tick => (
                                         <line 
                                             key={tick} 
@@ -523,7 +496,6 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
                                             className="dark:stroke-slate-700"
                                         />
                                     ))}
-                                    {/* The Line */}
                                     <path 
                                         d={lineChartPath.path} 
                                         fill="none" 
@@ -532,7 +504,6 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
                                         strokeLinecap="round"
                                         className="filter drop-shadow-sm"
                                     />
-                                    {/* Area Fill */}
                                     <path 
                                         d={`${lineChartPath.path} L ${lineChartPath.width - 10} ${lineChartPath.height - 20} L 30 ${lineChartPath.height - 20} Z`} 
                                         fill="url(#gradient-area)" 
@@ -557,7 +528,6 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
                 </div>
             </div>
 
-            {/* General Stats Cards */}
             <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-8">
                 <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm text-center">
                     <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">{notes.length}</p>
@@ -567,7 +537,6 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">{notes.reduce((sum, n) => sum + (n.accessCount || 0), 0)}</p>
                     <p className="text-[10px] text-slate-400 uppercase font-bold">Total Views</p>
                 </div>
-                {/* Breakout by type small cards */}
                  <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm text-center opacity-70">
                     <p className="text-lg font-bold text-slate-600 dark:text-slate-300">{typeCounts.quick}</p>
                     <p className="text-[9px] text-slate-400 uppercase font-bold">Quick</p>
@@ -584,13 +553,8 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
                     <p className="text-lg font-bold text-slate-600 dark:text-slate-300">{typeCounts.project}</p>
                     <p className="text-[9px] text-slate-400 uppercase font-bold">Project</p>
                 </div>
-                 <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm text-center opacity-70">
-                    <p className="text-lg font-bold text-slate-600 dark:text-slate-300">{typeCounts.contact + typeCounts.document}</p>
-                    <p className="text-[9px] text-slate-400 uppercase font-bold">Misc</p>
-                </div>
             </div>
 
-            {/* Most Accessed Notes */}
             <div>
                 <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-4 border-b pb-1 dark:border-slate-700">Most Accessed</h3>
                 {topAccessedNotes.length > 0 ? (
