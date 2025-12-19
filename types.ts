@@ -1,6 +1,5 @@
 
-
-export type NoteType = 'quick' | 'deep' | 'project' | 'contact' | 'document';
+export type NoteType = 'quick' | 'deep' | 'code' | 'project' | 'contact' | 'document';
 
 export type Theme = 'default' | 'ocean' | 'forest' | 'sunset' | 'rose' | 'midnight' | 'coffee' | 'neon';
 

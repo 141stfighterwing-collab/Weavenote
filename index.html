@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -30,7 +31,6 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
-      /* Base Theme (Indigo/Default) */
       :root {
         --color-primary-50: 238 242 255;
         --color-primary-100: 224 231 255;
@@ -44,8 +44,7 @@
         --color-primary-900: 49 46 129;
       }
 
-      /* Ocean Theme (Sky/Blue) */
-      .theme-ocean {
+      body.theme-ocean {
         --color-primary-50: 240 249 255;
         --color-primary-100: 224 242 254;
         --color-primary-200: 186 230 253;
@@ -56,10 +55,10 @@
         --color-primary-700: 3 105 161;
         --color-primary-800: 7 89 133;
         --color-primary-900: 12 74 110;
+        background-color: #f0f9ff !important;
       }
 
-      /* Forest Theme (Emerald) */
-      .theme-forest {
+      body.theme-forest {
         --color-primary-50: 236 253 245;
         --color-primary-100: 209 250 229;
         --color-primary-200: 167 243 208;
@@ -70,10 +69,10 @@
         --color-primary-700: 4 120 87;
         --color-primary-800: 6 95 70;
         --color-primary-900: 6 78 59;
+        background-color: #ecfdf5 !important;
       }
 
-      /* Sunset Theme (Orange) */
-      .theme-sunset {
+      body.theme-sunset {
         --color-primary-50: 255 247 237;
         --color-primary-100: 255 237 213;
         --color-primary-200: 254 215 170;
@@ -84,10 +83,10 @@
         --color-primary-700: 194 65 12;
         --color-primary-800: 154 52 18;
         --color-primary-900: 124 45 18;
+        background-color: #fff7ed !important;
       }
 
-      /* Rose Theme (Pink) */
-      .theme-rose {
+      body.theme-rose {
         --color-primary-50: 255 241 242;
         --color-primary-100: 255 228 230;
         --color-primary-200: 254 205 211;
@@ -98,27 +97,24 @@
         --color-primary-700: 190 18 60;
         --color-primary-800: 159 18 57;
         --color-primary-900: 136 19 55;
+        background-color: #fff1f2 !important;
       }
 
-      /* Midnight Theme (Deep Slate/Violet) */
-      .theme-midnight {
-        --color-primary-50: 238 242 255;
-        --color-primary-100: 224 231 255;
-        --color-primary-200: 199 210 254;
-        --color-primary-300: 165 180 252;
-        --color-primary-400: 129 140 248;
+      body.theme-midnight {
+        --color-primary-50: 15 23 42;
+        --color-primary-100: 30 41 59;
+        --color-primary-200: 51 65 85;
+        --color-primary-300: 71 85 105;
+        --color-primary-400: 100 116 139;
         --color-primary-500: 99 102 241;
         --color-primary-600: 79 70 229;
         --color-primary-700: 67 56 202;
         --color-primary-800: 55 48 163;
         --color-primary-900: 49 46 129;
-      }
-      .theme-midnight body {
-        background-color: #020617 !important; /* Extremely dark blue */
+        background-color: #020617 !important;
       }
 
-      /* Coffee Theme (Warm Stone/Amber) */
-      .theme-coffee {
+      body.theme-coffee {
         --color-primary-50: 255 251 235;
         --color-primary-100: 254 243 199;
         --color-primary-200: 253 230 138;
@@ -129,22 +125,20 @@
         --color-primary-700: 180 83 9;
         --color-primary-800: 146 64 14;
         --color-primary-900: 120 53 15;
+        background-color: #fafaf9 !important;
       }
 
-      /* Neon Cyber Theme (Electric Green/Black) */
-      .theme-neon {
-        --color-primary-50: 240 253 244;
-        --color-primary-100: 220 252 231;
-        --color-primary-200: 187 247 208;
-        --color-primary-300: 134 239 172;
-        --color-primary-400: 74 222 128;
+      body.theme-neon {
+        --color-primary-50: 20 20 20;
+        --color-primary-100: 30 30 30;
+        --color-primary-200: 40 40 40;
+        --color-primary-300: 50 50 50;
+        --color-primary-400: 22 163 74;
         --color-primary-500: 34 197 94;
         --color-primary-600: 22 163 74;
         --color-primary-700: 21 128 61;
         --color-primary-800: 22 101 52;
         --color-primary-900: 20 83 45;
-      }
-      .theme-neon body {
         background-color: #000000 !important;
         color: #22c55e !important;
       }
@@ -152,6 +146,7 @@
       body {
         font-family: 'Inter', sans-serif;
         background-color: #f3f4f6; 
+        transition: background-color 0.3s ease;
       }
       .dark body {
         background-color: #0f172a;
@@ -159,29 +154,10 @@
       .font-hand {
         font-family: 'Kalam', cursive;
       }
-      /* Custom scrollbar for cleaner look */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-      }
-      
-      /* Dark mode scrollbar */
-      .dark ::-webkit-scrollbar-thumb {
-        background: #475569;
-      }
-      .dark ::-webkit-scrollbar-thumb:hover {
-        background: #64748b;
-      }
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
   <script type="importmap">
 {

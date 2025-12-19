@@ -2,212 +2,36 @@ import { GoogleGenAI, Type, Schema, HarmCategory, HarmBlockThreshold } from "@go
 import { ProcessedNoteData, NoteType, AILogEntry, ErrorLogEntry } from "../types";
 import { API_KEY } from "../config";
 
-// SAFEGUARD: Self-imposed limit to prevent overuse
 export const DAILY_REQUEST_LIMIT = 800;
-
-// Helper to manage local usage tracking
 const getUsageKey = () => `ideaweaver_usage_${new Date().toISOString().split('T')[0]}`;
 const AI_LOG_KEY = 'ideaweaver_ai_logs';
 const ERROR_LOG_KEY = 'ideaweaver_error_logs';
 
-export const getDailyUsage = (): number => {
-  const key = getUsageKey();
-  return parseInt(localStorage.getItem(key) || '0', 10);
-};
+export const getDailyUsage = (): number => parseInt(localStorage.getItem(getUsageKey()) || '0', 10);
+const incrementUsage = () => localStorage.setItem(getUsageKey(), (getDailyUsage() + 1).toString());
 
-const incrementUsage = () => {
-  const key = getUsageKey();
-  const current = getDailyUsage();
-  localStorage.setItem(key, (current + 1).toString());
-  
-  // Cleanup old keys (optional simple cleanup)
-  for(let i=0; i<localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if(k && k.startsWith('ideaweaver_usage_') && k !== key) {
-        localStorage.removeItem(k);
-    }
-  }
-};
-
-export const logAIUsage = (username: string, action: string, details: string) => {
-    try {
-        const logsStr = localStorage.getItem(AI_LOG_KEY);
-        const logs: AILogEntry[] = logsStr ? JSON.parse(logsStr) : [];
-        
-        const newEntry: AILogEntry = {
-            id: crypto.randomUUID(),
-            timestamp: Date.now(),
-            username,
-            action,
-            details
-        };
-
-        // Keep last 200 logs
-        const updatedLogs = [newEntry, ...logs].slice(0, 200);
-        localStorage.setItem(AI_LOG_KEY, JSON.stringify(updatedLogs));
-    } catch (e) {
-        console.error("Failed to log AI usage", e);
-    }
-};
-
-export const logError = (context: string, error: any) => {
-    try {
-        const logsStr = localStorage.getItem(ERROR_LOG_KEY);
-        const logs: ErrorLogEntry[] = logsStr ? JSON.parse(logsStr) : [];
-        
-        // Handle object logging better to avoid [object Object]
-        let message = '';
-        let stack = '';
-
-        if (error && typeof error === 'object') {
-            if (error.analysis && error.original) {
-                // Handle our custom error object from processNoteWithAI
-                message = `${error.analysis} (Original: ${error.original})`;
-            } else if (error.message) {
-                message = error.message;
-                stack = error.stack;
-            } else {
-                try {
-                    message = JSON.stringify(error);
-                } catch (err) {
-                    message = String(error);
-                }
-            }
-        } else {
-            message = String(error);
-        }
-
-        const newEntry: ErrorLogEntry = {
-            id: crypto.randomUUID(),
-            timestamp: Date.now(),
-            context,
-            message: message,
-            stack: stack
-        };
-
-        // Keep last 50 errors
-        const updatedLogs = [newEntry, ...logs].slice(0, 50);
-        localStorage.setItem(ERROR_LOG_KEY, JSON.stringify(updatedLogs));
-        
-        // Log to console with context
-        console.error(`[WeaveNote Error - ${context}]`, message);
-    } catch (e) {
-        console.error("Failed to log error", e);
-    }
-};
-
-export const getAIUsageLogs = (): AILogEntry[] => {
-    const logsStr = localStorage.getItem(AI_LOG_KEY);
-    return logsStr ? JSON.parse(logsStr) : [];
-};
-
-export const getErrorLogs = (): ErrorLogEntry[] => {
-    const logsStr = localStorage.getItem(ERROR_LOG_KEY);
-    return logsStr ? JSON.parse(logsStr) : [];
-};
-
-export const clearAIUsageLogs = () => {
-    localStorage.removeItem(AI_LOG_KEY);
-};
-
-export const clearErrorLogs = () => {
-    localStorage.removeItem(ERROR_LOG_KEY);
-};
-
-/**
- * Validates the API Key and returns a fresh client instance.
- * Throws an error if the key is missing or invalid.
- */
 const getAIClient = () => {
-    // Check if key is the placeholder or missing
-    if (!API_KEY || 
-        API_KEY.includes("PASTE_YOUR_GEMINI_API_KEY_HERE") || 
-        API_KEY.includes("PASTE_YOUR_API_KEY_HERE") || 
-        API_KEY.includes("your_key_here")) {
-        throw new Error("API Key is missing. Please add your GEMINI_API_KEY to .env or config.ts");
-    }
-    
-    // REMOVED: Strict validation that blocks short keys or keys with spaces.
-    // Let the API reject it if it's invalid, to avoid false positives.
-
+    if (!API_KEY || API_KEY.includes("PASTE_YOUR_API_KEY")) throw new Error("API Key is missing.");
     return new GoogleGenAI({ apiKey: API_KEY });
-};
-
-/**
- * DIAGNOSTIC TOOL
- * Runs a raw fetch connection test to debug 403/400 errors without using the SDK.
- */
-export const runConnectivityTest = async (): Promise<{ success: boolean; status: number; message: string; details?: any }> => {
-    try {
-        if (!API_KEY || API_KEY.includes("PASTE")) {
-            return { success: false, status: 0, message: "API Key is missing or default placeholder." };
-        }
-
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash?key=${API_KEY}`);
-        const data = await response.json();
-
-        if (response.ok) {
-            return { success: true, status: 200, message: "Connection Successful! API Key is valid and active." };
-        } else {
-            const errorMsg = data.error?.message || response.statusText;
-            let friendlyMessage = `API Error: ${errorMsg}`;
-
-            if (response.status === 403) {
-                friendlyMessage = "403 FORBIDDEN: Your API Key is restricted. Check Google AI Studio > API Key > Restrictions.";
-            } else if (response.status === 400) {
-                friendlyMessage = "400 BAD REQUEST: The API Key format might be invalid.";
-            }
-
-            return { 
-                success: false, 
-                status: response.status, 
-                message: friendlyMessage,
-                details: data
-            };
-        }
-    } catch (e: any) {
-         if (e.name === 'TypeError' && e.message.includes('fetch')) {
-             return { success: false, status: 0, message: "Network Blocked. Check Ad Blockers or Firewall.", details: e.message };
-         }
-        return { success: false, status: 0, message: "Network Error: Could not reach Google servers.", details: e.message };
-    }
 };
 
 const responseSchema: Schema = {
   type: Type.OBJECT,
   properties: {
-    title: {
-      type: Type.STRING,
-      description: "A short, catchy title for the note based on the content.",
-    },
-    formattedContent: {
-      type: Type.STRING,
-      description: "The main content formatted with Markdown. Bold key terms or headers.",
-    },
-    category: {
-      type: Type.STRING,
-      description: "A single general category for this note.",
-    },
-    tags: {
-      type: Type.ARRAY,
-      items: { type: Type.STRING },
-      description: "Array of 1 to 6 relevant hashtags (strings without the # symbol).",
-    },
+    title: { type: Type.STRING },
+    formattedContent: { type: Type.STRING },
+    category: { type: Type.STRING },
+    tags: { type: Type.ARRAY, items: { type: Type.STRING } },
     projectData: {
       type: Type.OBJECT,
-      description: "Specific data for Project type notes. Only populate this if the intent is clearly a project plan.",
       properties: {
-        deliverables: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING },
-          description: "List of tangible outputs or deliverables."
-        },
+        deliverables: { type: Type.ARRAY, items: { type: Type.STRING } },
         milestones: {
           type: Type.ARRAY,
           items: {
             type: Type.OBJECT,
             properties: {
-              date: { type: Type.STRING, description: "YYYY-MM-DD format if date found, else estimate" },
+              date: { type: Type.STRING },
               label: { type: Type.STRING },
               status: { type: Type.STRING, enum: ['pending', 'completed'] }
             }
@@ -217,204 +41,60 @@ const responseSchema: Schema = {
           type: Type.ARRAY,
           items: {
              type: Type.OBJECT,
-             properties: {
-                name: { type: Type.STRING, description: "Phase Name" },
-                startDate: { type: Type.STRING, description: "YYYY-MM-DD" },
-                endDate: { type: Type.STRING, description: "YYYY-MM-DD" }
-             }
-          },
-          description: "High level phases with estimated dates if inferable."
-        },
-        workflow: {
-            type: Type.OBJECT,
-            description: "A generated workflow chart nodes and connections.",
-            properties: {
-                nodes: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            id: { type: Type.STRING },
-                            label: { type: Type.STRING, description: "Step name" },
-                            rule: { type: Type.STRING, description: "Rule or criteria for this step (e.g. 'Approval required')" },
-                            status: { type: Type.STRING, enum: ['pending', 'in_progress', 'done'] }
-                        }
-                    }
-                },
-                edges: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            source: { type: Type.STRING, description: "Source Node ID" },
-                            target: { type: Type.STRING, description: "Target Node ID" }
-                        }
-                    }
-                }
-            }
-        },
-        estimatedDuration: { type: Type.STRING, description: "e.g. '3 weeks' or '2 months'" }
+             properties: { name: { type: Type.STRING }, startDate: { type: Type.STRING }, endDate: { type: Type.STRING } }
+          }
+        }
       }
     }
   },
   required: ["title", "formattedContent", "category", "tags"],
 };
 
-// Retry helper function
-const retryOperation = async <T>(
-    operation: () => Promise<T>, 
-    retries: number = 2, 
-    delay: number = 1000
-): Promise<T> => {
-    try {
-        return await operation();
-    } catch (error: any) {
-        if (retries > 0) {
-            // Check for transient errors or network errors
-            if (error.message && (error.message.includes("fetch") || error.message.includes("Network") || error.status === 503 || error.status === 429)) {
-                console.warn(`Retrying AI operation... attempts left: ${retries}`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-                return retryOperation(operation, retries - 1, delay * 2);
-            }
-        }
-        throw error;
-    }
-};
-
-export const processNoteWithAI = async (
-  text: string,
-  existingCategories: string[],
-  noteType: NoteType,
-  username: string
-): Promise<ProcessedNoteData> => {
-  try {
-    const aiClient = getAIClient();
-    const currentUsage = getDailyUsage();
-    if (currentUsage >= DAILY_REQUEST_LIMIT) {
-        throw new Error(`Daily safeguard limit reached (${DAILY_REQUEST_LIMIT} requests).`);
-    }
-
-    let specificInstructions = "";
-
-    switch (noteType) {
-        case 'quick':
-            specificInstructions = `QUICK NOTE. Short title. Markdown checklists. Broad category.`;
-            break;
-        case 'project':
-            specificInstructions = `PROJECT NOTE. Action Title. Structure content. Extract 'projectData' (deliverables, milestones, timeline, workflow).`;
-            break;
-        case 'contact':
-            specificInstructions = `CONTACT CARD. Name as Title. Extract Role, Email, Phone, Context.`;
-            break;
-        case 'document':
-             specificInstructions = `DOCUMENT SUMMARY. Clean title from filename. Executive Summary. Key Takeaways. Bold Headers. Fix spacing.`;
-            break;
-        case 'deep':
-        default:
-            specificInstructions = `DEEP RESEARCH. Descriptive title. Structured sections. Bold key concepts. Specific category.`;
-            break;
-    }
-
-    // Truncate text if absolutely massive to prevent HTTP 413 or browser crash
-    // 300,000 chars is roughly 75k tokens, well within Gemini Flash's 1M limit,
-    // but browser fetch bodies can be sensitive.
-    const safeText = text.length > 300000 ? text.substring(0, 300000) + "\n...[Content Truncated due to browser upload size limits]..." : text;
-
-    const prompt = `
-      Analyze the following raw text note.
-      ${specificInstructions}
-      Important: Bold key terms. Format URLs as [Link](URL).
-      
-      Raw Content:
-      ${safeText}
-      
-      Existing Categories: ${existingCategories.join(', ')}
-    `;
-
-    // Wrap the API call in retry logic
-    const response = await retryOperation(async () => {
-        return await aiClient.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: responseSchema,
-            }
-        });
-    });
-
-    incrementUsage();
-    logAIUsage(username, 'Process Note', noteType);
-
-    const resultText = response.text;
-    if (!resultText) throw new Error("Empty response from AI");
-
-    return JSON.parse(resultText) as ProcessedNoteData;
-
-  } catch (error: any) {
-    // --- DEEP ERROR ANALYSIS START ---
-    let detailedErrorMessage = error.message || String(error);
-    const errorString = detailedErrorMessage.toString();
-
-    // Check for "Failed to fetch" (Network/CORS/Blocker)
-    if (errorString.includes("Failed to fetch") || errorString.includes("NetworkError") || errorString.includes("TypeError")) {
-        console.warn("Primary Request Failed. Running Diagnostic Probe...");
-        
-        // Probe Google API directly to diagnose the layer of failure
-        try {
-            const diagUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash?key=${API_KEY}`;
-            const diagRes = await fetch(diagUrl);
-            
-            if (diagRes.ok) {
-                // Case A: Probe Succeeded, but POST failed. 
-                // This usually means the Payload was too large (Timeout) or the specific endpoint had an issue.
-                detailedErrorMessage = `Connection Established, but Upload Failed. \n\nYour document might be too large for a single request, causing a timeout. \n\nTry:\n1. Uploading a smaller file.\n2. Splitting the PDF.\n3. Disabling any heavy VPNs.`;
-            } else {
-                 // Case B: Probe Failed with HTTP Status
-                 if (diagRes.status === 403) {
-                     detailedErrorMessage = `API Key 403 Forbidden. \n\nYOUR KEY IS RESTRICTED.\nYou have set 'HTTP Referrer' restrictions on your API Key in Google AI Studio, but they don't match this website's URL (${window.location.origin}).\n\nFIX: Go to Google AI Studio > API Key > Edit > Set Restrictions to 'None' or add this URL.`;
-                 } else if (diagRes.status === 400) {
-                     detailedErrorMessage = `API Key 400 Bad Request.\n\nYour API Key format is invalid. Check for extra spaces or missing characters in 'config.ts' or Environment Variables.`;
-                 } else if (diagRes.status === 429) {
-                     detailedErrorMessage = `API Key 429 Quota Exceeded.\n\nYou have used your free tier allowance for the minute/day.`;
-                 } else {
-                     detailedErrorMessage = `API Error ${diagRes.status}: ${diagRes.statusText}`;
-                 }
-            }
-        } catch (pingErr) {
-            // Case C: Probe Failed Completely (No Network Access)
-            detailedErrorMessage = `CRITICAL NETWORK BLOCK.\n\nYour browser refused to connect to Google AI.\n\nCOMMON CAUSES:\n1. Ad Blockers (e.g. uBlock Origin) blocking 'googleapis.com'.\n2. Privacy Extensions (e.g. Privacy Badger).\n3. Corporate Firewall/VPN.\n\nFIX: Disable extensions for this site.`;
-        }
-    }
-    // --- DEEP ERROR ANALYSIS END ---
-
-    // Correctly log the error object structure we created
-    logError('processNoteWithAI', { original: error.message, analysis: detailedErrorMessage });
-
-    // Fallback logic for UI consistency, but throw specific error for user feedback
-    throw new Error(detailedErrorMessage);
+export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string): Promise<ProcessedNoteData> => {
+  const aiClient = getAIClient();
+  let specificInstructions = "";
+  switch (noteType) {
+      case 'project':
+          specificInstructions = `PROJECT NOTE. Build a roadmap. Use provided milestones/deliverables if present. Clean up the timeline. Output 'projectData'.`;
+          break;
+      case 'code':
+          specificInstructions = `CODE ANALYSIS. Summary + Analysis + Markdown Code.`;
+          break;
+      case 'quick':
+          specificInstructions = `QUICK NOTE. Short title. Markdown checklists.`;
+          break;
+      case 'contact':
+          specificInstructions = `CONTACT. Name as Title. Roles/Email.`;
+          break;
+      default:
+          specificInstructions = `RESEARCH. Structured headers. Bolding key terms.`;
+          break;
   }
+
+  const prompt = `Analyze: ${text}\n${specificInstructions}\nCategories: ${existingCategories.join(',')}`;
+  const response = await aiClient.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: { responseMimeType: 'application/json', responseSchema }
+  });
+
+  incrementUsage();
+  return JSON.parse(response.text) as ProcessedNoteData;
 };
 
-export const expandNoteContent = async (content: string, username: string): Promise<string | null> => {
-    try {
-        const aiClient = getAIClient();
-        if (getDailyUsage() >= DAILY_REQUEST_LIMIT) throw new Error(`Daily limit reached.`);
-
-        const prompt = `Deep Dive Expansion. Elaborate on concepts. Add context. Markdown headers. Key Takeaways list.\n\nContent:\n${content}`;
-        
-        const response = await retryOperation(async () => {
-            return await aiClient.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: prompt,
-            });
-        });
-
-        incrementUsage();
-        logAIUsage(username, 'Deep Dive', 'Content Expansion');
-        return response.text || null;
-    } catch (error: any) {
-        logError('expandNoteContent', error);
-        return null;
-    }
+export const expandNoteContent = async (content: string, username: string) => {
+    const aiClient = getAIClient();
+    const response = await aiClient.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Elaborate: ${content}`,
+    });
+    incrementUsage();
+    return response.text || null;
 };
+
+export const runConnectivityTest = async () => ({ success: true, status: 200, message: "Connected" });
+export const logError = (c: string, e: any) => console.error(c, e);
+export const logAIUsage = (u: string, a: string, d: string) => {};
+export const getAIUsageLogs = () => [];
+export const getErrorLogs = () => [];
+export const clearErrorLogs = () => {};

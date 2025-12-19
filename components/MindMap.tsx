@@ -11,8 +11,9 @@ interface GraphNode extends d3.SimulationNodeDatum {
   id: string;
   type: 'note' | 'tag';
   name: string;
-  group?: string; // category or color ref
-  val: number; // size
+  group?: string; 
+  val: number; 
+  degree: number; // Number of links
   x?: number;
   y?: number;
   fx?: number | null;
@@ -29,7 +30,7 @@ const STOP_WORDS = new Set(['the', 'is', 'at', 'which', 'on', 'and', 'a', 'an', 
 
 const getWords = (text: string) => {
     return text.toLowerCase()
-        .replace(/[^\w\s]/g, '') // Remove punctuation
+        .replace(/[^\w\s]/g, '') 
         .split(/\s+/)
         .filter(w => w.length > 2 && !STOP_WORDS.has(w));
 };
@@ -40,23 +41,15 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
-    const handleFullscreenChange = () => {
-        setIsFullscreen(!!document.fullscreenElement);
-    };
-
+    const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => {
-        document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    };
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
   const toggleFullscreen = () => {
       if (!containerRef.current) return;
-
       if (!document.fullscreenElement) {
-          containerRef.current.requestFullscreen().catch(err => {
-              console.error(`Error attempting to enable fullscreen: ${err.message}`);
-          });
+          containerRef.current.requestFullscreen().catch(e => console.error(e));
       } else {
           document.exitFullscreen();
       }
@@ -65,7 +58,6 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
   useEffect(() => {
     if (!svgRef.current || !containerRef.current) return;
 
-    // 1. Clear previous SVG
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
@@ -73,31 +65,28 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
 
     const width = containerRef.current.clientWidth;
     const height = containerRef.current.clientHeight;
-    
     const centerX = width / 2;
     const centerY = height / 2;
 
-    // 2. Data Preparation
     const nodes: GraphNode[] = [];
     const links: GraphLink[] = [];
     const tagMap = new Map<string, string>();
-    const nodeMap = new Map<string, boolean>();
 
-    // A. Create Note Nodes
+    // A. Notes
     notes.forEach(note => {
       nodes.push({
         id: note.id,
         type: 'note',
         name: note.title,
         group: note.color,
-        val: 25,
-        x: centerX + (Math.random() - 0.5) * 50,
-        y: centerY + (Math.random() - 0.5) * 50
+        val: 12, // Reduced from 25
+        degree: 0,
+        x: centerX + (Math.random() - 0.5) * 100,
+        y: centerY + (Math.random() - 0.5) * 100
       });
-      nodeMap.set(note.id, true);
     });
 
-    // B. Create Tag Nodes and Links (Standard Structure)
+    // B. Tags
     notes.forEach(note => {
       note.tags.forEach(tag => {
         const tagId = `tag-${tag.toLowerCase()}`;
@@ -107,321 +96,128 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
             id: tagId,
             type: 'tag',
             name: `#${tag}`,
-            val: 12,
-            x: centerX + (Math.random() - 0.5) * 50,
-            y: centerY + (Math.random() - 0.5) * 50
+            val: 6, // Reduced from 12
+            degree: 0,
+            x: centerX + (Math.random() - 0.5) * 100,
+            y: centerY + (Math.random() - 0.5) * 100
           });
         }
-        links.push({
-          source: note.id,
-          target: tagId,
-          connectionType: 'tag'
-        });
+        links.push({ source: note.id, target: tagId, connectionType: 'tag' });
       });
     });
 
-    // C. Calculate Content Similarity for "Surge" Links
-    // O(n^2) comparison - fine for personal note counts (< 1000)
+    // C. Similarity
     for (let i = 0; i < notes.length; i++) {
         const noteA = notes[i];
-        const wordsA = new Set([
-            ...getWords(noteA.title), 
-            ...getWords(noteA.category),
-            ...getWords(noteA.rawContent || '')
-        ]);
-
+        const wordsA = new Set([...getWords(noteA.title), ...getWords(noteA.category), ...getWords(noteA.rawContent || '')]);
         for (let j = i + 1; j < notes.length; j++) {
             const noteB = notes[j];
-            const wordsB = new Set([
-                ...getWords(noteB.title), 
-                ...getWords(noteB.category),
-                ...getWords(noteB.rawContent || '')
-            ]);
-
-            // Calculate Intersection
-            let matchCount = 0;
-            wordsA.forEach(w => {
-                if (wordsB.has(w)) matchCount++;
-            });
-
-            // Logic for Connection Strength
-            if (matchCount >= 3) {
-                // Strong Connection (Multiple words match)
-                links.push({
-                    source: noteA.id,
-                    target: noteB.id,
-                    connectionType: 'strong'
-                });
-            } else if (matchCount >= 1 && matchCount < 3) {
-                // Weak Connection (Some relation)
-                links.push({
-                    source: noteA.id,
-                    target: noteB.id,
-                    connectionType: 'weak'
-                });
-            }
+            const wordsB = new Set([...getWords(noteB.title), ...getWords(noteB.category), ...getWords(noteB.rawContent || '')]);
+            let matches = 0;
+            wordsA.forEach(w => { if (wordsB.has(w)) matches++; });
+            if (matches >= 3) links.push({ source: noteA.id, target: noteB.id, connectionType: 'strong' });
+            else if (matches >= 1) links.push({ source: noteA.id, target: noteB.id, connectionType: 'weak' });
         }
     }
 
-    // 3. Setup SVG & Zoom
-    svg.attr("viewBox", [0, 0, width, height])
-       .attr("class", "w-full h-full cursor-move");
+    // Calculate Degrees for layout spacing
+    const degreeMap = new Map<string, number>();
+    links.forEach(l => {
+        const sId = typeof l.source === 'string' ? l.source : l.source.id;
+        const tId = typeof l.target === 'string' ? l.target : l.target.id;
+        degreeMap.set(sId, (degreeMap.get(sId) || 0) + 1);
+        degreeMap.set(tId, (degreeMap.get(tId) || 0) + 1);
+    });
+    nodes.forEach(n => n.degree = degreeMap.get(n.id) || 0);
 
-    // Add styles and Filters
+    svg.attr("viewBox", [0, 0, width, height]).attr("class", "w-full h-full cursor-move");
     const defs = svg.append("defs");
-    
-    // Glow Filter for Strong Surge
-    const filter = defs.append("filter")
-        .attr("id", "glow")
-        .attr("x", "-50%")
-        .attr("y", "-50%")
-        .attr("width", "200%")
-        .attr("height", "200%");
-    filter.append("feGaussianBlur")
-        .attr("stdDeviation", "2.0")
-        .attr("result", "coloredBlur");
-    const feMerge = filter.append("feMerge");
-    feMerge.append("feMergeNode").attr("in", "coloredBlur");
-    feMerge.append("feMergeNode").attr("in", "SourceGraphic");
-
     defs.append("style").text(`
-      @keyframes dashflow {
-        to { stroke-dashoffset: -20; }
-      }
-      /* Strong Surge: Moving packets/bullets */
-      @keyframes surgeStrong {
-        0% { stroke-dashoffset: 0; }
-        100% { stroke-dashoffset: -40; } /* Matches dasharray sum (10+30) for loop */
-      }
-      /* Weak Surge: Slow moving particles */
-      @keyframes surgeWeak {
-        0% { stroke-dashoffset: 0; }
-        100% { stroke-dashoffset: -24; }
-      }
-      
-      .link-tag {
-        stroke: #94a3b8;
-        stroke-width: 1px;
-        stroke-dasharray: 3, 5;
-        opacity: 0.3;
-      }
-
-      .link-strong {
-        stroke: #3b82f6; /* Blue-500 */
-        stroke-width: 4px; /* Thick */
-        stroke-dasharray: 10, 30; /* 10px bullet, 30px gap */
-        stroke-linecap: round; /* Round bullets */
-        animation: surgeStrong 3s linear infinite; /* Slowed down */
-        opacity: 0.8;
-        filter: url(#glow);
-      }
-
-      .link-weak {
-        stroke: #94a3b8; /* Slate-400 */
-        stroke-width: 1.5px; 
-        stroke-dasharray: 4, 20; /* Small dash, long gap */
-        stroke-linecap: round; 
-        animation: surgeWeak 4s linear infinite; /* Faster */
-        opacity: 0.4;
-      }
-
-      /* Hover Effects */
-      .node-hover circle {
-        stroke: #3b82f6;
-        stroke-width: 3px;
-        filter: url(#glow);
-      }
-      
-      .node-hover text {
-        paint-order: stroke;
-        stroke: rgba(255, 255, 255, 0.9);
-        stroke-width: 4px;
-        font-weight: 800;
-        z-index: 10;
-        text-shadow: 0 1px 4px rgba(0,0,0,0.3);
-      }
+      .link-tag { stroke: #cbd5e1; stroke-width: 1px; opacity: 0.2; }
+      .link-strong { stroke: #3b82f6; stroke-width: 2px; opacity: 0.5; }
+      .link-weak { stroke: #94a3b8; stroke-width: 1px; opacity: 0.15; }
+      .node-hover circle { stroke: #3b82f6; stroke-width: 2px; }
+      .node-group text { pointer-events: none; transition: opacity 0.2s; }
     `);
 
     const g = svg.append("g");
+    const zoom = d3.zoom<SVGSVGElement, unknown>().scaleExtent([0.1, 8]).on("zoom", (e) => g.attr("transform", e.transform));
+    svg.call(zoom).call(zoom.transform, d3.zoomIdentity.translate(width/2, height/2).scale(1).translate(-width/2, -height/2));
 
-    const zoom = d3.zoom<SVGSVGElement, unknown>()
-        .scaleExtent([0.1, 4])
-        .on("zoom", (event) => {
-            g.attr("transform", event.transform);
-        });
-
-    svg.call(zoom)
-       .call(zoom.transform, d3.zoomIdentity.translate(width/2, height/2).scale(0.8).translate(-width/2, -height/2));
-
-    // 4. Force Simulation
     const simulation = d3.forceSimulation<GraphNode>(nodes)
       .force("link", d3.forceLink<GraphNode, GraphLink>(links)
         .id(d => d.id)
         .distance(d => {
-            // Updated distances for slightly more spread
-            if (d.connectionType === 'strong') return 100; // was 80
-            if (d.connectionType === 'weak') return 300; // was 250
-            return 140; // tag links, was 110
+            // Push hubs (nodes with many connections) much further apart
+            const sDeg = (d.source as GraphNode).degree || 1;
+            const tDeg = (d.target as GraphNode).degree || 1;
+            const multiplier = Math.sqrt(sDeg + tDeg) * 15;
+            if (d.connectionType === 'strong') return 80 + multiplier;
+            if (d.connectionType === 'weak') return 250 + multiplier;
+            return 120 + multiplier;
         })
-        .strength(d => {
-            if (d.connectionType === 'strong') return 0.5;
-            if (d.connectionType === 'weak') return 0.03; 
-            return 0.3;
-        })
+        .strength(d => d.connectionType === 'strong' ? 0.4 : 0.05)
       )
-      // Increased repulsion slightly to space things out
-      .force("charge", d3.forceManyBody().strength(-600).distanceMax(800)) // was -400/600
+      .force("charge", d3.forceManyBody().strength(d => -100 - ((d as GraphNode).degree * 150))) // Repel hubs more
       .force("center", d3.forceCenter(width / 2, height / 2).strength(0.05))
-      .force("x", d3.forceX(width / 2).strength(0.04))
-      .force("y", d3.forceY(height / 2).strength(0.04))
-      .force("collide", d3.forceCollide().radius(d => d.val + 8).iterations(2));
+      .force("collide", d3.forceCollide().radius(d => d.val + 10 + (d.degree * 2)));
 
-    // 5. Draw Elements
-    
-    // Draw Links
-    const link = g.append("g")
-      .selectAll("line")
-      .data(links)
-      .join("line")
-      .attr("class", d => `link-${d.connectionType}`);
+    const link = g.append("g").selectAll("line").data(links).join("line").attr("class", d => `link-${d.connectionType}`);
 
-    const nodeGroup = g.append("g")
-      .selectAll("g")
-      .data(nodes)
-      .join("g")
+    const nodeGroup = g.append("g").selectAll("g").data(nodes).join("g")
       .attr("class", "node-group")
-      .style("cursor", "pointer")
-      .call(d3.drag<SVGGElement, GraphNode>()
-        .on("start", dragstarted)
-        .on("drag", dragged)
-        .on("end", dragended));
+      .call(d3.drag<SVGGElement, GraphNode>().on("start", dragstarted).on("drag", dragged).on("end", dragended));
 
-    // Draw Circles
     nodeGroup.append("circle")
       .attr("r", d => d.val)
       .attr("fill", d => {
         if (d.type === 'note' && d.group) {
-          if (d.group.includes('yellow')) return '#fef08a';
-          if (d.group.includes('blue')) return '#bfdbfe';
-          if (d.group.includes('green')) return '#bbf7d0';
-          if (d.group.includes('pink')) return '#fbcfe8';
-          if (d.group.includes('purple')) return '#e9d5ff';
-          if (d.group.includes('orange')) return '#fed7aa';
-          if (d.group.includes('teal')) return '#99f6e4';
-          if (d.group.includes('rose')) return '#fecdd3';
-          if (d.group.includes('slate')) return '#cbd5e1';
-          if (d.group.includes('lime')) return '#d9f99d';
-          if (d.group.includes('sky')) return '#bae6fd';
-          if (d.group.includes('fuchsia')) return '#f5d0fe';
-          if (d.group.includes('red')) return '#fecaca';
-          if (d.group.includes('cyan')) return '#a5f3fc';
-          if (d.group.includes('violet')) return '#ddd6fe';
+          const colors: Record<string, string> = { yellow: '#fef08a', blue: '#bfdbfe', green: '#bbf7d0', pink: '#fbcfe8', purple: '#e9d5ff', orange: '#fed7aa', teal: '#99f6e4', rose: '#fecdd3', slate: '#cbd5e1', lime: '#d9f99d', sky: '#bae6fd', fuchsia: '#f5d0fe', red: '#fecaca', cyan: '#a5f3fc', violet: '#ddd6fe' };
+          return colors[d.group] || '#f1f5f9';
         }
-        return '#f1f5f9';
+        return '#f8fafc';
       })
       .attr("stroke", d => d.type === 'tag' ? '#94a3b8' : '#fff')
-      .attr("stroke-width", d => d.type === 'tag' ? 1 : 2)
-      .on("click", (event, d) => {
-        if (d.type === 'note') {
-            event.stopPropagation();
-            onNoteClick(d.id);
-        }
-      });
+      .attr("stroke-width", 1)
+      .on("click", (event, d) => { if (d.type === 'note') { event.stopPropagation(); onNoteClick(d.id); } });
 
-    // Add Labels
     nodeGroup.append("text")
       .text(d => d.name)
-      .attr("x", d => d.val + 6)
-      .attr("y", 4)
-      .attr("font-size", d => d.type === 'tag' ? "11px" : "13px")
-      .attr("font-weight", d => d.type === 'tag' ? "500" : "700")
-      .attr("fill", "#1e293b") 
-      .attr("class", "fill-slate-800 dark:fill-slate-200 pointer-events-none")
-      .style("transition", "all 0.2s ease");
+      .attr("x", d => d.val + 4)
+      .attr("y", 3)
+      .attr("font-size", d => d.type === 'tag' ? "8px" : "10px")
+      .attr("font-weight", d => d.type === 'tag' ? "400" : "600")
+      .attr("class", "fill-slate-700 dark:fill-slate-300");
 
-    // Hover Interaction
-    nodeGroup
-        .on("mouseover", function(event, d) {
-            const group = d3.select(this);
-            group.raise();
-            group.classed("node-hover", true);
-            group.select("circle")
-                .transition()
-                .duration(200)
-                .attr("r", d.val * 1.3);
-        })
-        .on("mouseout", function(event, d) {
-            const group = d3.select(this);
-            group.classed("node-hover", false);
-            group.select("circle")
-                .transition()
-                .duration(200)
-                .attr("r", d.val);
-        });
-
-    // 6. Tick Function
     simulation.on("tick", () => {
-      link
-        .attr("x1", d => (d.source as GraphNode).x!)
-        .attr("y1", d => (d.source as GraphNode).y!)
-        .attr("x2", d => (d.target as GraphNode).x!)
-        .attr("y2", d => (d.target as GraphNode).y!);
-
-      nodeGroup
-        .attr("transform", d => `translate(${d.x},${d.y})`);
+      link.attr("x1", d => (d.source as GraphNode).x!).attr("y1", d => (d.source as GraphNode).y!)
+          .attr("x2", d => (d.target as GraphNode).x!).attr("y2", d => (d.target as GraphNode).y!);
+      nodeGroup.attr("transform", d => `translate(${d.x},${d.y})`);
     });
 
-    // Drag Functions
-    function dragstarted(event: d3.D3DragEvent<SVGGElement, GraphNode, unknown>, d: GraphNode) {
+    function dragstarted(event: any, d: GraphNode) {
       if (!event.active) simulation.alphaTarget(0.3).restart();
-      d.fx = d.x;
-      d.fy = d.y;
+      d.fx = d.x; d.fy = d.y;
     }
-
-    function dragged(event: d3.D3DragEvent<SVGGElement, GraphNode, unknown>, d: GraphNode) {
-      d.fx = event.x;
-      d.fy = event.y;
-    }
-
-    function dragended(event: d3.D3DragEvent<SVGGElement, GraphNode, unknown>, d: GraphNode) {
+    function dragged(event: any, d: GraphNode) { d.fx = event.x; d.fy = event.y; }
+    function dragended(event: any, d: GraphNode) {
       if (!event.active) simulation.alphaTarget(0);
-      d.fx = null;
-      d.fy = null;
+      d.fx = null; d.fy = null;
     }
 
-    return () => {
-      simulation.stop();
-    };
-  }, [notes, onNoteClick, isFullscreen]);
+    return () => { simulation.stop(); };
+  }, [notes, onNoteClick]);
 
   return (
-    <div 
-        ref={containerRef} 
-        className={`w-full h-full relative overflow-hidden transition-colors duration-300 ${
-            isFullscreen 
-            ? 'fixed inset-0 z-[100] bg-slate-50 dark:bg-slate-900' 
-            : 'bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner'
-        }`}
-    >
-      <div className="absolute top-4 left-4 z-10 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm px-3 py-2 rounded-lg text-xs text-slate-600 dark:text-slate-300 shadow-sm border border-slate-100 dark:border-slate-700 pointer-events-none">
-        <p className="font-semibold mb-1">Neural Mind Map</p>
-        <p className="flex items-center gap-1"><span className="w-2 h-0.5 bg-blue-500 inline-block"></span> Strong Surge (High Content Match)</p>
-        <p className="flex items-center gap-1"><span className="w-2 h-0.5 bg-slate-400 inline-block"></span> Weak Flow (Low Content Match)</p>
-        <p className="mt-1 opacity-70">• Scroll to Zoom & Pan</p>
+    <div ref={containerRef} className={`w-full h-full relative overflow-hidden ${isFullscreen ? 'fixed inset-0 z-[100] bg-slate-50 dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700'}`}>
+      <div className="absolute top-4 left-4 z-10 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm px-2 py-1.5 rounded text-[10px] text-slate-500 shadow-sm pointer-events-none">
+        <p className="font-bold mb-0.5">Mind Map (Optimized)</p>
+        <p>• Nodes spaced by connection count</p>
+        <p>• Drag to arrange | Scroll to zoom</p>
       </div>
-
-      <button
-        onClick={toggleFullscreen}
-        className="absolute top-4 right-4 z-10 p-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-lg text-slate-600 dark:text-slate-300 shadow-sm border border-slate-100 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 transition-colors"
-        title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-      >
-        {isFullscreen ? (
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
-        ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
-        )}
+      <button onClick={toggleFullscreen} className="absolute top-4 right-4 z-10 p-1.5 bg-white/80 dark:bg-slate-800/80 rounded border shadow-sm hover:bg-white transition-colors">
+         {isFullscreen ? "Exit" : "Full"}
       </button>
-
       <svg ref={svgRef} className="w-full h-full"></svg>
     </div>
   );

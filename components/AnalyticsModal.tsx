@@ -1,5 +1,4 @@
 
-
 import React, { useMemo } from 'react';
 import * as d3 from 'd3';
 import { Note, NoteType } from '../types';
@@ -43,9 +42,11 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
 
   // 3. Type Counts & Distribution
   const typeCounts = useMemo(() => {
+    // FIX: Added missing 'code' property to match NoteType record
     const counts: Record<NoteType, number> = {
         quick: 0,
         deep: 0,
+        code: 0,
         project: 0,
         contact: 0,
         document: 0
@@ -84,7 +85,7 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
   const trendData = useMemo(() => {
      // Filter only Deep notes
      const deepNotes = notes
-        .filter(n => n.type === 'deep' || n.type === 'document' || n.type === 'project')
+        .filter(n => n.type === 'deep' || n.type === 'document' || n.type === 'project' || n.type === 'code')
         .sort((a, b) => a.createdAt - b.createdAt);
      
      if (deepNotes.length === 0) return [];
@@ -306,6 +307,15 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
         }
     }
 
+    // FIX: Added 'code' persona logic based on NoteType
+    if (maxType === 'code') {
+        return { 
+            title: "The Code Sorcerer", 
+            emoji: "💻", 
+            description: "Solving problems and architecting systems with precision.",
+            color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200"
+        };
+    }
     if (maxType === 'deep') {
         return { 
             title: "The Professor", 
@@ -405,6 +415,7 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
                         {[
                             { label: 'Quick', count: typeCounts.quick, color: 'bg-yellow-400' },
                             { label: 'Deep', count: typeCounts.deep, color: 'bg-blue-400' },
+                            { label: 'Code', count: typeCounts.code, color: 'bg-indigo-400' },
                             { label: 'Project', count: typeCounts.project, color: 'bg-green-400' },
                             { label: 'Contact', count: typeCounts.contact, color: 'bg-orange-400' },
                             { label: 'Doc', count: typeCounts.document, color: 'bg-slate-400' },
@@ -564,6 +575,10 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
                  <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm text-center opacity-70">
                     <p className="text-lg font-bold text-slate-600 dark:text-slate-300">{typeCounts.deep}</p>
                     <p className="text-[9px] text-slate-400 uppercase font-bold">Deep</p>
+                </div>
+                 <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm text-center opacity-70">
+                    <p className="text-lg font-bold text-slate-600 dark:text-slate-300">{typeCounts.code}</p>
+                    <p className="text-[9px] text-slate-400 uppercase font-bold">Code</p>
                 </div>
                  <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm text-center opacity-70">
                     <p className="text-lg font-bold text-slate-600 dark:text-slate-300">{typeCounts.project}</p>
