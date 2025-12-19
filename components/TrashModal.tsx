@@ -11,13 +11,13 @@ interface TrashModalProps {
 }
 
 const TrashModal: React.FC<TrashModalProps> = ({ 
-    isOpen, onClose, trashedNotes, onRestore, onPermanentlyDelete, onEmptyTrash 
+  isOpen, onClose, trashedNotes, onRestore, onPermanentlyDelete, onEmptyTrash 
 }) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
           <div>
             <h2 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
@@ -46,7 +46,7 @@ const TrashModal: React.FC<TrashModalProps> = ({
         <div className="p-6 overflow-y-auto flex-grow custom-scrollbar">
             {trashedNotes.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                    <span className="text-5xl mb-4 opacity-20">🗑️</span>
+                    <span className="text-5xl mb-4 opacity-20 text-center block">🗑️</span>
                     <p className="text-lg font-medium">Trash is empty</p>
                 </div>
             ) : (
@@ -85,12 +85,6 @@ const TrashModal: React.FC<TrashModalProps> = ({
             )}
         </div>
       </div>
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </div>
   );
 };

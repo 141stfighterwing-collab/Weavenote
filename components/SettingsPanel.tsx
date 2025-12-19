@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
     getRequests, approveRequest, denyRequest, 
-    getUsers, toggleUserStatus, updateUserPermission, isAdmin, checkDatabaseConnection,
+    getUsers, toggleUserStatus, updateUserPermission, updateUserRole, isAdmin, checkDatabaseConnection,
     getAuditLogs, AuditLogEntry 
 } from '../services/authService';
 import { runConnectivityTest, getErrorLogs, clearErrorLogs, getAIUsageLogs } from '../services/geminiService';
@@ -12,7 +11,7 @@ import { Theme, User, AILogEntry } from '../types';
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  currentUser: string | null;
+  currentUser: User | null;
   darkMode: boolean;
   toggleDarkMode: () => void;
   theme: Theme;
@@ -39,6 +38,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [systemStatus, setSystemStatus] = useState<any>(null);
   const [isTesting, setIsTesting] = useState(false);
+
+  const isGlobalAdmin = isAdmin(currentUser);
+  // Escalated users can see logs/management but aren't "gods"
+  const canSeeAdminTools = isGlobalAdmin || currentUser?.role === 'admin';
 
   useEffect(() => {
       if (isOpen) {
@@ -79,6 +82,13 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
       loadAdminData();
   };
 
+  const handleRoleToggle = async (user: User) => {
+      if (!isGlobalAdmin) return;
+      const newRole = user.role === 'admin' ? 'user' : 'admin';
+      await updateUserRole(user.uid, newRole);
+      loadAdminData();
+  };
+
   const runDiagnostics = async () => {
       setIsTesting(true);
       const aiResult = await runConnectivityTest();
@@ -95,21 +105,23 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div className="bg-white dark:bg-slate-800 w-full max-w-5xl h-[85vh] rounded-2xl shadow-2xl flex overflow-hidden">
+        <div className="bg-white dark:bg-slate-800 w-full max-w-6xl h-[85vh] rounded-2xl shadow-2xl flex overflow-hidden">
             {/* Sidebar */}
             <div className="w-64 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 p-4 flex flex-col gap-2">
                 <h2 className="font-bold text-lg px-2 mb-4 text-slate-800 dark:text-white">Settings</h2>
                 <button onClick={() => setActiveTab('appearance')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'appearance' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Appearance</button>
                 <button onClick={() => setActiveTab('data')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'data' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Data & Storage</button>
                 
-                {currentUser && (
+                {canSeeAdminTools && (
                     <>
                         <div className="my-2 border-t border-slate-200 dark:border-slate-700"></div>
-                        <p className="px-4 text-xs font-bold text-slate-400 uppercase mb-1">Admin</p>
-                        <button onClick={() => setActiveTab('admin')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'admin' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>User Management</button>
-                        <button onClick={() => setActiveTab('security')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'security' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Security Logs</button>
-                        <button onClick={() => setActiveTab('logs')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'logs' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>AI & Error Logs</button>
-                        <button onClick={() => setActiveTab('status')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'status' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>System Status</button>
+                        <p className="px-4 text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-widest">Administration</p>
+                        <button onClick={() => setActiveTab('admin')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'admin' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>User Control</button>
+                        <button onClick={() => setActiveTab('security')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'security' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Security Trail</button>
+                        <button onClick={() => setActiveTab('logs')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'logs' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>System Logs</button>
+                        {isGlobalAdmin && (
+                            <button onClick={() => setActiveTab('status')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'status' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Diagnostics</button>
+                        )}
                     </>
                 )}
             </div>
@@ -123,7 +135,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
                 {activeTab === 'appearance' && (
                     <div className="space-y-6">
-                        {/* Appearance settings content ... */}
                         <div className="flex justify-between items-center p-4 border rounded-xl dark:border-slate-700">
                             <div>
                                 <p className="font-bold text-slate-800 dark:text-white">Dark Mode</p>
@@ -188,7 +199,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                             <p className="text-sm text-blue-600 dark:text-blue-400 mb-4">Download a JSON backup.</p>
                             <button 
                                 onClick={async () => {
-                                    const notes = await loadNotes(currentUser || null);
+                                    const notes = await loadNotes(currentUser?.uid || null);
                                     exportDataToFile(notes);
                                 }} 
                                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm transition-colors"
@@ -199,7 +210,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     </div>
                 )}
 
-                {activeTab === 'status' && (
+                {activeTab === 'status' && isGlobalAdmin && (
                     <div className="space-y-6">
                         <div className="flex justify-between items-center">
                             <h4 className="font-bold text-slate-700 dark:text-slate-300">Backend Diagnostics</h4>
@@ -240,7 +251,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 )}
 
                 {/* ADMIN: USER MANAGEMENT */}
-                {activeTab === 'admin' && (
+                {activeTab === 'admin' && canSeeAdminTools && (
                     <div className="space-y-8">
                         <div>
                             <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-4">Pending Requests</h4>
@@ -253,7 +264,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                                                 <p className="text-xs text-slate-500">{req.email} • {req.ipAddress}</p>
                                             </div>
                                             <div className="flex gap-2">
-                                                <button onClick={() => handleApprove(req.uid)} className="text-xs bg-green-600 text-white px-3 py-1 rounded font-bold hover:bg-green-700">Approve</button>
+                                                <button onClick={() => handleApprove(req.uid)} className="text-xs bg-green-600 text-white px-3 py-1 rounded font-bold hover:bg-green-700">Approve as User</button>
                                                 <button onClick={() => handleDeny(req.uid)} className="text-xs bg-red-600 text-white px-3 py-1 rounded font-bold hover:bg-red-700">Deny</button>
                                             </div>
                                         </div>
@@ -263,47 +274,59 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                         </div>
 
                         <div>
-                            <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-4">All Users</h4>
-                            <div className="border rounded-lg overflow-hidden dark:border-slate-700">
+                            <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-4">Account Ecosystem</h4>
+                            <div className="border rounded-xl overflow-hidden dark:border-slate-700 shadow-sm bg-white dark:bg-slate-900">
                                 <table className="w-full text-sm text-left">
-                                    <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500">
+                                    <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 border-b dark:border-slate-700">
                                         <tr>
-                                            <th className="p-3">User</th>
-                                            <th className="p-3">Location/IP</th>
-                                            <th className="p-3">Last Login</th>
-                                            <th className="p-3">Status</th>
-                                            <th className="p-3 text-right">Action</th>
+                                            <th className="p-4">User Identity</th>
+                                            <th className="p-4">Role</th>
+                                            <th className="p-4">Status</th>
+                                            <th className="p-4">Last Login</th>
+                                            <th className="p-4 text-right">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody className="divide-y dark:divide-slate-700">
                                         {users.map(u => (
-                                            <tr key={u.uid} className="border-t dark:border-slate-700">
-                                                <td className="p-3">
-                                                    <div className="font-bold">{u.username}</div>
+                                            <tr key={u.uid} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                                                <td className="p-4">
+                                                    <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                                        {u.username}
+                                                        {isAdmin(u) && <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-md font-black uppercase">👑 Admin</span>}
+                                                    </div>
                                                     <div className="text-xs text-slate-500">{u.email}</div>
                                                 </td>
-                                                <td className="p-3">
-                                                    <div className="flex items-center gap-1">
-                                                        <span>{u.countryFlag}</span>
-                                                        <span className="text-xs">{u.country}</span>
-                                                    </div>
-                                                    <div className="text-[10px] text-slate-400 font-mono">{u.ipAddress}</div>
+                                                <td className="p-4">
+                                                    <button 
+                                                        disabled={!isGlobalAdmin || ['admin', 'Shootre'].includes(u.username)}
+                                                        onClick={() => handleRoleToggle(u)}
+                                                        className={`text-xs px-2.5 py-1 rounded-full font-bold uppercase transition-all ${
+                                                            u.role === 'admin' 
+                                                            ? 'bg-indigo-600 text-white shadow-sm' 
+                                                            : 'bg-slate-100 text-slate-600 dark:bg-slate-800'
+                                                        } ${isGlobalAdmin ? 'hover:scale-105 active:scale-95 cursor-pointer' : 'cursor-default'}`}
+                                                    >
+                                                        {u.role || 'user'}
+                                                    </button>
                                                 </td>
-                                                <td className="p-3 text-xs text-slate-500">
-                                                    {u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'Never'}
-                                                </td>
-                                                <td className="p-3">
-                                                    <span className={`text-xs px-2 py-1 rounded-full font-bold uppercase ${u.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                <td className="p-4">
+                                                    <span className={`text-xs px-2 py-1 rounded-md font-bold uppercase ${u.status === 'active' ? 'text-green-600' : 'text-red-500'}`}>
                                                         {u.status}
                                                     </span>
                                                 </td>
-                                                <td className="p-3 text-right">
-                                                    <button 
-                                                        onClick={() => toggleUserStatus(u.uid, u.status)}
-                                                        className="text-xs text-blue-600 hover:underline"
-                                                    >
-                                                        {u.status === 'active' ? 'Suspend' : 'Activate'}
-                                                    </button>
+                                                <td className="p-4 text-xs text-slate-500">
+                                                    {u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'Never'}
+                                                </td>
+                                                <td className="p-4 text-right">
+                                                    <div className="flex justify-end gap-3">
+                                                        <button 
+                                                            disabled={['admin', 'Shootre'].includes(u.username)}
+                                                            onClick={() => toggleUserStatus(u.uid, u.status)}
+                                                            className="text-xs font-bold text-primary-600 hover:underline disabled:opacity-30"
+                                                        >
+                                                            {u.status === 'active' ? 'Suspend' : 'Activate'}
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -315,38 +338,50 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 )}
 
                 {/* ADMIN: SECURITY LOGS */}
-                {activeTab === 'security' && (
+                {activeTab === 'security' && canSeeAdminTools && (
                     <div>
                         <div className="flex justify-between items-center mb-4">
                             <h4 className="font-bold text-slate-700 dark:text-slate-300">Audit Trail</h4>
                             <span className="text-xs text-slate-400">Records last 100 events</span>
                         </div>
-                        <div className="border rounded-lg overflow-hidden dark:border-slate-700 bg-slate-50 dark:bg-slate-900 h-[60vh] overflow-y-auto">
+                        <div className="border rounded-xl overflow-hidden dark:border-slate-700 bg-slate-50 dark:bg-slate-900 h-[60vh] overflow-y-auto shadow-inner">
                             {isLoading ? <div className="p-4">Loading logs...</div> : auditLogs.length === 0 ? <div className="p-4 text-slate-400 italic">No logs found.</div> : (
                                 <table className="w-full text-xs text-left">
-                                    <thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 sticky top-0">
+                                    <thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 sticky top-0 border-b dark:border-slate-700">
                                         <tr>
-                                            <th className="p-2">Time</th>
-                                            <th className="p-2">Action</th>
-                                            <th className="p-2">Actor</th>
-                                            <th className="p-2">Details</th>
+                                            <th className="p-3">Timestamp</th>
+                                            <th className="p-3">Operation</th>
+                                            <th className="p-3">Actor</th>
+                                            <th className="p-3">Context/Details</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                                        {auditLogs.map(log => (
-                                            <tr key={log.id} className="hover:bg-slate-100 dark:hover:bg-slate-800">
-                                                <td className="p-2 whitespace-nowrap text-slate-400">
-                                                    {new Date(log.timestamp).toLocaleString()}
-                                                </td>
-                                                <td className="p-2 font-mono font-bold text-slate-700 dark:text-slate-300">
-                                                    {log.action}
-                                                </td>
-                                                <td className="p-2">{log.actor}</td>
-                                                <td className="p-2 text-slate-500 truncate max-w-xs" title={log.details}>
-                                                    {log.details || '-'}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {auditLogs.map(log => {
+                                            const actorUser = users.find(u => u.username === log.actor || u.uid === log.actor);
+                                            const isActorAdmin = actorUser ? isAdmin(actorUser) : log.actor === 'Admin';
+                                            
+                                            return (
+                                                <tr key={log.id} className="hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                                    <td className="p-3 whitespace-nowrap text-slate-400 font-mono">
+                                                        {new Date(log.timestamp).toLocaleString()}
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <span className="font-mono font-bold text-slate-700 dark:text-slate-300 px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-[10px]">
+                                                            {log.action}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="font-bold text-slate-800 dark:text-slate-200">{log.actor}</span>
+                                                            {isActorAdmin && <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1 rounded font-black">ADM</span>}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-3 text-slate-500 truncate max-w-xs" title={log.details}>
+                                                        {log.details || '-'}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             )}
@@ -355,7 +390,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 )}
 
                 {/* ADMIN: LOGS */}
-                {activeTab === 'logs' && (
+                {activeTab === 'logs' && canSeeAdminTools && (
                     <div className="space-y-8">
                         <div>
                             <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2">AI Usage Logs</h4>
@@ -378,7 +413,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                                 ))}
                                 {errorLogs.length === 0 && <p className="text-slate-400 italic">No errors recorded.</p>}
                             </div>
-                            <button onClick={clearErrorLogs} className="mt-2 text-xs text-red-500 hover:underline">Clear Error Logs</button>
+                            {isGlobalAdmin && <button onClick={clearErrorLogs} className="mt-2 text-xs text-red-500 hover:underline">Clear Error Logs</button>}
                         </div>
                     </div>
                 )}

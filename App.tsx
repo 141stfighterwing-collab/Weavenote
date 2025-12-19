@@ -18,7 +18,6 @@ import ImageViewerModal from './components/ImageViewerModal';
 import AnalyticsModal from './components/AnalyticsModal';
 import Sidebar from './components/Sidebar';
 import RightSidebar from './components/RightSidebar';
-import ContactsTable from './components/ContactsTable';
 import TrashModal from './components/TrashModal';
 import { Logo } from './components/Logo';
 
@@ -37,7 +36,6 @@ const App: React.FC = () => {
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [activeDateFilter, setActiveDateFilter] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [expandedNote, setExpandedNote] = useState<Note | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
@@ -46,8 +44,6 @@ const App: React.FC = () => {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('ideaweaver_darkmode') !== 'false');
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('ideaweaver_theme') as Theme) || 'default');
   const [reducedMotion, setReducedMotion] = useState(() => localStorage.getItem('ideaweaver_reducedmotion') === 'true');
@@ -92,17 +88,18 @@ const App: React.FC = () => {
             const fetchedNotes = await loadNotes(storageOwner);
             const fetchedFolders = await loadFolders(storageOwner);
             
-            // Clean up trash on load (30-day logic)
+            // Auto-cleanup for 30-day trash
             const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-            const expired = fetchedNotes.filter(n => n.isDeleted && (n.deletedAt || 0) < thirtyDaysAgo);
-            
-            if (expired.length > 0) {
-                expired.forEach(async n => await deleteNote(n.id, storageOwner));
-                setNotes(fetchedNotes.filter(n => !expired.some(e => e.id === n.id)));
-            } else {
-                setNotes(fetchedNotes);
+            const validNotes = [];
+            for (const n of fetchedNotes) {
+                if (n.isDeleted && (n.deletedAt || 0) < thirtyDaysAgo) {
+                    await deleteNote(n.id, storageOwner);
+                } else {
+                    validNotes.push(n);
+                }
             }
             
+            setNotes(validNotes);
             setFolders(fetchedFolders);
         } catch (e) {
             console.error("Failed to load data", e);
@@ -114,15 +111,8 @@ const App: React.FC = () => {
     setDailyUsage(getDailyUsage());
   }, [storageOwner, isAuthChecking]);
 
-  const handleLoginSuccess = (user: User) => {
-      setCurrentUser(user);
-  };
-
-  const handleLogout = () => {
-      setCurrentUser(null);
-      setNotes([]); 
-      setFolders([]);
-  };
+  const handleLoginSuccess = (user: User) => setCurrentUser(user);
+  const handleLogout = () => { setCurrentUser(null); setNotes([]); setFolders([]); };
 
   const handleTabChange = (type: NoteType) => {
       setActiveTab(type);
@@ -131,35 +121,22 @@ const App: React.FC = () => {
       setSearchQuery('');
   };
 
-  const handleAddNote = async (
-    rawText: string, 
-    type: NoteType, 
-    attachments: string[] = [], 
-    forcedTags: string[] = [],
-    useAI: boolean = true,
-    manualTitle: string = '',
-    extraProjectData?: { manualProgress?: number, isCompleted?: boolean }
-  ) => {
+  const handleAddNote = async (rawText: string, type: NoteType, attachments: string[] = [], forcedTags: string[] = [], useAI: boolean = true, manualTitle: string = '', extraProjectData?: { manualProgress?: number, isCompleted?: boolean }) => {
     if (!canEdit) return;
     setIsProcessing(true);
-    setError(null);
-
     try {
         let processed;
         let tags = [...forcedTags];
-
         if (type === 'quick') {
             const today = new Date().toISOString().split('T')[0]; 
-            if (!tags.includes(today)) {
-                tags.push(today);
-            }
+            if (!tags.includes(today)) tags.push(today);
         }
 
         if (useAI) {
             const username = currentUser?.username || 'Guest';
             processed = await processNoteWithAI(rawText, [], type, username);
             tags = [...processed.tags.map(t => t.toLowerCase().replace('#', '')), ...tags];
-            if (manualTitle.trim()) { processed.title = manualTitle.trim(); }
+            if (manualTitle.trim()) processed.title = manualTitle.trim();
         } else {
             processed = {
                 title: manualTitle.trim() || rawText.split('\n')[0].substring(0, 40) || 'New Note',
@@ -170,9 +147,7 @@ const App: React.FC = () => {
         }
 
         if (type === 'project' && extraProjectData) {
-            if (!processed.projectData) {
-                processed.projectData = { deliverables: [], milestones: [], timeline: [] };
-            }
+            if (!processed.projectData) processed.projectData = { deliverables: [], milestones: [], timeline: [] };
             processed.projectData.manualProgress = extraProjectData.manualProgress;
             processed.projectData.isCompleted = extraProjectData.isCompleted;
         }
@@ -200,7 +175,7 @@ const App: React.FC = () => {
         await saveNote(newNote, storageOwner);
         setDailyUsage(getDailyUsage());
     } catch (err: any) {
-        setError(err.message);
+        console.error(err);
     } finally {
         setIsProcessing(false);
     }
@@ -272,11 +247,10 @@ const App: React.FC = () => {
 
   const handleDeleteNote = async (id: string) => {
       if (!canEdit) return;
-      // Soft Delete: Mark as deleted and set timestamp
+      // Soft Delete
       const updatedNotes = notes.map(n => n.id === id ? { ...n, isDeleted: true, deletedAt: Date.now() } : n);
       setNotes(updatedNotes);
       if (expandedNote?.id === id) setExpandedNote(null);
-      
       const target = updatedNotes.find(n => n.id === id);
       if (target) await saveNote(target, storageOwner);
   };
@@ -297,10 +271,10 @@ const App: React.FC = () => {
 
   const handleEmptyTrash = async () => {
       if (!canEdit) return;
-      const trashed = notes.filter(n => n.isDeleted);
+      const trashedIds = notes.filter(n => n.isDeleted).map(n => n.id);
       setNotes(prev => prev.filter(n => !n.isDeleted));
-      for (const note of trashed) {
-          await deleteNote(note.id, storageOwner);
+      for (const id of trashedIds) {
+          await deleteNote(id, storageOwner);
       }
   };
 
@@ -323,23 +297,10 @@ const App: React.FC = () => {
       if (!canEdit) return;
       const target = notes.find(n => n.id === noteId);
       if (!target || target.type !== 'project') return;
-      
       const projectData = target.projectData || { deliverables: [], milestones: [], timeline: [] };
       const isFinishing = !projectData.isCompleted;
-
-      const newManualProgress = isFinishing 
-        ? 100 
-        : (projectData.manualProgress === 100 ? 99 : projectData.manualProgress || 0);
-
-      const updated = { 
-          ...target, 
-          projectData: { 
-              ...projectData, 
-              isCompleted: isFinishing,
-              manualProgress: newManualProgress
-          } 
-      };
-      
+      const newManualProgress = isFinishing ? 100 : (projectData.manualProgress === 100 ? 99 : projectData.manualProgress || 0);
+      const updated = { ...target, projectData: { ...projectData, isCompleted: isFinishing, manualProgress: newManualProgress } };
       setNotes(prev => prev.map(n => n.id === noteId ? updated : n));
       if (expandedNote?.id === noteId) setExpandedNote(updated);
       await saveNote(updated, storageOwner);
@@ -412,7 +373,7 @@ const App: React.FC = () => {
         </div>
 
         <main className="flex-grow max-w-[1400px] mx-auto px-4 py-6 w-full flex flex-col lg:flex-row gap-6">
-            <div className="flex-1 min-w-0 order-2 lg:order-2">
+            <div className="flex-1 min-0 order-2 lg:order-2">
                 {viewMode === 'grid' && (
                     <NoteInput 
                         onAddNote={handleAddNote} 
@@ -518,19 +479,22 @@ const App: React.FC = () => {
             />
         </main>
         
-        <footer className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 py-2 px-4 text-xs text-slate-400 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-                {storageOwner ? <span className="text-green-600 font-bold">Cloud Sync Active</span> : <span className="text-slate-500">Guest Mode (Local Only)</span>}
+        <footer className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 py-3 px-6 text-xs text-slate-400 flex justify-between items-center shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
+            <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${storageOwner ? 'bg-green-500 animate-pulse' : 'bg-slate-400'}`}></div>
+                    {storageOwner ? <span className="text-slate-600 dark:text-slate-300 font-bold">Cloud Sync Active</span> : <span className="text-slate-500">Guest Mode (Local Only)</span>}
+                </div>
                 <button 
-                    onClick={() => setShowTrash(true)} 
-                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors text-slate-500 hover:text-red-500 flex items-center gap-1 font-bold"
-                    title="Open Trash"
+                  onClick={() => setShowTrash(true)}
+                  className="flex items-center gap-1.5 hover:text-red-500 transition-colors font-bold px-3 py-1 rounded-md bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600"
                 >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                    {trashedNotes.length > 0 && <span className="text-[10px] bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center">{trashedNotes.length}</span>}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                  <span>Trash</span>
+                  {trashedNotes.length > 0 && <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full min-w-[16px] text-center">{trashedNotes.length}</span>}
                 </button>
             </div>
-            <div>Daily AI Usage: {dailyUsage}/800</div>
+            <div className="font-medium">Daily AI Usage: {dailyUsage}/800</div>
         </footer>
 
         <EditNoteModal note={editingNote} isOpen={!!editingNote} onClose={() => setEditingNote(null)} onSave={handleUpdateNote} currentUser={currentUser?.username || 'Guest'} />
@@ -544,17 +508,31 @@ const App: React.FC = () => {
             onSaveExpanded={(id, content) => handleUpdateNote(id, expandedNote?.title || '', content)} 
             onToggleComplete={handleToggleProjectCompletion}
         />
-        <ImageViewerModal src={viewingImage} isOpen={!!viewingImage} onClose={() => setViewingImage(null)} />
-        <SettingsPanel isOpen={showSettings} onClose={() => setShowSettings(false)} currentUser={currentUser?.username || null} darkMode={darkMode} toggleDarkMode={() => setDarkMode(!darkMode)} theme={theme} setTheme={setTheme} reducedMotion={reducedMotion} toggleReducedMotion={() => setReducedMotion(!reducedMotion)} enableImages={enableImages} toggleEnableImages={() => setEnableImages(!enableImages)} showLinkPreviews={showLinkPreviews} toggleShowLinkPreviews={() => setShowLinkPreviews(!showLinkPreviews)} />
-        <AnalyticsModal isOpen={showAnalytics} onClose={() => setShowAnalytics(false)} notes={activeNotes} />
         <TrashModal 
-            isOpen={showTrash} 
-            onClose={() => setShowTrash(false)} 
-            trashedNotes={trashedNotes}
-            onRestore={handleRestoreNote}
-            onPermanentlyDelete={handlePermanentDelete}
-            onEmptyTrash={handleEmptyTrash}
+          isOpen={showTrash} 
+          onClose={() => setShowTrash(false)} 
+          trashedNotes={trashedNotes}
+          onRestore={handleRestoreNote}
+          onPermanentlyDelete={handlePermanentDelete}
+          onEmptyTrash={handleEmptyTrash}
         />
+        <ImageViewerModal src={viewingImage} isOpen={!!viewingImage} onClose={() => setViewingImage(null)} />
+        <SettingsPanel 
+            isOpen={showSettings} 
+            onClose={() => setShowSettings(false)} 
+            currentUser={currentUser} 
+            darkMode={darkMode} 
+            toggleDarkMode={() => setDarkMode(!darkMode)} 
+            theme={theme} 
+            setTheme={setTheme} 
+            reducedMotion={reducedMotion} 
+            toggleReducedMotion={() => setReducedMotion(!reducedMotion)} 
+            enableImages={enableImages} 
+            toggleEnableImages={() => setEnableImages(!enableImages)} 
+            showLinkPreviews={showLinkPreviews} 
+            toggleShowLinkPreviews={() => setShowLinkPreviews(!showLinkPreviews)} 
+        />
+        <AnalyticsModal isOpen={showAnalytics} onClose={() => setShowAnalytics(false)} notes={activeNotes} />
     </div>
   );
 };

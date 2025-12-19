@@ -47,7 +47,10 @@ const fetchClientInfo = async (): Promise<{ ip: string; country: string; flag: s
 };
 
 export const isAdmin = (user: User | null) => {
-    return user?.role === 'admin' || user?.username === 'admin';
+    if (!user) return false;
+    // Specifically allow the main admin account and Shootre as global admins
+    const globalAdmins = ['admin', 'Shootre'];
+    return user.role === 'admin' || globalAdmins.includes(user.username);
 };
 
 const logAudit = async (action: string, actor: string, target?: string, details?: string) => {
@@ -240,7 +243,7 @@ export const requestAccount = async (username: string, password: string, email: 
             email,
             permission: 'read', 
             status: 'pending', 
-            role: 'user',
+            role: 'user', // Requests are always users by default
             ipAddress: clientInfo.ip,
             country: clientInfo.country,
             countryFlag: clientInfo.flag,
@@ -267,7 +270,8 @@ export const getRequests = async (): Promise<User[]> => {
 export const approveRequest = async (uid: string): Promise<boolean> => {
     if (!db) return false;
     try {
-        await updateDoc(doc(db, 'users', uid), { status: 'active', permission: 'edit' });
+        // Approving a request makes them a user with basic edit permission
+        await updateDoc(doc(db, 'users', uid), { status: 'active', permission: 'edit', role: 'user' });
         await logAudit('APPROVE_USER', 'Admin', uid);
         return true;
     } catch (e) {
@@ -300,6 +304,13 @@ export const updateUserPermission = async (uid: string, permission: Permission) 
     if (!db) return;
     await updateDoc(doc(db, 'users', uid), { permission });
     await logAudit('UPDATE_PERM', 'Admin', uid, permission);
+};
+
+export const updateUserRole = async (uid: string, role: 'admin' | 'user') => {
+    if (!db) return;
+    // Escalation: Only allowed if caller is global admin (logic handled in UI/SDK level)
+    await updateDoc(doc(db, 'users', uid), { role });
+    await logAudit('UPDATE_ROLE', 'Admin', uid, role);
 };
 
 export const getAuditLogs = async (): Promise<AuditLogEntry[]> => {

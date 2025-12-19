@@ -33,7 +33,6 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, onTagClick, onEdit,
       if (!note.projectData) return 0;
       if (note.projectData.isCompleted) return 100;
       
-      // Prefer manualProgress if set (not undefined)
       if (typeof note.projectData.manualProgress === 'number') {
           return note.projectData.manualProgress;
       }
@@ -60,10 +59,23 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, onTagClick, onEdit,
               return <input type="checkbox" checked={props.checked} onChange={() => onToggleCheckbox(note.id, index)} onClick={(e) => e.stopPropagation()} className="mt-1 h-3 w-3 rounded text-primary-600 focus:ring-primary-500" />;
           }
           return <input {...props} />;
+      },
+      code: ({node, inline, className, children, ...props}: any) => {
+          const match = /language-(\w+)/.exec(className || '');
+          return !inline ? (
+            <div className="bg-slate-800 dark:bg-black/40 p-3 rounded-lg border border-slate-700 my-2 overflow-x-auto">
+              <code className={`${className} text-indigo-300 text-[11px] font-mono leading-tight`} {...props}>
+                {children}
+              </code>
+            </div>
+          ) : (
+            <code className="bg-black/10 dark:bg-white/10 px-1 rounded text-primary-700 dark:text-primary-300 font-mono text-[11px]" {...props}>
+              {children}
+            </code>
+          )
       }
   };
 
-  // If isCompleted is explicitly set, it overrides automatic 100% logic
   const isFinished = note.projectData?.isCompleted === true || (note.projectData?.isCompleted === undefined && calculateProgress === 100);
 
   return (
@@ -71,7 +83,6 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, onTagClick, onEdit,
       onClick={() => onExpand(note)}
       className={`relative group p-5 rounded-xl shadow hover:shadow-xl transition-all ${NOTE_COLORS[note.color]} min-h-[220px] flex flex-col cursor-pointer border border-black/5 dark:brightness-95 overflow-hidden ${isFinished ? 'ring-2 ring-emerald-500/50' : ''}`}
     >
-      {/* Header Area */}
       <div className="flex justify-between items-start mb-3 border-b border-black/5 pb-2">
         <div className="flex-grow min-w-0 pr-2">
            <div className="flex items-center gap-2 mb-1">
@@ -84,7 +95,6 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, onTagClick, onEdit,
         </div>
       </div>
 
-      {/* Body Area */}
       {note.type === 'project' && note.projectData ? (
           <div className="space-y-4 mb-4 mt-2">
               <div className="grid grid-cols-2 gap-2">
@@ -105,7 +115,6 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, onTagClick, onEdit,
                       </div>
                   )}
               </div>
-
               <div className="bg-white/50 dark:bg-black/20 p-2 rounded-lg border border-black/5">
                   <div className="flex justify-between items-center mb-1.5">
                     <p className="text-[9px] font-bold uppercase opacity-60">📊 Progress</p>
@@ -114,25 +123,14 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, onTagClick, onEdit,
                   <div className="w-full h-2 bg-black/5 dark:bg-white/5 rounded-full overflow-hidden mb-2">
                       <div className={`h-full transition-all duration-700 ${isFinished ? 'bg-emerald-500' : 'bg-primary-500'}`} style={{ width: `${calculateProgress}%` }} />
                   </div>
-                  {note.projectData.milestones.length > 0 && (
-                    <div className="space-y-1 mt-2 border-t border-black/5 pt-1.5">
-                        {note.projectData.milestones.slice(0, 2).map((m, i) => (
-                            <div key={i} className="flex justify-between items-center text-[10px] opacity-80">
-                                <span className="truncate pr-2">• {m.label}</span>
-                                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${m.status === 'completed' ? 'bg-green-500' : 'bg-slate-300'}`} />
-                            </div>
-                        ))}
-                    </div>
-                  )}
               </div>
           </div>
       ) : (
-          <div className="prose prose-sm flex-grow opacity-90 text-sm line-clamp-[8] overflow-hidden mb-4 mt-2">
+          <div className={`prose prose-sm flex-grow opacity-90 text-sm line-clamp-[8] overflow-hidden mb-4 mt-2 ${note.type === 'code' ? 'font-mono bg-white/30 dark:bg-black/10 p-2 rounded-lg' : ''}`}>
              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{note.content}</ReactMarkdown>
           </div>
       )}
 
-      {/* Footer Area with Tags and Controls */}
       <div className="flex items-center justify-between gap-1.5 mt-auto pt-3 border-t border-black/5">
         <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
           {note.tags.slice(0, 3).map(tag => (
@@ -140,10 +138,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, onTagClick, onEdit,
                   #{tag}
               </span>
           ))}
-          {note.tags.length > 3 && <span className="text-[10px] opacity-50 font-bold">+{note.tags.length - 3}</span>}
         </div>
-
-        {/* Action Controls */}
         <div className="flex items-center gap-1 shrink-0">
           {note.type === 'project' && !readOnly && (
               <button 
