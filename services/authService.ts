@@ -46,11 +46,23 @@ const fetchClientInfo = async (): Promise<{ ip: string; country: string; flag: s
     }
 };
 
+/**
+ * Returns true if the user is a Global Admin (God Control).
+ * Only Shootre and the main 'admin' account qualify.
+ */
+export const isGlobalAdmin = (user: User | null) => {
+    if (!user) return false;
+    const gods = ['admin', 'Shootre'];
+    return gods.includes(user.username);
+};
+
+/**
+ * Returns true if the user has Admin privileges (can see logs, approve users).
+ * Global admins are always admins.
+ */
 export const isAdmin = (user: User | null) => {
     if (!user) return false;
-    // Specifically allow the main admin account and Shootre as global admins
-    const globalAdmins = ['admin', 'Shootre'];
-    return user.role === 'admin' || globalAdmins.includes(user.username);
+    return user.role === 'admin' || isGlobalAdmin(user);
 };
 
 const logAudit = async (action: string, actor: string, target?: string, details?: string) => {
@@ -138,9 +150,6 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
             try {
                 await signInWithEmailAndPassword(auth, email, password);
             } catch (authError: any) {
-                if (authError.code === 'auth/configuration-not-found' || authError.code === 'auth/operation-not-allowed') {
-                    throw new Error("Enable 'Email/Password' in Firebase Console > Authentication.");
-                }
                 if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential') {
                     try {
                         const newCred = await createUserWithEmailAndPassword(auth, email, password);
@@ -214,7 +223,6 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
 
     } catch (e: any) {
         console.error("Login Error", e);
-        if (e.message.includes("Enable 'Email/Password'")) return { success: false, error: e.message };
         return { success: false, error: "Login failed. Check credentials." };
     }
 };
@@ -243,7 +251,7 @@ export const requestAccount = async (username: string, password: string, email: 
             email,
             permission: 'read', 
             status: 'pending', 
-            role: 'user', // Requests are always users by default
+            role: 'user', 
             ipAddress: clientInfo.ip,
             country: clientInfo.country,
             countryFlag: clientInfo.flag,
@@ -270,7 +278,7 @@ export const getRequests = async (): Promise<User[]> => {
 export const approveRequest = async (uid: string): Promise<boolean> => {
     if (!db) return false;
     try {
-        // Approving a request makes them a user with basic edit permission
+        // Approving a request makes them a standard user with edit permissions
         await updateDoc(doc(db, 'users', uid), { status: 'active', permission: 'edit', role: 'user' });
         await logAudit('APPROVE_USER', 'Admin', uid);
         return true;
@@ -308,7 +316,6 @@ export const updateUserPermission = async (uid: string, permission: Permission) 
 
 export const updateUserRole = async (uid: string, role: 'admin' | 'user') => {
     if (!db) return;
-    // Escalation: Only allowed if caller is global admin (logic handled in UI/SDK level)
     await updateDoc(doc(db, 'users', uid), { role });
     await logAudit('UPDATE_ROLE', 'Admin', uid, role);
 };
@@ -326,14 +333,5 @@ export const getAuditLogs = async (): Promise<AuditLogEntry[]> => {
 };
 
 export const clearAuditLogs = async () => {
-    console.log("Log clearing not supported in client-side Firestore for safety.");
-};
-
-export const getSessionTimeout = (): number => {
-    const val = localStorage.getItem('ideaweaver_session_timeout');
-    return val ? parseInt(val, 10) : 30;
-};
-
-export const setSessionTimeout = (minutes: number) => {
-    localStorage.setItem('ideaweaver_session_timeout', minutes.toString());
+    console.log("Log clearing restricted.");
 };

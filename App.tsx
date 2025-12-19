@@ -30,7 +30,6 @@ const App: React.FC = () => {
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [contactViewMode, setContactViewMode] = useState<'grid' | 'table'>('grid');
   const [activeTab, setActiveTab] = useState<NoteType>('quick');
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
@@ -50,9 +49,10 @@ const App: React.FC = () => {
   const [enableImages, setEnableImages] = useState(() => localStorage.getItem('ideaweaver_enableimages') === 'true');
   const [showLinkPreviews, setShowLinkPreviews] = useState(() => localStorage.getItem('ideaweaver_linkpreviews') === 'true');
 
+  // Handle Theme Classes on Body
   useEffect(() => {
     const body = document.body;
-    const themeClasses = ['theme-ocean', 'theme-forest', 'theme-sunset', 'theme-rose', 'theme-midnight', 'theme-coffee', 'theme-neon'];
+    const themeClasses = ['theme-ocean', 'theme-forest', 'theme-sunset', 'theme-rose', 'theme-midnight', 'theme-coffee', 'theme-neon', 'theme-cyberpunk', 'theme-nord', 'theme-dracula', 'theme-lavender', 'theme-earth'];
     body.classList.remove(...themeClasses);
     if (theme !== 'default') {
         body.classList.add(`theme-${theme}`);
@@ -60,6 +60,7 @@ const App: React.FC = () => {
     localStorage.setItem('ideaweaver_theme', theme);
   }, [theme]);
 
+  // Handle Dark Mode on HTML tag (Tailwind standard)
   useEffect(() => {
     if (darkMode) {
         document.documentElement.classList.add('dark');
@@ -88,7 +89,6 @@ const App: React.FC = () => {
             const fetchedNotes = await loadNotes(storageOwner);
             const fetchedFolders = await loadFolders(storageOwner);
             
-            // Auto-cleanup for 30-day trash
             const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
             const validNotes = [];
             for (const n of fetchedNotes) {
@@ -247,7 +247,6 @@ const App: React.FC = () => {
 
   const handleDeleteNote = async (id: string) => {
       if (!canEdit) return;
-      // Soft Delete
       const updatedNotes = notes.map(n => n.id === id ? { ...n, isDeleted: true, deletedAt: Date.now() } : n);
       setNotes(updatedNotes);
       if (expandedNote?.id === id) setExpandedNote(null);

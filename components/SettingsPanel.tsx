@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
     getRequests, approveRequest, denyRequest, 
-    getUsers, toggleUserStatus, updateUserPermission, updateUserRole, isAdmin, checkDatabaseConnection,
+    getUsers, toggleUserStatus, updateUserPermission, updateUserRole, isAdmin, isGlobalAdmin, checkDatabaseConnection,
     getAuditLogs, AuditLogEntry 
 } from '../services/authService';
 import { runConnectivityTest, getErrorLogs, clearErrorLogs, getAIUsageLogs } from '../services/geminiService';
@@ -39,9 +39,8 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const [systemStatus, setSystemStatus] = useState<any>(null);
   const [isTesting, setIsTesting] = useState(false);
 
-  const isGlobalAdmin = isAdmin(currentUser);
-  // Escalated users can see logs/management but aren't "gods"
-  const canSeeAdminTools = isGlobalAdmin || currentUser?.role === 'admin';
+  const userIsGlobalAdmin = isGlobalAdmin(currentUser);
+  const userIsAdmin = isAdmin(currentUser);
 
   useEffect(() => {
       if (isOpen) {
@@ -83,7 +82,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   };
 
   const handleRoleToggle = async (user: User) => {
-      if (!isGlobalAdmin) return;
+      if (!userIsGlobalAdmin) return;
       const newRole = user.role === 'admin' ? 'user' : 'admin';
       await updateUserRole(user.uid, newRole);
       loadAdminData();
@@ -112,22 +111,22 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 <button onClick={() => setActiveTab('appearance')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'appearance' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Appearance</button>
                 <button onClick={() => setActiveTab('data')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'data' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Data & Storage</button>
                 
-                {canSeeAdminTools && (
+                {userIsAdmin && (
                     <>
                         <div className="my-2 border-t border-slate-200 dark:border-slate-700"></div>
-                        <p className="px-4 text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-widest">Administration</p>
-                        <button onClick={() => setActiveTab('admin')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'admin' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>User Control</button>
-                        <button onClick={() => setActiveTab('security')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'security' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Security Trail</button>
-                        <button onClick={() => setActiveTab('logs')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'logs' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>System Logs</button>
-                        {isGlobalAdmin && (
-                            <button onClick={() => setActiveTab('status')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'status' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Diagnostics</button>
+                        <p className="px-4 text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-widest">Management</p>
+                        <button onClick={() => setActiveTab('admin')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'admin' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Users & Roles</button>
+                        <button onClick={() => setActiveTab('security')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'security' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Security Logs</button>
+                        <button onClick={() => setActiveTab('logs')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'logs' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>AI Audit</button>
+                        {userIsGlobalAdmin && (
+                            <button onClick={() => setActiveTab('status')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'status' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>System Health</button>
                         )}
                     </>
                 )}
             </div>
 
             {/* Content */}
-            <div className="flex-1 p-8 overflow-y-auto">
+            <div className="flex-1 p-8 overflow-y-auto custom-scrollbar">
                 <div className="flex justify-between mb-6">
                     <h3 className="text-xl font-bold text-slate-800 dark:text-white capitalize">{activeTab.replace('_', ' ')}</h3>
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full">✕</button>
@@ -135,10 +134,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
                 {activeTab === 'appearance' && (
                     <div className="space-y-6">
-                        <div className="flex justify-between items-center p-4 border rounded-xl dark:border-slate-700">
+                        <div className="flex justify-between items-center p-4 border rounded-xl dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/20">
                             <div>
                                 <p className="font-bold text-slate-800 dark:text-white">Dark Mode</p>
-                                <p className="text-xs text-slate-500">Easier on the eyes</p>
+                                <p className="text-xs text-slate-500">Enable high-contrast dark interface</p>
                             </div>
                             <button onClick={toggleDarkMode} className={`w-12 h-6 rounded-full transition-colors ${darkMode ? 'bg-primary-600' : 'bg-slate-300'} relative`}>
                                 <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${darkMode ? 'left-7' : 'left-1'}`}></div>
@@ -146,13 +145,13 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                         </div>
                         
                         <div>
-                             <p className="font-bold text-slate-800 dark:text-white mb-3">Color Theme</p>
-                             <div className="grid grid-cols-4 gap-2">
-                                {['default', 'ocean', 'forest', 'sunset', 'rose', 'midnight', 'coffee', 'neon'].map((t) => (
+                             <p className="font-bold text-slate-800 dark:text-white mb-3">Color Themes</p>
+                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                {['default', 'ocean', 'forest', 'sunset', 'rose', 'midnight', 'coffee', 'neon', 'cyberpunk', 'nord', 'dracula', 'lavender', 'earth'].map((t) => (
                                     <button 
                                         key={t}
                                         onClick={() => setTheme(t as Theme)}
-                                        className={`p-2 rounded-lg border text-xs capitalize font-bold ${theme === t ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 text-primary-700' : 'border-slate-200 dark:border-slate-700 text-slate-500'}`}
+                                        className={`p-3 rounded-xl border-2 text-xs capitalize font-bold transition-all ${theme === t ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 text-primary-700' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-primary-300'}`}
                                     >
                                         {t}
                                     </button>
@@ -163,109 +162,33 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                         <div className="flex justify-between items-center p-4 border rounded-xl dark:border-slate-700">
                             <div>
                                 <p className="font-bold text-slate-800 dark:text-white">Reduced Motion</p>
-                                <p className="text-xs text-slate-500">Stop animations</p>
+                                <p className="text-xs text-slate-500">Minimize heavy animations</p>
                             </div>
                             <button onClick={toggleReducedMotion} className={`w-12 h-6 rounded-full transition-colors ${reducedMotion ? 'bg-primary-600' : 'bg-slate-300'} relative`}>
                                 <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${reducedMotion ? 'left-7' : 'left-1'}`}></div>
                             </button>
                         </div>
-
-                        <div className="flex justify-between items-center p-4 border rounded-xl dark:border-slate-700">
-                            <div>
-                                <p className="font-bold text-slate-800 dark:text-white">Enable Images</p>
-                                <p className="text-xs text-slate-500">Allow image uploads</p>
-                            </div>
-                            <button onClick={toggleEnableImages} className={`w-12 h-6 rounded-full transition-colors ${enableImages ? 'bg-primary-600' : 'bg-slate-300'} relative`}>
-                                <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${enableImages ? 'left-7' : 'left-1'}`}></div>
-                            </button>
-                        </div>
-
-                        <div className="flex justify-between items-center p-4 border rounded-xl dark:border-slate-700">
-                            <div>
-                                <p className="font-bold text-slate-800 dark:text-white">Link Previews</p>
-                                <p className="text-xs text-slate-500">Show visual cards</p>
-                            </div>
-                            <button onClick={toggleShowLinkPreviews} className={`w-12 h-6 rounded-full transition-colors ${showLinkPreviews ? 'bg-primary-600' : 'bg-slate-300'} relative`}>
-                                <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${showLinkPreviews ? 'left-7' : 'left-1'}`}></div>
-                            </button>
-                        </div>
                     </div>
                 )}
 
-                {activeTab === 'data' && (
-                    <div className="space-y-4">
-                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-900/50">
-                            <h4 className="font-bold text-blue-800 dark:text-blue-300 mb-2">Export Data</h4>
-                            <p className="text-sm text-blue-600 dark:text-blue-400 mb-4">Download a JSON backup.</p>
-                            <button 
-                                onClick={async () => {
-                                    const notes = await loadNotes(currentUser?.uid || null);
-                                    exportDataToFile(notes);
-                                }} 
-                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm transition-colors"
-                            >
-                                Download Backup JSON
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {activeTab === 'status' && isGlobalAdmin && (
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-center">
-                            <h4 className="font-bold text-slate-700 dark:text-slate-300">Backend Diagnostics</h4>
-                            <button 
-                                onClick={runDiagnostics}
-                                disabled={isTesting}
-                                className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-bold text-sm transition-colors disabled:opacity-50"
-                            >
-                                {isTesting ? 'Running Tests...' : 'Run Diagnostics'}
-                            </button>
-                        </div>
-
-                        {systemStatus && (
-                            <div className="space-y-4 animate-[fadeIn_0.3s_ease-out]">
-                                <div className="text-xs text-slate-400 text-right">Last checked: {systemStatus.timestamp}</div>
-                                <div className={`p-4 rounded-xl border ${systemStatus.ai.success ? 'bg-green-50 border-green-200 dark:bg-green-900/20' : 'bg-red-50 border-red-200 dark:bg-red-900/20'}`}>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="font-bold text-slate-800 dark:text-white">Gemini AI API</span>
-                                        <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${systemStatus.ai.success ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>{systemStatus.ai.success ? 'Online' : 'Error'}</span>
-                                    </div>
-                                    <p className="text-sm opacity-80">{systemStatus.ai.message}</p>
-                                </div>
-                                <div className={`p-4 rounded-xl border ${systemStatus.db.success ? 'bg-green-50 border-green-200 dark:bg-green-900/20' : 'bg-red-50 border-red-200 dark:bg-red-900/20'}`}>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="font-bold text-slate-800 dark:text-white">Firebase Database</span>
-                                        <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${systemStatus.db.success ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>{systemStatus.db.success ? 'Connected' : 'Disconnected'}</span>
-                                    </div>
-                                    <p className="text-sm opacity-80">{systemStatus.db.message} {systemStatus.db.success && `(${systemStatus.db.latency}ms)`}</p>
-                                </div>
-                            </div>
-                        )}
-                        {!systemStatus && !isTesting && (
-                            <div className="p-8 text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">
-                                Click "Run Diagnostics" to check system health.
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* ADMIN: USER MANAGEMENT */}
-                {activeTab === 'admin' && canSeeAdminTools && (
+                {activeTab === 'admin' && userIsAdmin && (
                     <div className="space-y-8">
                         <div>
-                            <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-4">Pending Requests</h4>
-                            {isLoading ? <p>Loading...</p> : requests.length === 0 ? <p className="text-slate-400 italic">No pending requests.</p> : (
-                                <div className="space-y-2">
+                            <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
+                                🆕 Pending Account Requests
+                                {requests.length > 0 && <span className="bg-primary-600 text-white text-[10px] px-2 py-0.5 rounded-full">{requests.length}</span>}
+                            </h4>
+                            {isLoading ? <p className="text-sm">Retrieving requests...</p> : requests.length === 0 ? <p className="text-slate-400 italic text-sm">Clear sky! No pending requests.</p> : (
+                                <div className="space-y-3">
                                     {requests.map(req => (
-                                        <div key={req.uid} className="flex justify-between items-center p-3 border rounded-lg bg-yellow-50 border-yellow-100 dark:bg-yellow-900/10 dark:border-yellow-900/30">
+                                        <div key={req.uid} className="flex justify-between items-center p-4 border rounded-xl bg-yellow-50/30 border-yellow-100 dark:bg-yellow-900/10 dark:border-yellow-900/30">
                                             <div>
-                                                <p className="font-bold text-sm">{req.username}</p>
-                                                <p className="text-xs text-slate-500">{req.email} • {req.ipAddress}</p>
+                                                <p className="font-bold text-sm text-slate-900 dark:text-white">{req.username}</p>
+                                                <p className="text-[10px] text-slate-500 font-mono">{req.email} • IP: {req.ipAddress}</p>
                                             </div>
                                             <div className="flex gap-2">
-                                                <button onClick={() => handleApprove(req.uid)} className="text-xs bg-green-600 text-white px-3 py-1 rounded font-bold hover:bg-green-700">Approve as User</button>
-                                                <button onClick={() => handleDeny(req.uid)} className="text-xs bg-red-600 text-white px-3 py-1 rounded font-bold hover:bg-red-700">Deny</button>
+                                                <button onClick={() => handleApprove(req.uid)} className="text-xs bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 shadow-sm">Approve</button>
+                                                <button onClick={() => handleDeny(req.uid)} className="text-xs bg-white dark:bg-slate-800 text-red-600 border border-red-200 dark:border-red-900/50 px-4 py-2 rounded-lg font-bold hover:bg-red-50 transition-colors">Deny</button>
                                             </div>
                                         </div>
                                     ))}
@@ -274,146 +197,109 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                         </div>
 
                         <div>
-                            <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-4">Account Ecosystem</h4>
-                            <div className="border rounded-xl overflow-hidden dark:border-slate-700 shadow-sm bg-white dark:bg-slate-900">
+                            <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-4">User Registry</h4>
+                            <div className="border rounded-2xl overflow-hidden dark:border-slate-700 shadow-sm bg-white dark:bg-slate-900">
                                 <table className="w-full text-sm text-left">
                                     <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 border-b dark:border-slate-700">
                                         <tr>
-                                            <th className="p-4">User Identity</th>
-                                            <th className="p-4">Role</th>
+                                            <th className="p-4">Identity</th>
+                                            <th className="p-4">Permission Role</th>
                                             <th className="p-4">Status</th>
-                                            <th className="p-4">Last Login</th>
-                                            <th className="p-4 text-right">Actions</th>
+                                            <th className="p-4 text-right">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y dark:divide-slate-700">
-                                        {users.map(u => (
-                                            <tr key={u.uid} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                                                <td className="p-4">
-                                                    <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                                        {u.username}
-                                                        {isAdmin(u) && <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-md font-black uppercase">👑 Admin</span>}
-                                                    </div>
-                                                    <div className="text-xs text-slate-500">{u.email}</div>
-                                                </td>
-                                                <td className="p-4">
-                                                    <button 
-                                                        disabled={!isGlobalAdmin || ['admin', 'Shootre'].includes(u.username)}
-                                                        onClick={() => handleRoleToggle(u)}
-                                                        className={`text-xs px-2.5 py-1 rounded-full font-bold uppercase transition-all ${
-                                                            u.role === 'admin' 
-                                                            ? 'bg-indigo-600 text-white shadow-sm' 
-                                                            : 'bg-slate-100 text-slate-600 dark:bg-slate-800'
-                                                        } ${isGlobalAdmin ? 'hover:scale-105 active:scale-95 cursor-pointer' : 'cursor-default'}`}
-                                                    >
-                                                        {u.role || 'user'}
-                                                    </button>
-                                                </td>
-                                                <td className="p-4">
-                                                    <span className={`text-xs px-2 py-1 rounded-md font-bold uppercase ${u.status === 'active' ? 'text-green-600' : 'text-red-500'}`}>
-                                                        {u.status}
-                                                    </span>
-                                                </td>
-                                                <td className="p-4 text-xs text-slate-500">
-                                                    {u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'Never'}
-                                                </td>
-                                                <td className="p-4 text-right">
-                                                    <div className="flex justify-end gap-3">
+                                        {users.map(u => {
+                                            const isUserGlobal = isGlobalAdmin(u);
+                                            const isUserStandardAdmin = u.role === 'admin' && !isUserGlobal;
+                                            
+                                            return (
+                                                <tr key={u.uid} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                                                    <td className="p-4">
+                                                        <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                                            {u.username}
+                                                            {isUserGlobal && <span className="text-[9px] bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full font-black uppercase">GLOBAL ADMIN</span>}
+                                                            {isUserStandardAdmin && <span className="text-[9px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold uppercase">ADMIN</span>}
+                                                            {!isAdmin(u) && <span className="text-[9px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold uppercase">USER</span>}
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-400 font-mono">{u.email}</div>
+                                                    </td>
+                                                    <td className="p-4">
                                                         <button 
-                                                            disabled={['admin', 'Shootre'].includes(u.username)}
+                                                            disabled={!userIsGlobalAdmin || isUserGlobal}
+                                                            onClick={() => handleRoleToggle(u)}
+                                                            className={`text-[10px] px-3 py-1 rounded-full font-bold uppercase transition-all shadow-sm ${
+                                                                isAdmin(u) 
+                                                                ? 'bg-indigo-600 text-white' 
+                                                                : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
+                                                            } ${userIsGlobalAdmin && !isUserGlobal ? 'hover:scale-105 cursor-pointer' : 'cursor-default opacity-80'}`}
+                                                        >
+                                                            {u.role || 'user'}
+                                                        </button>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <span className={`text-[10px] px-2 py-1 rounded-md font-black uppercase ${u.status === 'active' ? 'text-green-600 bg-green-50 dark:bg-green-900/10' : 'text-red-500 bg-red-50 dark:bg-red-900/10'}`}>
+                                                            {u.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <button 
+                                                            disabled={isUserGlobal || (isUserStandardAdmin && !userIsGlobalAdmin)}
                                                             onClick={() => toggleUserStatus(u.uid, u.status)}
-                                                            className="text-xs font-bold text-primary-600 hover:underline disabled:opacity-30"
+                                                            className="text-[10px] font-black uppercase text-primary-600 hover:underline disabled:opacity-30 disabled:cursor-not-allowed"
                                                         >
                                                             {u.status === 'active' ? 'Suspend' : 'Activate'}
                                                         </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* ADMIN: SECURITY LOGS */}
-                {activeTab === 'security' && canSeeAdminTools && (
-                    <div>
-                        <div className="flex justify-between items-center mb-4">
-                            <h4 className="font-bold text-slate-700 dark:text-slate-300">Audit Trail</h4>
-                            <span className="text-xs text-slate-400">Records last 100 events</span>
-                        </div>
-                        <div className="border rounded-xl overflow-hidden dark:border-slate-700 bg-slate-50 dark:bg-slate-900 h-[60vh] overflow-y-auto shadow-inner">
-                            {isLoading ? <div className="p-4">Loading logs...</div> : auditLogs.length === 0 ? <div className="p-4 text-slate-400 italic">No logs found.</div> : (
-                                <table className="w-full text-xs text-left">
-                                    <thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 sticky top-0 border-b dark:border-slate-700">
-                                        <tr>
-                                            <th className="p-3">Timestamp</th>
-                                            <th className="p-3">Operation</th>
-                                            <th className="p-3">Actor</th>
-                                            <th className="p-3">Context/Details</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                                        {auditLogs.map(log => {
-                                            const actorUser = users.find(u => u.username === log.actor || u.uid === log.actor);
-                                            const isActorAdmin = actorUser ? isAdmin(actorUser) : log.actor === 'Admin';
-                                            
-                                            return (
-                                                <tr key={log.id} className="hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                                                    <td className="p-3 whitespace-nowrap text-slate-400 font-mono">
-                                                        {new Date(log.timestamp).toLocaleString()}
-                                                    </td>
-                                                    <td className="p-3">
-                                                        <span className="font-mono font-bold text-slate-700 dark:text-slate-300 px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-[10px]">
-                                                            {log.action}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-3">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <span className="font-bold text-slate-800 dark:text-slate-200">{log.actor}</span>
-                                                            {isActorAdmin && <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1 rounded font-black">ADM</span>}
-                                                        </div>
-                                                    </td>
-                                                    <td className="p-3 text-slate-500 truncate max-w-xs" title={log.details}>
-                                                        {log.details || '-'}
                                                     </td>
                                                 </tr>
                                             );
                                         })}
                                     </tbody>
                                 </table>
-                            )}
+                            </div>
                         </div>
                     </div>
                 )}
 
-                {/* ADMIN: LOGS */}
-                {activeTab === 'logs' && canSeeAdminTools && (
-                    <div className="space-y-8">
-                        <div>
-                            <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-2">AI Usage Logs</h4>
-                            <div className="border rounded-lg overflow-hidden h-48 overflow-y-auto bg-slate-50 dark:bg-slate-900 p-2 text-xs font-mono">
-                                {aiLogs.map(l => (
-                                    <div key={l.id} className="border-b border-slate-200 dark:border-slate-700 py-1">
-                                        <span className="text-slate-400">[{new Date(l.timestamp).toLocaleTimeString()}]</span> <span className="text-blue-500 font-bold">{l.username}</span>: {l.action} ({l.details})
-                                    </div>
-                                ))}
-                                {aiLogs.length === 0 && <p className="text-slate-400 italic">No AI activity recorded locally.</p>}
-                            </div>
+                {activeTab === 'security' && userIsAdmin && (
+                    <div className="animate-[fadeIn_0.2s_ease-out]">
+                        <div className="flex justify-between items-center mb-4">
+                            <h4 className="font-bold text-slate-700 dark:text-slate-300">Vault Audit Trail</h4>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Last 100 System Events</span>
                         </div>
-                        <div>
-                            <h4 className="font-bold text-red-700 dark:text-red-400 mb-2">Error Logs</h4>
-                            <div className="border rounded-lg overflow-hidden h-48 overflow-y-auto bg-red-50 dark:bg-red-900/10 p-2 text-xs font-mono">
-                                {errorLogs.map(l => (
-                                    <div key={l.id} className="border-b border-red-100 dark:border-red-900/30 py-1">
-                                        <span className="text-red-400">[{new Date(l.timestamp).toLocaleTimeString()}]</span> <span className="font-bold">{l.context}</span>: {l.message}
-                                    </div>
-                                ))}
-                                {errorLogs.length === 0 && <p className="text-slate-400 italic">No errors recorded.</p>}
-                            </div>
-                            {isGlobalAdmin && <button onClick={clearErrorLogs} className="mt-2 text-xs text-red-500 hover:underline">Clear Error Logs</button>}
+                        <div className="border-2 rounded-2xl overflow-hidden dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900 h-[60vh] overflow-y-auto shadow-inner">
+                            {isLoading ? <div className="p-10 text-center text-sm">Unlocking logs...</div> : auditLogs.length === 0 ? <div className="p-10 text-center text-slate-400 italic">No security events recorded.</div> : (
+                                <table className="w-full text-[11px] text-left">
+                                    <thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 sticky top-0 border-b dark:border-slate-700 font-bold uppercase tracking-tighter">
+                                        <tr>
+                                            <th className="p-3">Time (UTC)</th>
+                                            <th className="p-3">Operation</th>
+                                            <th className="p-3">Agent</th>
+                                            <th className="p-3">Metadata</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                                        {auditLogs.map(log => (
+                                            <tr key={log.id} className="hover:bg-white dark:hover:bg-slate-800 transition-colors">
+                                                <td className="p-3 whitespace-nowrap text-slate-400 font-mono">
+                                                    {new Date(log.timestamp).toISOString().replace('T', ' ').slice(0, 19)}
+                                                </td>
+                                                <td className="p-3">
+                                                    <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 rounded border border-indigo-100 dark:border-indigo-900/50">
+                                                        {log.action}
+                                                    </span>
+                                                </td>
+                                                <td className="p-3">
+                                                    <span className="font-bold text-slate-800 dark:text-slate-200">{log.actor}</span>
+                                                </td>
+                                                <td className="p-3 text-slate-500 truncate max-w-sm italic">
+                                                    {log.details || '-'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
                     </div>
                 )}
