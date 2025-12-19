@@ -137,7 +137,13 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
       >
         <div className="flex justify-between items-start p-6 pb-2 border-b border-black/5 bg-black/5">
             <div>
-                <span className="text-xs font-bold uppercase tracking-wider opacity-60 font-sans">{note.category}</span>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider opacity-60 font-sans">{note.category}</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 opacity-70 font-sans flex items-center gap-1">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                        {note.accessCount || 0} views
+                    </span>
+                </div>
                 <h2 className="text-3xl font-bold leading-tight mt-1">{note.title}</h2>
                 <div className="text-xs opacity-50 font-sans mt-1">
                     {new Date(note.createdAt).toLocaleDateString()} • {new Date(note.createdAt).toLocaleTimeString()}

@@ -105,9 +105,11 @@ Categories available: ${existingCategories.join(', ')}`;
     if (!jsonStr) throw new Error("AI returned empty content.");
 
     incrementUsage();
+    logAIUsage(username, "ORGANIZE_NOTE", `Processed ${noteType} note: ${jsonStr.substring(0, 50)}...`);
     return JSON.parse(jsonStr) as ProcessedNoteData;
   } catch (error) {
     console.error("Gemini AI Processing Error:", error);
+    logError("AI_PROCESS", error);
     throw error;
   }
 };
@@ -120,9 +122,11 @@ export const expandNoteContent = async (content: string, username: string) => {
           contents: `User ${username} wants a deeper analysis/expansion of the following note content. Provide the expansion in Markdown, maintaining clear spacing and readable structure: ${content}`,
       });
       incrementUsage();
+      logAIUsage(username, "EXPAND_NOTE", `Deep dive on content: ${content.substring(0, 50)}...`);
       return response.text || null;
     } catch (error) {
       console.error("Gemini AI Expansion Error:", error);
+      logError("AI_EXPAND", error);
       return null;
     }
 };

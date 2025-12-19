@@ -27,6 +27,15 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
     timeoutRef.current = window.setTimeout(() => setIsOpen(false), 800);
   };
 
+  const toggleMode = () => {
+    setIsRegistering(!isRegistering);
+    setMsg(null);
+    // Reset form when switching modes to prevent "admin" username from being sent as email
+    setEmailOrUsername('');
+    setUsername('');
+    setPassword('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -34,11 +43,19 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
 
     try {
         if (isRegistering) {
-            // Registration
+            // Registration requires a valid email format
+            if (!emailOrUsername.includes('@')) {
+                setMsg({ type: 'error', text: "Please provide a valid email address." });
+                setIsLoading(false);
+                return;
+            }
             const res = await requestAccount(username, password, emailOrUsername);
             if (res.success) {
                 setMsg({ type: 'success', text: res.message });
-                setIsRegistering(false);
+                // Reset form on success
+                setEmailOrUsername('');
+                setUsername('');
+                setPassword('');
             } else {
                 setMsg({ type: 'error', text: res.message });
             }
@@ -87,20 +104,20 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
                 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-3">
                     <input 
-                        type="text" 
-                        placeholder={isRegistering ? "Email" : "Email or 'admin'"} 
+                        type={isRegistering ? "email" : "text"} 
+                        placeholder={isRegistering ? "Email Address" : "Email or 'admin'"} 
                         value={emailOrUsername}
                         onChange={e => setEmailOrUsername(e.target.value)}
-                        className="px-3 py-2 border rounded-lg text-sm dark:bg-slate-700 dark:text-white"
+                        className="px-3 py-2 border rounded-lg text-sm dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-primary-500"
                         required
                     />
                     {isRegistering && (
                         <input 
                             type="text" 
-                            placeholder="Username" 
+                            placeholder="Desired Username" 
                             value={username}
                             onChange={e => setUsername(e.target.value)}
-                            className="px-3 py-2 border rounded-lg text-sm dark:bg-slate-700 dark:text-white"
+                            className="px-3 py-2 border rounded-lg text-sm dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-primary-500"
                             required
                         />
                     )}
@@ -109,12 +126,12 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
                         placeholder="Password" 
                         value={password}
                         onChange={e => setPassword(e.target.value)}
-                        className="px-3 py-2 border rounded-lg text-sm dark:bg-slate-700 dark:text-white"
+                        className="px-3 py-2 border rounded-lg text-sm dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-primary-500"
                         required
                     />
                     
                     {msg && (
-                        <div className={`text-xs p-2 rounded ${msg.type === 'error' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                        <div className={`text-xs p-2 rounded leading-relaxed ${msg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-green-50 text-green-700 border border-green-100'}`}>
                             {msg.text}
                         </div>
                     )}
@@ -122,15 +139,15 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
                     <button 
                         type="submit" 
                         disabled={isLoading}
-                        className="bg-primary-600 text-white font-bold py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                        className="bg-primary-600 text-white font-bold py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors shadow-sm"
                     >
                         {isLoading ? 'Processing...' : (isRegistering ? 'Request Access' : 'Login')}
                     </button>
                 </form>
 
                 <div className="mt-4 text-center text-xs">
-                    <button onClick={() => { setIsRegistering(!isRegistering); setMsg(null); }} className="text-slate-500 hover:text-primary-600 underline">
-                        {isRegistering ? 'Already have an account?' : 'Need an account?'}
+                    <button onClick={toggleMode} className="text-slate-500 hover:text-primary-600 underline">
+                        {isRegistering ? 'Already have an account? Sign in' : 'Need an account? Request access'}
                     </button>
                 </div>
             </div>

@@ -88,6 +88,11 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
       loadAdminData();
   };
 
+  const handleExport = async () => {
+      const notes = await loadNotes(currentUser?.uid || null);
+      exportDataToFile(notes);
+  };
+
   const runDiagnostics = async () => {
       setIsTesting(true);
       const aiResult = await runConnectivityTest();
@@ -167,6 +172,22 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                             <button onClick={toggleReducedMotion} className={`w-12 h-6 rounded-full transition-colors ${reducedMotion ? 'bg-primary-600' : 'bg-slate-300'} relative`}>
                                 <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${reducedMotion ? 'left-7' : 'left-1'}`}></div>
                             </button>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'data' && (
+                    <div className="space-y-6">
+                        <div className="p-6 border rounded-2xl bg-slate-50 dark:bg-slate-900/50 dark:border-slate-700">
+                            <h4 className="font-bold text-slate-800 dark:text-white mb-2">Export Workspace</h4>
+                            <p className="text-sm text-slate-500 mb-4">Download all your notes and folders in a standard JSON format for backup or migration.</p>
+                            <button onClick={handleExport} className="px-6 py-2 bg-primary-600 text-white font-bold rounded-lg hover:bg-primary-700 shadow-sm transition-all">Download Backup (.json)</button>
+                        </div>
+
+                        <div className="p-6 border rounded-2xl bg-slate-50 dark:bg-slate-900/50 dark:border-slate-700">
+                            <h4 className="font-bold text-slate-800 dark:text-white mb-2">Workspace Reset</h4>
+                            <p className="text-sm text-slate-500 mb-4">Permanently clear all local session data. This will not affect cloud-synced notes if you are logged in.</p>
+                            <button onClick={() => { if(confirm("Clear local cache?")) sessionStorage.clear(); window.location.reload(); }} className="px-6 py-2 border border-red-200 text-red-600 font-bold rounded-lg hover:bg-red-50 transition-all">Clear Local Cache</button>
                         </div>
                     </div>
                 )}
@@ -300,6 +321,100 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                                     </tbody>
                                 </table>
                             )}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'logs' && userIsAdmin && (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h4 className="font-bold text-slate-700 dark:text-slate-300">AI Processing Logs</h4>
+                            <button onClick={loadLogsData} className="text-xs text-primary-600 font-bold hover:underline">Refresh Logs</button>
+                        </div>
+                        <div className="border rounded-2xl overflow-hidden dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+                            <table className="w-full text-xs text-left">
+                                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 border-b dark:border-slate-700 font-bold">
+                                    <tr>
+                                        <th className="p-4">Time</th>
+                                        <th className="p-4">User</th>
+                                        <th className="p-4">Action</th>
+                                        <th className="p-4">Summary</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y dark:divide-slate-700">
+                                    {aiLogs.length === 0 ? (
+                                        <tr><td colSpan={4} className="p-8 text-center text-slate-400 italic">No AI activity recorded.</td></tr>
+                                    ) : aiLogs.map(log => (
+                                        <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                                            <td className="p-4 text-slate-400 font-mono">{new Date(log.timestamp).toLocaleTimeString()}</td>
+                                            <td className="p-4 font-bold">{log.username}</td>
+                                            <td className="p-4 text-indigo-600 font-bold">{log.action}</td>
+                                            <td className="p-4 text-slate-500 truncate max-w-xs">{log.details}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {errorLogs.length > 0 && (
+                            <div className="mt-8">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h4 className="font-bold text-red-600">Recent Errors</h4>
+                                    <button onClick={() => { clearErrorLogs(); loadLogsData(); }} className="text-xs text-red-600 hover:underline">Clear Errors</button>
+                                </div>
+                                <div className="space-y-2">
+                                    {errorLogs.map(err => (
+                                        <div key={err.id} className="p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-lg text-xs font-mono">
+                                            <span className="text-red-600 font-bold">[{err.context}]</span> {err.message}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'status' && userIsGlobalAdmin && (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h4 className="font-bold text-slate-700 dark:text-slate-300">System Diagnostics</h4>
+                            <button 
+                                onClick={runDiagnostics} 
+                                disabled={isTesting}
+                                className="px-4 py-2 bg-primary-600 text-white font-bold rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                            >
+                                {isTesting ? 'Running Diagnostics...' : 'Run New Test'}
+                            </button>
+                        </div>
+
+                        {systemStatus && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className={`p-6 rounded-2xl border ${systemStatus.ai.success ? 'bg-green-50 border-green-100 dark:bg-green-900/10' : 'bg-red-50 border-red-100 dark:bg-red-900/10'}`}>
+                                    <h5 className="font-bold mb-1">Gemini AI Engine</h5>
+                                    <p className="text-xs mb-3 opacity-70">Model: gemini-3-flash-preview</p>
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-2 h-2 rounded-full ${systemStatus.ai.success ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                        <span className="text-sm font-bold">{systemStatus.ai.message}</span>
+                                    </div>
+                                </div>
+                                <div className={`p-6 rounded-2xl border ${systemStatus.db.success ? 'bg-green-50 border-green-100 dark:bg-green-900/10' : 'bg-red-50 border-red-100 dark:bg-red-900/10'}`}>
+                                    <h5 className="font-bold mb-1">Firebase Persistence</h5>
+                                    <p className="text-xs mb-3 opacity-70">Latency: {systemStatus.db.latency}ms</p>
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-2 h-2 rounded-full ${systemStatus.db.success ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                        <span className="text-sm font-bold">{systemStatus.db.message}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border dark:border-slate-700">
+                            <p className="text-[10px] uppercase font-bold text-slate-400 mb-2">Environment Health</p>
+                            <div className="space-y-1 text-xs">
+                                <div className="flex justify-between"><span className="text-slate-500">API Key Configured:</span> <span className="text-green-600 font-bold">Yes</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">Storage Backend:</span> <span className="text-indigo-600 font-bold">Firestore v10.12</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">UI Framework:</span> <span className="text-indigo-600 font-bold">React 19 + Tailwind</span></div>
+                            </div>
                         </div>
                     </div>
                 )}

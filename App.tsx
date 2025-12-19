@@ -121,6 +121,15 @@ const App: React.FC = () => {
       setSearchQuery('');
   };
 
+  const handleExpandNote = async (note: Note) => {
+    setExpandedNote(note);
+    // Increment view count
+    const updatedNote = { ...note, accessCount: (note.accessCount || 0) + 1 };
+    setNotes(prev => prev.map(n => n.id === note.id ? updatedNote : n));
+    // Save the view count increment to storage
+    await saveNote(updatedNote, storageOwner);
+  };
+
   const handleAddNote = async (rawText: string, type: NoteType, attachments: string[] = [], forcedTags: string[] = [], useAI: boolean = true, manualTitle: string = '', extraProjectData?: { manualProgress?: number, isCompleted?: boolean }) => {
     if (!canEdit) return;
     setIsProcessing(true);
@@ -247,6 +256,7 @@ const App: React.FC = () => {
 
   const handleDeleteNote = async (id: string) => {
       if (!canEdit) return;
+      // Soft Delete
       const updatedNotes = notes.map(n => n.id === id ? { ...n, isDeleted: true, deletedAt: Date.now() } : n);
       setNotes(updatedNotes);
       if (expandedNote?.id === id) setExpandedNote(null);
@@ -419,7 +429,7 @@ const App: React.FC = () => {
                 <div className="mt-4">
                     {viewMode === 'mindmap' ? (
                         <div className="h-[600px] border rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/50">
-                            <MindMap notes={activeNotes} onNoteClick={(id) => { const n = activeNotes.find(n => n.id === id); if (n) { setExpandedNote(n); setViewMode('grid'); } }} />
+                            <MindMap notes={activeNotes} onNoteClick={(id) => { const n = activeNotes.find(n => n.id === id); if (n) { handleExpandNote(n); setViewMode('grid'); } }} />
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
@@ -432,7 +442,7 @@ const App: React.FC = () => {
                                     onTagClick={(t) => setActiveTagFilter(t)} 
                                     onChangeColor={async (id, c) => { setNotes(prev => prev.map(n => n.id === id ? { ...n, color: c } : n)); if (storageOwner) await saveNote({ ...notes.find(n => n.id === id)!, color: c }, storageOwner); }}
                                     onEdit={setEditingNote} 
-                                    onExpand={setExpandedNote} 
+                                    onExpand={handleExpandNote} 
                                     readOnly={!canEdit} 
                                     onViewImage={setViewingImage} 
                                     onToggleCheckbox={handleToggleCheckbox} 
@@ -460,7 +470,7 @@ const App: React.FC = () => {
                 folders={folders} 
                 onTagClick={(t) => setActiveTagFilter(t === activeTagFilter ? null : t)} 
                 activeTag={activeTagFilter} 
-                onNoteClick={setExpandedNote} 
+                onNoteClick={handleExpandNote} 
                 onFolderClick={setActiveFolderId} 
                 onCreateFolder={handleCreateFolder} 
                 onDeleteFolder={handleDeleteFolder} 
@@ -474,7 +484,7 @@ const App: React.FC = () => {
             <RightSidebar 
                 className="hidden xl:block order-3 lg:order-3" 
                 notes={activeNotes} 
-                onNoteClick={setExpandedNote} 
+                onNoteClick={handleExpandNote} 
             />
         </main>
         
