@@ -60,6 +60,8 @@ export interface Note {
   folderId?: string; 
   projectData?: ProjectData;
   userId?: string; // Owner ID for Firebase
+  isDeleted?: boolean; // Trash flag
+  deletedAt?: number; // Timestamp for 30-day logic
 }
 
 export enum NoteColor {

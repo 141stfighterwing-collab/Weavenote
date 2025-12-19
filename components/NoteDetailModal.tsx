@@ -14,6 +14,7 @@ interface NoteDetailModalProps {
   onViewImage: (src: string) => void;
   onToggleCheckbox: (noteId: string, index: number) => void;
   onSaveExpanded?: (id: string, content: string) => void;
+  onToggleComplete?: (id: string) => void;
   currentUser: string;
 }
 
@@ -31,7 +32,7 @@ const processContent = (text: string) => {
     return text.replace(/([^\S]|^)(https?:\/\/[^\s]+)(?=[^\S]|$)/g, '$1[$2]($2)');
 };
 
-const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose, showLinkPreviews = false, onViewImage, onToggleCheckbox, onSaveExpanded, currentUser }) => {
+const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose, showLinkPreviews = false, onViewImage, onToggleCheckbox, onSaveExpanded, onToggleComplete, currentUser }) => {
   const [isExpanding, setIsExpanding] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(600);
@@ -144,6 +145,8 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
 
   if (!isOpen || !note) return null;
 
+  const isCompleted = note.projectData?.isCompleted;
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" onClick={onClose}>
       <div 
@@ -159,9 +162,19 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
                     {new Date(note.createdAt).toLocaleDateString()} • {new Date(note.createdAt).toLocaleTimeString()}
                 </div>
             </div>
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-black/10 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
+            <div className="flex items-center gap-2">
+                {note.type === 'project' && onToggleComplete && (
+                    <button 
+                        onClick={() => onToggleComplete(note.id)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm flex items-center gap-1 ${isCompleted ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600'}`}
+                    >
+                        {isCompleted ? '✓ Completed' : 'Mark Complete'}
+                    </button>
+                )}
+                <button onClick={onClose} className="p-2 rounded-full hover:bg-black/10 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
         </div>
 
         <div className="p-8 overflow-y-auto custom-scrollbar flex-grow">

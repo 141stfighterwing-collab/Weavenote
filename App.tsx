@@ -19,6 +19,7 @@ import AnalyticsModal from './components/AnalyticsModal';
 import Sidebar from './components/Sidebar';
 import RightSidebar from './components/RightSidebar';
 import ContactsTable from './components/ContactsTable';
+import TrashModal from './components/TrashModal';
 import { Logo } from './components/Logo';
 
 const App: React.FC = () => {
@@ -43,6 +44,7 @@ const App: React.FC = () => {
   const [dailyUsage, setDailyUsage] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -89,7 +91,18 @@ const App: React.FC = () => {
         try {
             const fetchedNotes = await loadNotes(storageOwner);
             const fetchedFolders = await loadFolders(storageOwner);
-            setNotes(fetchedNotes);
+            
+            // Clean up trash on load (30-day logic)
+            const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+            const expired = fetchedNotes.filter(n => n.isDeleted && (n.deletedAt || 0) < thirtyDaysAgo);
+            
+            if (expired.length > 0) {
+                expired.forEach(async n => await deleteNote(n.id, storageOwner));
+                setNotes(fetchedNotes.filter(n => !expired.some(e => e.id === n.id)));
+            } else {
+                setNotes(fetchedNotes);
+            }
+            
             setFolders(fetchedFolders);
         } catch (e) {
             console.error("Failed to load data", e);
@@ -178,7 +191,8 @@ const App: React.FC = () => {
             accessCount: 0,
             folderId: activeFolderId || undefined,
             projectData: processed.projectData,
-            userId: storageOwner || undefined
+            userId: storageOwner || undefined,
+            isDeleted: false
         };
 
         setNotes(prev => [newNote, ...prev]);
@@ -258,9 +272,36 @@ const App: React.FC = () => {
 
   const handleDeleteNote = async (id: string) => {
       if (!canEdit) return;
-      setNotes(prev => prev.filter(n => n.id !== id));
+      // Soft Delete: Mark as deleted and set timestamp
+      const updatedNotes = notes.map(n => n.id === id ? { ...n, isDeleted: true, deletedAt: Date.now() } : n);
+      setNotes(updatedNotes);
       if (expandedNote?.id === id) setExpandedNote(null);
+      
+      const target = updatedNotes.find(n => n.id === id);
+      if (target) await saveNote(target, storageOwner);
+  };
+
+  const handleRestoreNote = async (id: string) => {
+      if (!canEdit) return;
+      const updatedNotes = notes.map(n => n.id === id ? { ...n, isDeleted: false, deletedAt: undefined } : n);
+      setNotes(updatedNotes);
+      const target = updatedNotes.find(n => n.id === id);
+      if (target) await saveNote(target, storageOwner);
+  };
+
+  const handlePermanentDelete = async (id: string) => {
+      if (!canEdit) return;
+      setNotes(prev => prev.filter(n => n.id !== id));
       await deleteNote(id, storageOwner);
+  };
+
+  const handleEmptyTrash = async () => {
+      if (!canEdit) return;
+      const trashed = notes.filter(n => n.isDeleted);
+      setNotes(prev => prev.filter(n => !n.isDeleted));
+      for (const note of trashed) {
+          await deleteNote(note.id, storageOwner);
+      }
   };
 
   const handleCreateFolder = async (name: string) => {
@@ -281,39 +322,34 @@ const App: React.FC = () => {
   const handleToggleProjectCompletion = async (noteId: string) => {
       if (!canEdit) return;
       const target = notes.find(n => n.id === noteId);
-      if (!target || target.type !== 'project' || !target.projectData) return;
+      if (!target || target.type !== 'project') return;
       
+      const projectData = target.projectData || { deliverables: [], milestones: [], timeline: [] };
+      const isFinishing = !projectData.isCompleted;
+
+      const newManualProgress = isFinishing 
+        ? 100 
+        : (projectData.manualProgress === 100 ? 99 : projectData.manualProgress || 0);
+
       const updated = { 
           ...target, 
           projectData: { 
-              ...target.projectData, 
-              isCompleted: !target.projectData.isCompleted 
+              ...projectData, 
+              isCompleted: isFinishing,
+              manualProgress: newManualProgress
           } 
       };
+      
       setNotes(prev => prev.map(n => n.id === noteId ? updated : n));
+      if (expandedNote?.id === noteId) setExpandedNote(updated);
       await saveNote(updated, storageOwner);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-          try {
-              const content = ev.target?.result as string;
-              const imported = parseImportFile(content);
-              const existingIds = new Set(notes.map(n => n.id));
-              const newNotes = imported.filter(n => !existingIds.has(n.id));
-              setNotes(prev => [...newNotes, ...prev]);
-              if (storageOwner && newNotes.length > 0) { await syncAllNotes(newNotes, storageOwner); }
-              alert(`Imported ${newNotes.length} notes.`);
-          } catch(err) { alert("Import failed."); }
-      };
-      reader.readAsText(file);
-  };
+  const activeNotes = useMemo(() => notes.filter(n => !n.isDeleted), [notes]);
+  const trashedNotes = useMemo(() => notes.filter(n => n.isDeleted), [notes]);
 
   const filteredNotes = useMemo(() => {
-      let result = notes.filter(n => n.type === activeTab);
+      let result = activeNotes.filter(n => n.type === activeTab);
       if (activeFolderId) result = result.filter(n => n.folderId === activeFolderId);
       if (activeTagFilter) result = result.filter(n => n.tags.includes(activeTagFilter));
       if (activeDateFilter) {
@@ -325,7 +361,7 @@ const App: React.FC = () => {
           result = result.filter(n => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q));
       }
       return result;
-  }, [notes, activeTab, activeFolderId, activeTagFilter, activeDateFilter, searchQuery]);
+  }, [activeNotes, activeTab, activeFolderId, activeTagFilter, activeDateFilter, searchQuery]);
 
   const clearFilters = () => {
     setActiveFolderId(null);
@@ -387,14 +423,34 @@ const App: React.FC = () => {
                     />
                 )}
 
+                <div className="mb-4 overflow-x-auto no-scrollbar pb-2">
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                        <button 
+                            onClick={() => setActiveFolderId(null)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeFolderId === null ? 'bg-primary-600 text-white border-primary-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary-400'}`}
+                        >
+                            All Folders
+                        </button>
+                        {folders.map(folder => (
+                            <button 
+                                key={folder.id}
+                                onClick={() => setActiveFolderId(folder.id)}
+                                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeFolderId === folder.id ? 'bg-primary-600 text-white border-primary-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary-400'}`}
+                            >
+                                📂 {folder.name}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                 {isFiltered && (
                     <div className="mb-4 p-2 bg-primary-50 dark:bg-primary-900/10 border border-primary-100 dark:border-primary-900/30 rounded-lg flex items-center justify-between text-xs animate-[fadeIn_0.2s_ease-out]">
                         <div className="flex items-center gap-2">
-                            <span className="font-bold text-primary-700 dark:text-primary-400 uppercase tracking-tighter">Filters Active:</span>
-                            {activeFolderId && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm">Folder: {folders.find(f => f.id === activeFolderId)?.name}</span>}
-                            {activeTagFilter && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm">Tag: #{activeTagFilter}</span>}
-                            {activeDateFilter && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm">Date: {activeDateFilter.toLocaleDateString()}</span>}
-                            {searchQuery && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm">Search: "{searchQuery}"</span>}
+                            <span className="font-bold text-primary-700 dark:text-primary-400 uppercase tracking-tighter">Active Filters:</span>
+                            {activeFolderId && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Folder: {folders.find(f => f.id === activeFolderId)?.name} <button onClick={() => setActiveFolderId(null)}>✕</button></span>}
+                            {activeTagFilter && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Tag: #{activeTagFilter} <button onClick={() => setActiveTagFilter(null)}>✕</button></span>}
+                            {activeDateFilter && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Date: {activeDateFilter.toLocaleDateString()} <button onClick={() => setActiveDateFilter(null)}>✕</button></span>}
+                            {searchQuery && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Search: "{searchQuery}" <button onClick={() => setSearchQuery('')}>✕</button></span>}
                         </div>
                         <button onClick={clearFilters} className="text-primary-600 hover:text-primary-800 font-bold underline">Clear All</button>
                     </div>
@@ -403,7 +459,7 @@ const App: React.FC = () => {
                 <div className="mt-4">
                     {viewMode === 'mindmap' ? (
                         <div className="h-[600px] border rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/50">
-                            <MindMap notes={notes} onNoteClick={(id) => { const n = notes.find(n => n.id === id); if (n) { setExpandedNote(n); setViewMode('grid'); } }} />
+                            <MindMap notes={activeNotes} onNoteClick={(id) => { const n = activeNotes.find(n => n.id === id); if (n) { setExpandedNote(n); setViewMode('grid'); } }} />
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
@@ -428,8 +484,9 @@ const App: React.FC = () => {
                             ))}
                             {filteredNotes.length === 0 && (
                                 <div className="col-span-full text-center py-20 bg-white/50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-                                    <p className="text-slate-400 text-lg">No notes found for this tab or filter.</p>
-                                    {isFiltered && <button onClick={clearFilters} className="mt-2 text-primary-500 hover:underline">Clear filters to see all {activeTab} notes</button>}
+                                    <p className="text-slate-400 text-lg font-bold">No results found.</p>
+                                    <p className="text-slate-400 text-sm mt-1">Try switching tabs or clearing filters to see more.</p>
+                                    {isFiltered && <button onClick={clearFilters} className="mt-4 px-6 py-2 bg-primary-600 text-white rounded-full font-bold shadow-md">Clear all filters</button>}
                                 </div>
                             )}
                         </div>
@@ -439,7 +496,7 @@ const App: React.FC = () => {
 
             <Sidebar 
                 className="order-1 lg:order-1" 
-                notes={notes} 
+                notes={activeNotes} 
                 folders={folders} 
                 onTagClick={(t) => setActiveTagFilter(t === activeTagFilter ? null : t)} 
                 activeTag={activeTagFilter} 
@@ -456,21 +513,48 @@ const App: React.FC = () => {
 
             <RightSidebar 
                 className="hidden xl:block order-3 lg:order-3" 
-                notes={notes} 
+                notes={activeNotes} 
                 onNoteClick={setExpandedNote} 
             />
         </main>
         
-        <footer className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 py-2 px-4 text-xs text-slate-400 flex justify-between">
-            <div>{storageOwner ? <span className="text-green-600 font-bold">Cloud Sync Active</span> : <span className="text-slate-500">Guest Mode (Local Only)</span>}</div>
+        <footer className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 py-2 px-4 text-xs text-slate-400 flex justify-between items-center">
+            <div className="flex items-center gap-2">
+                {storageOwner ? <span className="text-green-600 font-bold">Cloud Sync Active</span> : <span className="text-slate-500">Guest Mode (Local Only)</span>}
+                <button 
+                    onClick={() => setShowTrash(true)} 
+                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors text-slate-500 hover:text-red-500 flex items-center gap-1 font-bold"
+                    title="Open Trash"
+                >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    {trashedNotes.length > 0 && <span className="text-[10px] bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center">{trashedNotes.length}</span>}
+                </button>
+            </div>
             <div>Daily AI Usage: {dailyUsage}/800</div>
         </footer>
 
         <EditNoteModal note={editingNote} isOpen={!!editingNote} onClose={() => setEditingNote(null)} onSave={handleUpdateNote} currentUser={currentUser?.username || 'Guest'} />
-        <NoteDetailModal note={expandedNote} isOpen={!!expandedNote} onClose={() => setExpandedNote(null)} currentUser={currentUser?.username || 'Guest'} onViewImage={setViewingImage} onToggleCheckbox={handleToggleCheckbox} onSaveExpanded={(id, content) => handleUpdateNote(id, expandedNote?.title || '', content)} />
+        <NoteDetailModal 
+            note={expandedNote} 
+            isOpen={!!expandedNote} 
+            onClose={() => setExpandedNote(null)} 
+            currentUser={currentUser?.username || 'Guest'} 
+            onViewImage={setViewingImage} 
+            onToggleCheckbox={handleToggleCheckbox} 
+            onSaveExpanded={(id, content) => handleUpdateNote(id, expandedNote?.title || '', content)} 
+            onToggleComplete={handleToggleProjectCompletion}
+        />
         <ImageViewerModal src={viewingImage} isOpen={!!viewingImage} onClose={() => setViewingImage(null)} />
         <SettingsPanel isOpen={showSettings} onClose={() => setShowSettings(false)} currentUser={currentUser?.username || null} darkMode={darkMode} toggleDarkMode={() => setDarkMode(!darkMode)} theme={theme} setTheme={setTheme} reducedMotion={reducedMotion} toggleReducedMotion={() => setReducedMotion(!reducedMotion)} enableImages={enableImages} toggleEnableImages={() => setEnableImages(!enableImages)} showLinkPreviews={showLinkPreviews} toggleShowLinkPreviews={() => setShowLinkPreviews(!showLinkPreviews)} />
-        <AnalyticsModal isOpen={showAnalytics} onClose={() => setShowAnalytics(false)} notes={notes} />
+        <AnalyticsModal isOpen={showAnalytics} onClose={() => setShowAnalytics(false)} notes={activeNotes} />
+        <TrashModal 
+            isOpen={showTrash} 
+            onClose={() => setShowTrash(false)} 
+            trashedNotes={trashedNotes}
+            onRestore={handleRestoreNote}
+            onPermanentlyDelete={handlePermanentDelete}
+            onEmptyTrash={handleEmptyTrash}
+        />
     </div>
   );
 };

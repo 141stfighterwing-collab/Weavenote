@@ -63,7 +63,8 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, onTagClick, onEdit,
       }
   };
 
-  const isFinished = note.projectData?.isCompleted || calculateProgress === 100;
+  // If isCompleted is explicitly set, it overrides automatic 100% logic
+  const isFinished = note.projectData?.isCompleted === true || (note.projectData?.isCompleted === undefined && calculateProgress === 100);
 
   return (
     <div
@@ -132,39 +133,34 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, onTagClick, onEdit,
       )}
 
       {/* Footer Area with Tags and Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-1.5 mt-auto pt-3 border-t border-black/5">
-        <div className="flex flex-wrap gap-1.5">
-          {note.tags.slice(0, 4).map(tag => (
+      <div className="flex items-center justify-between gap-1.5 mt-auto pt-3 border-t border-black/5">
+        <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
+          {note.tags.slice(0, 3).map(tag => (
               <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full text-white font-bold shadow-sm" style={{ backgroundColor: getHashColor(tag) }}>
                   #{tag}
               </span>
           ))}
-          {note.tags.length > 4 && <span className="text-[10px] opacity-50 font-bold">+{note.tags.length - 4}</span>}
+          {note.tags.length > 3 && <span className="text-[10px] opacity-50 font-bold">+{note.tags.length - 3}</span>}
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 shrink-0">
           {note.type === 'project' && !readOnly && (
               <button 
                   onClick={(e) => { e.stopPropagation(); onToggleComplete?.(note.id); }}
-                  className={`p-1.5 rounded-lg transition-all shadow-sm transform hover:scale-105 ${isFinished ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200' : 'bg-white/80 dark:bg-black/30 text-slate-400 hover:bg-white'}`}
-                  title={isFinished ? "Mark as Ongoing" : "Mark as Complete"}
+                  className={`p-1.5 rounded-lg transition-all shadow-sm flex items-center justify-center ${isFinished ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 hover:bg-slate-300'}`}
+                  title={isFinished ? "Undo Complete" : "Mark Complete"}
               >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6L9 17L4 12"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4"><path d="M20 6L9 17L4 12"/></svg>
               </button>
           )}
-          <button onClick={(e) => { e.stopPropagation(); onEdit(note); }} className="p-1.5 bg-white/80 dark:bg-black/30 hover:bg-white rounded-lg shadow-sm transition-all transform hover:scale-105" title="Edit">
+          <button onClick={(e) => { e.stopPropagation(); onEdit(note); }} className="p-1.5 bg-white/80 dark:bg-black/30 hover:bg-white rounded-lg shadow-sm" title="Edit">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onDelete(note.id); }} className="p-1.5 bg-red-500/10 text-red-700 hover:bg-red-500 hover:text-white rounded-lg shadow-sm transition-all transform hover:scale-105" title="Delete">
+          <button onClick={(e) => { e.stopPropagation(); onDelete(note.id); }} className="p-1.5 bg-red-500/10 text-red-700 hover:bg-red-500 hover:text-white rounded-lg shadow-sm" title="Delete">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
           </button>
         </div>
-      </div>
-
-      {/* Sticky management buttons top-right (Only standard ones, toggle moved) */}
-      <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-         {/* These are intentionally empty or simplified since main controls moved to footer for better spacing */}
       </div>
     </div>
   );
