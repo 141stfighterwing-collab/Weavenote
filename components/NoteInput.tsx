@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { NoteType } from '../types';
-import { parseDocument } from '../services/documentParser';
 
 interface NoteInputProps {
   onAddNote: (text: string, type: NoteType, attachments?: string[], forcedTags?: string[], useAI?: boolean, manualTitle?: string, extraProjectData?: { manualProgress?: number, isCompleted?: boolean }) => Promise<void>;
@@ -23,8 +22,7 @@ const NoteInput: React.FC<NoteInputProps> = ({ onAddNote, isProcessing, activeTy
   const [isCompleted, setIsCompleted] = useState(false);
   
   const [selectedType, setSelectedType] = useState<NoteType>(initialActiveType);
-  const [isParsing, setIsParsing] = useState(false);
-  const docInputRef = useRef<HTMLInputElement>(null);
+  const mainTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   React.useEffect(() => { setSelectedType(initialActiveType); }, [initialActiveType]);
 
@@ -56,6 +54,55 @@ ${text}`;
     setText(''); setCode(''); setTitle(''); setMilestones(''); setDeliverables(''); setTimeline(''); setManualProgress(0); setIsCompleted(false);
   };
 
+  const applyFormat = (format: 'bold' | 'italic' | 'bullet' | 'checkbox') => {
+    const textarea = mainTextareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = text.substring(start, end);
+    let newText = '';
+    let cursorOffset = 0;
+
+    switch (format) {
+      case 'bold':
+        newText = text.substring(0, start) + `**${selected}**` + text.substring(end);
+        cursorOffset = 2;
+        break;
+      case 'italic':
+        newText = text.substring(0, start) + `*${selected}*` + text.substring(end);
+        cursorOffset = 1;
+        break;
+      case 'bullet':
+        newText = text.substring(0, start) + `\n- ${selected}` + text.substring(end);
+        cursorOffset = 3;
+        break;
+      case 'checkbox':
+        newText = text.substring(0, start) + `\n- [ ] ${selected}` + text.substring(end);
+        cursorOffset = 7;
+        break;
+    }
+
+    setText(newText);
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(end + cursorOffset, end + cursorOffset);
+    }, 0);
+  };
+
+  const insertEmoji = (emoji: string) => {
+    const textarea = mainTextareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newText = text.substring(0, start) + emoji + text.substring(end);
+    setText(newText);
+    setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + emoji.length, start + emoji.length);
+    }, 0);
+  };
+
   const getBackgroundColor = () => {
       switch (selectedType) {
           case 'quick': return 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/10';
@@ -66,7 +113,7 @@ ${text}`;
       }
   };
 
-  const isDisabled = (!text.trim() && !code.trim() && !title.trim()) || isProcessing || isParsing;
+  const isDisabled = (!text.trim() && !code.trim() && !title.trim()) || isProcessing;
 
   if (readOnly) return <div className="p-6 text-center border-dashed border rounded-xl text-slate-400">🔒 Read Only</div>;
 
@@ -82,6 +129,20 @@ ${text}`;
 
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-1">
         <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={selectedType === 'project' ? "Project Name..." : "Title (optional)"} className="w-full px-4 py-3 bg-transparent border-b border-slate-100 dark:border-slate-700 focus:outline-none font-bold text-lg text-slate-800 dark:text-white" />
+
+        {/* Formatting Toolbar */}
+        {selectedType !== 'project' && (
+          <div className="flex items-center gap-1 p-2 bg-slate-50 dark:bg-slate-900/50 border-b dark:border-slate-700 overflow-x-auto no-scrollbar">
+              <button onClick={() => applyFormat('bold')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs font-bold" title="Bold">B</button>
+              <button onClick={() => applyFormat('italic')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs italic" title="Italic">I</button>
+              <button onClick={() => applyFormat('bullet')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs" title="Bullet List">• List</button>
+              <button onClick={() => applyFormat('checkbox')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs" title="Checkbox">[ ] Task</button>
+              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+              {['✨', '🔥', '✅', '❌', '📅', '🚀', '💡'].map(emoji => (
+                <button key={emoji} onClick={() => insertEmoji(emoji)} className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded text-sm">{emoji}</button>
+              ))}
+          </div>
+        )}
 
         <div className="flex flex-col">
             {selectedType === 'project' ? (
@@ -131,11 +192,17 @@ ${text}`;
             ) : (
                 <div className="flex flex-col md:flex-row">
                     <div className={`flex-1 ${selectedType === 'code' ? 'md:border-r border-slate-100 dark:border-slate-700' : ''}`}>
-                        <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Type your notes here..." className="w-full h-40 p-4 bg-transparent border-0 focus:ring-0 outline-none resize-none text-slate-700 dark:text-slate-200 text-sm" />
+                        <textarea 
+                          ref={mainTextareaRef}
+                          value={text} 
+                          onChange={(e) => setText(e.target.value)} 
+                          placeholder="Type your notes here... Paste structured lists or code blocks freely." 
+                          className="w-full h-56 p-4 bg-transparent border-0 focus:ring-0 outline-none resize-none text-slate-700 dark:text-slate-200 text-sm whitespace-pre-wrap" 
+                        />
                     </div>
                     {selectedType === 'code' && (
                         <div className="flex-1 bg-slate-950 dark:bg-black/40">
-                            <textarea value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste code here..." className="w-full h-40 p-4 bg-transparent border-0 focus:ring-0 outline-none resize-none text-indigo-300 font-mono text-xs" />
+                            <textarea value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste the actual code snippet here for specialized handling..." className="w-full h-56 p-4 bg-transparent border-0 focus:ring-0 outline-none resize-none text-indigo-300 font-mono text-xs whitespace-pre" />
                         </div>
                     )}
                 </div>
@@ -143,10 +210,12 @@ ${text}`;
         </div>
         
         <div className="flex items-center justify-between p-3 border-t dark:border-slate-700">
-            <div className="text-[10px] text-slate-400 px-2 italic">Format: Markdown Supported</div>
+            <div className="text-[10px] text-slate-400 px-2 italic">Copy/Paste preserves structural spacing.</div>
             <div className="flex gap-2">
                 <button type="button" onClick={() => handleAction(false)} disabled={isDisabled} className="px-4 py-1.5 rounded-full font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 transition-colors">Add</button>
-                <button type="button" onClick={() => handleAction(true)} disabled={isDisabled} className="px-4 py-1.5 rounded-full font-bold text-sm bg-gradient-to-r from-primary-600 to-indigo-600 text-white shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5">✨ AI Organize</button>
+                <button type="button" onClick={() => handleAction(true)} disabled={isDisabled || isProcessing} className="px-4 py-1.5 rounded-full font-bold text-sm bg-gradient-to-r from-primary-600 to-indigo-600 text-white shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 disabled:opacity-50">
+                  {isProcessing ? '✨ Organizing...' : '✨ AI Organize'}
+                </button>
             </div>
         </div>
       </div>

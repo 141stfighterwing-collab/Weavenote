@@ -111,9 +111,9 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
       },
       code: ({node, inline, className, children, ...props}: any) => {
           return !inline ? (
-            <div className="bg-slate-800 dark:bg-black p-5 rounded-xl border border-slate-700 my-6 overflow-x-auto shadow-inner group/code relative">
-              <div className="absolute top-2 right-4 text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-0 group-hover/code:opacity-100 transition-opacity">Source Code</div>
-              <code className={`${className} text-indigo-300 text-sm font-mono leading-relaxed`} {...props}>
+            <div className="bg-slate-900 dark:bg-black p-6 rounded-2xl border border-slate-700 my-6 overflow-x-auto shadow-2xl group/code relative">
+              <div className="absolute top-3 right-5 text-[10px] text-indigo-400 font-bold uppercase tracking-widest opacity-80">Source Script</div>
+              <code className={`${className} text-indigo-300 text-sm font-mono leading-relaxed whitespace-pre`} {...props}>
                 {children}
               </code>
             </div>
@@ -144,6 +144,11 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
                 </div>
             </div>
             <div className="flex items-center gap-2">
+                {onSaveExpanded && (
+                  <button onClick={handleDeepDive} disabled={isExpanding} className="px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm bg-indigo-600 text-white hover:bg-indigo-700 flex items-center gap-1 disabled:opacity-50">
+                    {isExpanding ? '✨ Diving...' : '✨ Deep Dive'}
+                  </button>
+                )}
                 {note.type === 'project' && onToggleComplete && (
                     <button 
                         onClick={() => onToggleComplete(note.id)}
@@ -158,7 +163,7 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
             </div>
         </div>
 
-        <div className="p-8 overflow-y-auto custom-scrollbar flex-grow">
+        <div className="p-8 overflow-y-auto custom-scrollbar flex-grow bg-white/20 dark:bg-black/20">
              {note.type === 'project' && note.projectData && (
                 <div className="mb-8 font-sans">
                     <div className="bg-white/50 dark:bg-black/20 p-4 rounded-lg border border-black/10 mb-4">
@@ -168,7 +173,7 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
                 </div>
              )}
 
-             <div className="prose prose-lg max-w-none font-sans opacity-95 prose-headings:font-hand prose-headings:font-bold prose-p:my-4 prose-li:my-2 break-words">
+             <div className="prose prose-lg max-w-none font-sans opacity-95 prose-headings:font-hand prose-headings:font-bold prose-p:my-4 prose-li:my-2 break-words whitespace-pre-wrap">
                 <ReactMarkdown 
                     remarkPlugins={[remarkGfm]}
                     components={markdownComponents}

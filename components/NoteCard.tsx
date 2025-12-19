@@ -61,15 +61,15 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, onTagClick, onEdit,
           return <input {...props} />;
       },
       code: ({node, inline, className, children, ...props}: any) => {
-          const match = /language-(\w+)/.exec(className || '');
           return !inline ? (
-            <div className="bg-slate-800 dark:bg-black/40 p-3 rounded-lg border border-slate-700 my-2 overflow-x-auto">
-              <code className={`${className} text-indigo-300 text-[11px] font-mono leading-tight`} {...props}>
+            <div className="bg-slate-800 dark:bg-black/60 p-4 rounded-xl border border-slate-700 my-3 overflow-x-auto shadow-lg group/code relative">
+              <div className="absolute top-2 right-4 text-[9px] text-indigo-400 font-bold uppercase tracking-widest opacity-60">Source Block</div>
+              <code className={`${className} text-indigo-200 text-[11px] font-mono leading-normal whitespace-pre`} {...props}>
                 {children}
               </code>
             </div>
           ) : (
-            <code className="bg-black/10 dark:bg-white/10 px-1 rounded text-primary-700 dark:text-primary-300 font-mono text-[11px]" {...props}>
+            <code className="bg-black/10 dark:bg-white/10 px-1.5 py-0.5 rounded text-primary-700 dark:text-primary-300 font-mono text-[11px]" {...props}>
               {children}
             </code>
           )
@@ -126,7 +126,7 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, onTagClick, onEdit,
               </div>
           </div>
       ) : (
-          <div className={`prose prose-sm flex-grow opacity-90 text-sm line-clamp-[8] overflow-hidden mb-4 mt-2 ${note.type === 'code' ? 'font-mono bg-white/30 dark:bg-black/10 p-2 rounded-lg' : ''}`}>
+          <div className={`prose prose-sm max-w-none flex-grow opacity-95 text-sm line-clamp-[10] overflow-hidden mb-4 mt-2 ${note.type === 'code' ? 'font-mono bg-white/40 dark:bg-black/10 p-3 rounded-lg border border-black/5 shadow-inner' : ''} whitespace-pre-wrap`}>
              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{note.content}</ReactMarkdown>
           </div>
       )}
