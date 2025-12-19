@@ -3,7 +3,7 @@ import { NoteType } from '../types';
 import { parseDocument } from '../services/documentParser';
 
 interface NoteInputProps {
-  onAddNote: (text: string, type: NoteType, attachments?: string[], forcedTags?: string[], useAI?: boolean, manualTitle?: string) => Promise<void>;
+  onAddNote: (text: string, type: NoteType, attachments?: string[], forcedTags?: string[], useAI?: boolean, manualTitle?: string, extraProjectData?: { manualProgress?: number, isCompleted?: boolean }) => Promise<void>;
   isProcessing: boolean;
   activeType: NoteType;
   readOnly?: boolean;
@@ -19,6 +19,8 @@ const NoteInput: React.FC<NoteInputProps> = ({ onAddNote, isProcessing, activeTy
   const [milestones, setMilestones] = useState('');
   const [deliverables, setDeliverables] = useState('');
   const [timeline, setTimeline] = useState('');
+  const [manualProgress, setManualProgress] = useState(0);
+  const [isCompleted, setIsCompleted] = useState(false);
   
   const [selectedType, setSelectedType] = useState<NoteType>(initialActiveType);
   const [isParsing, setIsParsing] = useState(false);
@@ -45,8 +47,13 @@ ${text}`;
     }
 
     if (!rawSubmission.trim() && !title.trim()) return;
-    await onAddNote(rawSubmission, selectedType, [], [], useAI, title);
-    setText(''); setCode(''); setTitle(''); setMilestones(''); setDeliverables(''); setTimeline('');
+    
+    await onAddNote(rawSubmission, selectedType, [], [], useAI, title, selectedType === 'project' ? { 
+        manualProgress, 
+        isCompleted 
+    } : undefined);
+    
+    setText(''); setCode(''); setTitle(''); setMilestones(''); setDeliverables(''); setTimeline(''); setManualProgress(0); setIsCompleted(false);
   };
 
   const getBackgroundColor = () => {
@@ -61,13 +68,13 @@ ${text}`;
 
   const isDisabled = (!text.trim() && !code.trim() && !title.trim()) || isProcessing || isParsing;
 
-  if (readOnly) return <div className="p-6 text-center border-dashed border rounded-xl">🔒 Read Only</div>;
+  if (readOnly) return <div className="p-6 text-center border-dashed border rounded-xl text-slate-400">🔒 Read Only</div>;
 
   return (
     <div className={`rounded-xl shadow-lg border p-1 mb-8 transition-all ${getBackgroundColor()}`}>
         <div className="flex gap-1 p-1 mb-1 overflow-x-auto no-scrollbar">
             {(['quick', 'deep', 'code', 'project', 'contact', 'document'] as NoteType[]).map(type => (
-                <button key={type} onClick={() => setSelectedType(type)} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all min-w-[70px] ${selectedType === type ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500'}`}>
+                <button key={type} onClick={() => setSelectedType(type)} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all min-w-[70px] ${selectedType === type ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-white/40 dark:hover:bg-slate-800/40'}`}>
                     <span className="capitalize">{type}</span>
                 </button>
             ))}
@@ -82,30 +89,53 @@ ${text}`;
                     <div className="space-y-3">
                         <div>
                             <label className="text-[10px] font-bold uppercase text-slate-400">📦 Deliverables</label>
-                            <input value={deliverables} onChange={e => setDeliverables(e.target.value)} className="w-full bg-white dark:bg-slate-800 border dark:border-slate-700 rounded px-2 py-1.5 text-sm" placeholder="UI Mockups, Backend API, Docs..." />
+                            <input value={deliverables} onChange={e => setDeliverables(e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary-500" placeholder="UI Mockups, Backend API, Docs..." />
                         </div>
                         <div>
                             <label className="text-[10px] font-bold uppercase text-slate-400">📅 Timeline & Estimates</label>
-                            <input value={timeline} onChange={e => setTimeline(e.target.value)} className="w-full bg-white dark:bg-slate-800 border dark:border-slate-700 rounded px-2 py-1.5 text-sm" placeholder="3 weeks, Start Q1..." />
+                            <input value={timeline} onChange={e => setTimeline(e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary-500" placeholder="3 weeks, Start Q1..." />
                         </div>
                         <div>
-                            <label className="text-[10px] font-bold uppercase text-slate-400">🏁 Milestones (one per line)</label>
-                            <textarea value={milestones} onChange={e => setMilestones(e.target.value)} className="w-full bg-white dark:bg-slate-800 border dark:border-slate-700 rounded px-2 py-1.5 text-sm h-24 resize-none" placeholder="1. Kickoff meeting&#10;2. Design approval&#10;3. Final testing..." />
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="text-[10px] font-bold uppercase text-slate-400">📊 Manual Progress</label>
+                                <span className="text-[10px] font-mono font-bold text-primary-600">{manualProgress}%</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min="0" 
+                                max="100" 
+                                value={manualProgress} 
+                                onChange={(e) => setManualProgress(parseInt(e.target.value))}
+                                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2 py-1">
+                            <input 
+                                type="checkbox" 
+                                id="isCompleted" 
+                                checked={isCompleted} 
+                                onChange={(e) => setIsCompleted(e.target.checked)}
+                                className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500"
+                            />
+                            <label htmlFor="isCompleted" className="text-xs font-bold text-slate-600 dark:text-slate-400">Mark as Completed</label>
                         </div>
                     </div>
                     <div className="flex flex-col">
+                        <label className="text-[10px] font-bold uppercase text-slate-400">🏁 Milestones (one per line)</label>
+                        <textarea value={milestones} onChange={e => setMilestones(e.target.value)} className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 py-1.5 text-sm h-20 resize-none mb-2 outline-none focus:ring-1 focus:ring-primary-500" placeholder="1. Kickoff meeting&#10;2. Design approval..." />
+                        
                         <label className="text-[10px] font-bold uppercase text-slate-400">📝 Detailed Project Context</label>
-                        <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Explain the project goal, constraints, and other specific details..." className="flex-1 w-full bg-white dark:bg-slate-800 border dark:border-slate-700 rounded px-2 py-1.5 text-sm h-full resize-none" />
+                        <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Explain project goals..." className="flex-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 py-1.5 text-sm min-h-[60px] resize-none outline-none focus:ring-1 focus:ring-primary-500" />
                     </div>
                 </div>
             ) : (
                 <div className="flex flex-col md:flex-row">
-                    <div className={`flex-1 ${selectedType === 'code' ? 'md:border-r dark:border-slate-700' : ''}`}>
-                        <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Type your notes here..." className="w-full h-40 p-4 bg-transparent border-0 focus:ring-0 resize-none text-slate-700 dark:text-slate-200 text-sm" />
+                    <div className={`flex-1 ${selectedType === 'code' ? 'md:border-r border-slate-100 dark:border-slate-700' : ''}`}>
+                        <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Type your notes here..." className="w-full h-40 p-4 bg-transparent border-0 focus:ring-0 outline-none resize-none text-slate-700 dark:text-slate-200 text-sm" />
                     </div>
                     {selectedType === 'code' && (
                         <div className="flex-1 bg-slate-950 dark:bg-black/40">
-                            <textarea value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste code here..." className="w-full h-40 p-4 bg-transparent border-0 focus:ring-0 resize-none text-indigo-300 font-mono text-xs" />
+                            <textarea value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste code here..." className="w-full h-40 p-4 bg-transparent border-0 focus:ring-0 outline-none resize-none text-indigo-300 font-mono text-xs" />
                         </div>
                     )}
                 </div>
@@ -115,8 +145,8 @@ ${text}`;
         <div className="flex items-center justify-between p-3 border-t dark:border-slate-700">
             <div className="text-[10px] text-slate-400 px-2 italic">Format: Markdown Supported</div>
             <div className="flex gap-2">
-                <button type="button" onClick={() => handleAction(false)} disabled={isDisabled} className="px-4 py-1.5 rounded-full font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200">Add</button>
-                <button type="button" onClick={() => handleAction(true)} disabled={isDisabled} className="px-4 py-1.5 rounded-full font-bold text-sm bg-gradient-to-r from-primary-600 to-indigo-600 text-white shadow-md">✨ AI Organize</button>
+                <button type="button" onClick={() => handleAction(false)} disabled={isDisabled} className="px-4 py-1.5 rounded-full font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 transition-colors">Add</button>
+                <button type="button" onClick={() => handleAction(true)} disabled={isDisabled} className="px-4 py-1.5 rounded-full font-bold text-sm bg-gradient-to-r from-primary-600 to-indigo-600 text-white shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5">✨ AI Organize</button>
             </div>
         </div>
       </div>

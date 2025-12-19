@@ -17,6 +17,7 @@ interface NoteCardProps {
   onAddTag: (noteId: string, tag: string) => void;
   onRemoveTag: (noteId: string, tag: string) => void;
   onMoveToFolder?: (noteId: string, folderId: string | undefined) => void;
+  onToggleComplete?: (id: string) => void;
 }
 
 const getHashColor = (str: string) => {
@@ -24,12 +25,19 @@ const getHashColor = (str: string) => {
     return `hsl(${Math.abs(hash % 360)}, 70%, 45%)`; 
 };
 
-const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, onTagClick, onEdit, onExpand, readOnly = false, onToggleCheckbox }) => {
+const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, onTagClick, onEdit, onExpand, readOnly = false, onToggleCheckbox, onToggleComplete }) => {
   const checkboxCounter = useRef(0);
   checkboxCounter.current = 0;
 
   const calculateProgress = useMemo(() => {
       if (!note.projectData) return 0;
+      if (note.projectData.isCompleted) return 100;
+      
+      // Prefer manualProgress if set (not undefined)
+      if (typeof note.projectData.manualProgress === 'number') {
+          return note.projectData.manualProgress;
+      }
+
       const { milestones, workflow } = note.projectData;
       let completed = 0;
       let total = 0;
@@ -49,27 +57,33 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, onTagClick, onEdit,
       input: (props: any) => {
           if (props.type === 'checkbox') {
               const index = checkboxCounter.current++;
-              return <input type="checkbox" checked={props.checked} onChange={() => onToggleCheckbox(note.id, index)} onClick={(e) => e.stopPropagation()} className="mt-1 h-3 w-3" />;
+              return <input type="checkbox" checked={props.checked} onChange={() => onToggleCheckbox(note.id, index)} onClick={(e) => e.stopPropagation()} className="mt-1 h-3 w-3 rounded text-primary-600 focus:ring-primary-500" />;
           }
           return <input {...props} />;
       }
   };
 
+  const isFinished = note.projectData?.isCompleted || calculateProgress === 100;
+
   return (
     <div
       onClick={() => onExpand(note)}
-      className={`relative group p-5 rounded-xl shadow hover:shadow-xl transition-all ${NOTE_COLORS[note.color]} min-h-[220px] flex flex-col cursor-pointer border border-black/5 dark:brightness-95 overflow-hidden`}
+      className={`relative group p-5 rounded-xl shadow hover:shadow-xl transition-all ${NOTE_COLORS[note.color]} min-h-[220px] flex flex-col cursor-pointer border border-black/5 dark:brightness-95 overflow-hidden ${isFinished ? 'ring-2 ring-emerald-500/50' : ''}`}
     >
+      {/* Header Area */}
       <div className="flex justify-between items-start mb-3 border-b border-black/5 pb-2">
-        <div>
+        <div className="flex-grow min-w-0 pr-2">
            <div className="flex items-center gap-2 mb-1">
-             <span className="text-[10px] uppercase font-bold text-white bg-black/40 px-2 py-0.5 rounded-full">{note.type}</span>
-             <span className="text-[10px] uppercase font-bold opacity-50 tracking-wider">{note.category}</span>
+             <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${isFinished ? 'bg-emerald-500 text-white' : 'bg-black/40 text-white'}`}>
+                {isFinished ? '✓ Finished' : note.type}
+             </span>
+             <span className="text-[10px] uppercase font-bold opacity-50 tracking-wider truncate">{note.category}</span>
            </div>
-           <h3 className="text-xl font-bold leading-tight line-clamp-2">{note.title}</h3>
+           <h3 className={`text-xl font-bold leading-tight line-clamp-2 ${isFinished ? 'opacity-60 line-through' : ''}`}>{note.title}</h3>
         </div>
       </div>
 
+      {/* Body Area */}
       {note.type === 'project' && note.projectData ? (
           <div className="space-y-4 mb-4 mt-2">
               <div className="grid grid-cols-2 gap-2">
@@ -93,11 +107,11 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, onTagClick, onEdit,
 
               <div className="bg-white/50 dark:bg-black/20 p-2 rounded-lg border border-black/5">
                   <div className="flex justify-between items-center mb-1.5">
-                    <p className="text-[9px] font-bold uppercase opacity-60">🏁 Progress</p>
+                    <p className="text-[9px] font-bold uppercase opacity-60">📊 Progress</p>
                     <span className="text-[10px] font-bold opacity-80">{calculateProgress}%</span>
                   </div>
                   <div className="w-full h-2 bg-black/5 dark:bg-white/5 rounded-full overflow-hidden mb-2">
-                      <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: `${calculateProgress}%` }} />
+                      <div className={`h-full transition-all duration-700 ${isFinished ? 'bg-emerald-500' : 'bg-primary-500'}`} style={{ width: `${calculateProgress}%` }} />
                   </div>
                   {note.projectData.milestones.length > 0 && (
                     <div className="space-y-1 mt-2 border-t border-black/5 pt-1.5">
@@ -117,22 +131,40 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, onTagClick, onEdit,
           </div>
       )}
 
-      <div className="flex flex-wrap gap-1.5 mt-auto pt-3 border-t border-black/5">
-        {note.tags.slice(0, 5).map(tag => (
-            <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full text-white font-bold shadow-sm" style={{ backgroundColor: getHashColor(tag) }}>
-                #{tag}
-            </span>
-        ))}
-        {note.tags.length > 5 && <span className="text-[10px] opacity-50 font-bold">+{note.tags.length - 5}</span>}
-      </div>
+      {/* Footer Area with Tags and Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-1.5 mt-auto pt-3 border-t border-black/5">
+        <div className="flex flex-wrap gap-1.5">
+          {note.tags.slice(0, 4).map(tag => (
+              <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full text-white font-bold shadow-sm" style={{ backgroundColor: getHashColor(tag) }}>
+                  #{tag}
+              </span>
+          ))}
+          {note.tags.length > 4 && <span className="text-[10px] opacity-50 font-bold">+{note.tags.length - 4}</span>}
+        </div>
 
-      <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={(e) => { e.stopPropagation(); onEdit(note); }} className="p-1.5 bg-white/80 dark:bg-black/30 hover:bg-white rounded-lg shadow-sm">
+        {/* Action Controls */}
+        <div className="flex items-center gap-1.5">
+          {note.type === 'project' && !readOnly && (
+              <button 
+                  onClick={(e) => { e.stopPropagation(); onToggleComplete?.(note.id); }}
+                  className={`p-1.5 rounded-lg transition-all shadow-sm transform hover:scale-105 ${isFinished ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200' : 'bg-white/80 dark:bg-black/30 text-slate-400 hover:bg-white'}`}
+                  title={isFinished ? "Mark as Ongoing" : "Mark as Complete"}
+              >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6L9 17L4 12"/></svg>
+              </button>
+          )}
+          <button onClick={(e) => { e.stopPropagation(); onEdit(note); }} className="p-1.5 bg-white/80 dark:bg-black/30 hover:bg-white rounded-lg shadow-sm transition-all transform hover:scale-105" title="Edit">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onDelete(note.id); }} className="p-1.5 bg-red-500/10 text-red-700 hover:bg-red-500 hover:text-white rounded-lg shadow-sm transition-colors">
+          <button onClick={(e) => { e.stopPropagation(); onDelete(note.id); }} className="p-1.5 bg-red-500/10 text-red-700 hover:bg-red-500 hover:text-white rounded-lg shadow-sm transition-all transform hover:scale-105" title="Delete">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
           </button>
+        </div>
+      </div>
+
+      {/* Sticky management buttons top-right (Only standard ones, toggle moved) */}
+      <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+         {/* These are intentionally empty or simplified since main controls moved to footer for better spacing */}
       </div>
     </div>
   );

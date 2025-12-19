@@ -52,7 +52,6 @@ const App: React.FC = () => {
   const [enableImages, setEnableImages] = useState(() => localStorage.getItem('ideaweaver_enableimages') === 'true');
   const [showLinkPreviews, setShowLinkPreviews] = useState(() => localStorage.getItem('ideaweaver_linkpreviews') === 'true');
 
-  // THEME SYNC EFFECT
   useEffect(() => {
     const body = document.body;
     const themeClasses = ['theme-ocean', 'theme-forest', 'theme-sunset', 'theme-rose', 'theme-midnight', 'theme-coffee', 'theme-neon'];
@@ -63,7 +62,6 @@ const App: React.FC = () => {
     localStorage.setItem('ideaweaver_theme', theme);
   }, [theme]);
 
-  // DARK MODE SYNC EFFECT
   useEffect(() => {
     if (darkMode) {
         document.documentElement.classList.add('dark');
@@ -113,13 +111,21 @@ const App: React.FC = () => {
       setFolders([]);
   };
 
+  const handleTabChange = (type: NoteType) => {
+      setActiveTab(type);
+      setActiveTagFilter(null);
+      setActiveDateFilter(null);
+      setSearchQuery('');
+  };
+
   const handleAddNote = async (
     rawText: string, 
     type: NoteType, 
     attachments: string[] = [], 
     forcedTags: string[] = [],
     useAI: boolean = true,
-    manualTitle: string = ''
+    manualTitle: string = '',
+    extraProjectData?: { manualProgress?: number, isCompleted?: boolean }
   ) => {
     if (!canEdit) return;
     setIsProcessing(true);
@@ -150,6 +156,14 @@ const App: React.FC = () => {
             };
         }
 
+        if (type === 'project' && extraProjectData) {
+            if (!processed.projectData) {
+                processed.projectData = { deliverables: [], milestones: [], timeline: [] };
+            }
+            processed.projectData.manualProgress = extraProjectData.manualProgress;
+            processed.projectData.isCompleted = extraProjectData.isCompleted;
+        }
+
         const newNote: Note = {
             id: crypto.randomUUID(),
             title: processed.title,
@@ -168,7 +182,7 @@ const App: React.FC = () => {
         };
 
         setNotes(prev => [newNote, ...prev]);
-        setActiveTab(type);
+        handleTabChange(type);
         await saveNote(newNote, storageOwner);
         setDailyUsage(getDailyUsage());
     } catch (err: any) {
@@ -264,6 +278,22 @@ const App: React.FC = () => {
       await deleteFolder(id, storageOwner);
   };
 
+  const handleToggleProjectCompletion = async (noteId: string) => {
+      if (!canEdit) return;
+      const target = notes.find(n => n.id === noteId);
+      if (!target || target.type !== 'project' || !target.projectData) return;
+      
+      const updated = { 
+          ...target, 
+          projectData: { 
+              ...target.projectData, 
+              isCompleted: !target.projectData.isCompleted 
+          } 
+      };
+      setNotes(prev => prev.map(n => n.id === noteId ? updated : n));
+      await saveNote(updated, storageOwner);
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -297,6 +327,15 @@ const App: React.FC = () => {
       return result;
   }, [notes, activeTab, activeFolderId, activeTagFilter, activeDateFilter, searchQuery]);
 
+  const clearFilters = () => {
+    setActiveFolderId(null);
+    setActiveTagFilter(null);
+    setActiveDateFilter(null);
+    setSearchQuery('');
+  };
+
+  const isFiltered = activeFolderId || activeTagFilter || activeDateFilter || searchQuery;
+
   if (isAuthChecking) {
       return (
           <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
@@ -319,7 +358,7 @@ const App: React.FC = () => {
                         <button onClick={() => setViewMode('mindmap')} className={`p-1.5 rounded-md transition-all ${viewMode === 'mindmap' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600' : 'text-slate-400'}`}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 9V3"></path><path d="M12 21v-6"></path><path d="M9 12H3"></path><path d="M21 12h-6"></path></svg></button>
                     </div>
                     <button onClick={() => setShowAnalytics(true)} className="flex items-center gap-1 text-sm font-bold text-slate-600 hover:text-primary-600 dark:text-slate-300">📊 Analytics</button>
-                    <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full text-sm outline-none w-full max-w-xs dark:text-white" />
+                    <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full text-sm outline-none w-full max-w-xs dark:text-white border border-transparent focus:border-primary-400 transition-all" />
                     <LoginWidget currentUser={currentUser?.username || null} onLoginSuccess={handleLoginSuccess} onLogout={handleLogout} />
                     <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full">⚙️</button>
                 </div>
@@ -329,7 +368,7 @@ const App: React.FC = () => {
         <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 overflow-x-auto no-scrollbar">
             <div className="max-w-7xl mx-auto px-4 flex gap-6 whitespace-nowrap">
                 {(['quick', 'deep', 'code', 'project', 'contact', 'document'] as NoteType[]).map(type => (
-                    <button key={type} onClick={() => setActiveTab(type)} className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors capitalize ${activeTab === type ? 'border-primary-500 text-primary-600' : 'border-transparent text-slate-500'}`}>
+                    <button key={type} onClick={() => handleTabChange(type)} className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors capitalize ${activeTab === type ? 'border-primary-500 text-primary-600 font-bold' : 'border-transparent text-slate-500'}`}>
                         {type === 'code' ? 'Code/Script' : type}
                     </button>
                 ))}
@@ -347,6 +386,20 @@ const App: React.FC = () => {
                         enableImages={enableImages} 
                     />
                 )}
+
+                {isFiltered && (
+                    <div className="mb-4 p-2 bg-primary-50 dark:bg-primary-900/10 border border-primary-100 dark:border-primary-900/30 rounded-lg flex items-center justify-between text-xs animate-[fadeIn_0.2s_ease-out]">
+                        <div className="flex items-center gap-2">
+                            <span className="font-bold text-primary-700 dark:text-primary-400 uppercase tracking-tighter">Filters Active:</span>
+                            {activeFolderId && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm">Folder: {folders.find(f => f.id === activeFolderId)?.name}</span>}
+                            {activeTagFilter && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm">Tag: #{activeTagFilter}</span>}
+                            {activeDateFilter && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm">Date: {activeDateFilter.toLocaleDateString()}</span>}
+                            {searchQuery && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm">Search: "{searchQuery}"</span>}
+                        </div>
+                        <button onClick={clearFilters} className="text-primary-600 hover:text-primary-800 font-bold underline">Clear All</button>
+                    </div>
+                )}
+
                 <div className="mt-4">
                     {viewMode === 'mindmap' ? (
                         <div className="h-[600px] border rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/50">
@@ -360,7 +413,7 @@ const App: React.FC = () => {
                                     note={note} 
                                     folders={folders} 
                                     onDelete={handleDeleteNote} 
-                                    onTagClick={(t) => setActiveTagFilter(t === activeTagFilter ? null : t)} 
+                                    onTagClick={(t) => setActiveTagFilter(t)} 
                                     onChangeColor={async (id, c) => { setNotes(prev => prev.map(n => n.id === id ? { ...n, color: c } : n)); if (storageOwner) await saveNote({ ...notes.find(n => n.id === id)!, color: c }, storageOwner); }}
                                     onEdit={setEditingNote} 
                                     onExpand={setExpandedNote} 
@@ -370,9 +423,15 @@ const App: React.FC = () => {
                                     onAddTag={handleAddTag} 
                                     onRemoveTag={handleRemoveTag} 
                                     onMoveToFolder={handleMoveNote} 
+                                    onToggleComplete={handleToggleProjectCompletion}
                                 />
                             ))}
-                            {filteredNotes.length === 0 && <p className="col-span-full text-center text-slate-400 py-10">No notes found.</p>}
+                            {filteredNotes.length === 0 && (
+                                <div className="col-span-full text-center py-20 bg-white/50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                                    <p className="text-slate-400 text-lg">No notes found for this tab or filter.</p>
+                                    {isFiltered && <button onClick={clearFilters} className="mt-2 text-primary-500 hover:underline">Clear filters to see all {activeTab} notes</button>}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

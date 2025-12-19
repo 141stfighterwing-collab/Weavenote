@@ -1,4 +1,3 @@
-
 export type NoteType = 'quick' | 'deep' | 'code' | 'project' | 'contact' | 'document';
 
 export type Theme = 'default' | 'ocean' | 'forest' | 'sunset' | 'rose' | 'midnight' | 'coffee' | 'neon';
@@ -42,6 +41,8 @@ export interface ProjectData {
       edges: WorkflowEdge[];
   };
   estimatedDuration?: string;
+  manualProgress?: number; // 0 to 100
+  isCompleted?: boolean;
 }
 
 export interface Note {

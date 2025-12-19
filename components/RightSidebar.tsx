@@ -13,13 +13,20 @@ const RightSidebar: React.FC<RightSidebarProps> = ({ notes, onNoteClick, classNa
 
   const ongoingProjects = useMemo(() => {
     return notes
-      .filter(n => n.type === 'project')
+      .filter(n => n.type === 'project' && !n.projectData?.isCompleted)
       .sort((a, b) => b.createdAt - a.createdAt)
       .slice(0, 5);
   }, [notes]);
 
   const calculateProgress = (note: Note) => {
       if (!note.projectData) return 0;
+      if (note.projectData.isCompleted) return 100;
+
+      // Prefer manualProgress
+      if (typeof note.projectData.manualProgress === 'number') {
+          return note.projectData.manualProgress;
+      }
+
       const { milestones, workflow } = note.projectData;
       let completed = 0;
       let total = 0;
@@ -45,7 +52,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({ notes, onNoteClick, classNa
           </div>
           <div className="space-y-3">
              {todayNotes.length > 0 ? todayNotes.map(note => (
-                 <div key={note.id} onClick={() => onNoteClick(note)} className="cursor-pointer p-3 rounded-lg border border-slate-50 dark:border-slate-700 bg-slate-50/30 dark:bg-slate-900/20 hover:border-primary-300">
+                 <div key={note.id} onClick={() => onNoteClick(note)} className="cursor-pointer p-3 rounded-lg border border-slate-50 dark:border-slate-700 bg-slate-50/30 dark:bg-slate-900/20 hover:border-primary-300 transition-all">
                     <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 line-clamp-1">{note.title}</h4>
                     {note.content.includes('- [ ]') && (
                         <p className="text-[10px] text-slate-500 mt-1 truncate italic">Next: {note.content.split('\n').find(l => l.includes('- [ ]'))?.replace('- [ ]', '')}</p>
@@ -70,7 +77,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({ notes, onNoteClick, classNa
                         <span className="text-[10px] font-bold text-slate-400">{progress}%</span>
                     </div>
                     <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-500 transition-all" style={{ width: `${progress}%` }} />
+                        <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${progress}%` }} />
                     </div>
                  </div>
              )}) : <p className="text-[10px] italic text-slate-400 py-4 text-center">No active projects.</p>}
