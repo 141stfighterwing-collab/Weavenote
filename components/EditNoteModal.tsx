@@ -13,6 +13,8 @@ interface EditNoteModalProps {
 const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, onSave, currentUser }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [manualTags, setManualTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<{category: string, tags: string[]} | null>(null);
@@ -23,6 +25,7 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
     if (note) {
       setTitle(note.title);
       setContent(note.content);
+      setManualTags(note.tags);
       setAiResult(null);
       setError(null);
     }
@@ -30,7 +33,7 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
 
   if (!isOpen || !note) return null;
 
-  const hasUnsavedChanges = title !== note.title || content !== note.content || aiResult !== null;
+  const hasUnsavedChanges = title !== note.title || content !== note.content || aiResult !== null || manualTags.join(',') !== note.tags.join(',');
 
   const handleAIOrganize = async () => {
       setIsProcessing(true);
@@ -40,11 +43,25 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
           setTitle(processed.title);
           setContent(processed.formattedContent);
           setAiResult({ category: processed.category, tags: processed.tags });
+          setManualTags(prev => Array.from(new Set([...prev, ...processed.tags])));
       } catch (err: any) {
           setError(err.message || "AI Organization failed.");
       } finally {
           setIsProcessing(false);
       }
+  };
+
+  const handleAddTag = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const tag = newTag.replace('#', '').trim().toLowerCase();
+    if (tag && !manualTags.includes(tag)) {
+        setManualTags([...manualTags, tag]);
+    }
+    setNewTag('');
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setManualTags(manualTags.filter(t => t !== tagToRemove));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -54,7 +71,7 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
         title, 
         content,
         aiResult?.category,
-        aiResult?.tags
+        manualTags
     );
     onClose();
   };
@@ -176,6 +193,30 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
               required
             />
           </div>
+
+          <div className="mb-4">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Tags</label>
+            <div className="flex flex-wrap gap-2 mb-2 min-h-[32px] p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-700">
+                {manualTags.map(tag => (
+                    <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded text-xs font-bold">
+                        #{tag}
+                        <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-500">✕</button>
+                    </span>
+                ))}
+                {manualTags.length === 0 && <span className="text-[10px] text-slate-400 italic">No tags yet. Use # in text or add below.</span>}
+            </div>
+            <div className="flex gap-2">
+                <input 
+                    type="text" 
+                    value={newTag} 
+                    onChange={e => setNewTag(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                    placeholder="Add manual tag..." 
+                    className="flex-1 px-3 py-1 text-sm bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded outline-none focus:ring-1 focus:ring-primary-500"
+                />
+                <button type="button" onClick={() => handleAddTag()} className="px-3 py-1 bg-slate-200 dark:bg-slate-600 rounded text-xs font-bold">Add</button>
+            </div>
+          </div>
           
           <div className="mb-4 flex-grow flex flex-col min-h-0">
             <div className="flex justify-between items-center mb-1">
@@ -206,7 +247,7 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
               disabled={isProcessing}
               onChange={(e) => setContent(e.target.value)}
               className="w-full flex-grow px-4 py-3 border border-slate-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-mono text-sm text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-700 focus:bg-white dark:focus:bg-slate-600 resize-none leading-relaxed disabled:opacity-50"
-              placeholder="# Markdown supported..."
+              placeholder="# Markdown supported... Tip: Use #hashtags within your text to auto-categorize."
               required
             />
           </div>

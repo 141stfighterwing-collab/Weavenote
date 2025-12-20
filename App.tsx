@@ -49,6 +49,12 @@ const App: React.FC = () => {
   const [enableImages, setEnableImages] = useState(() => localStorage.getItem('ideaweaver_enableimages') === 'true');
   const [showLinkPreviews, setShowLinkPreviews] = useState(() => localStorage.getItem('ideaweaver_linkpreviews') === 'true');
 
+  // Helper to extract hashtags from text
+  const extractHashtags = (text: string): string[] => {
+    const matches = text.match(/#(\w+)/g);
+    return matches ? matches.map(m => m.substring(1).toLowerCase()) : [];
+  };
+
   // Handle Theme Classes on Body
   useEffect(() => {
     const body = document.body;
@@ -135,7 +141,9 @@ const App: React.FC = () => {
     setIsProcessing(true);
     try {
         let processed;
-        let tags = [...forcedTags];
+        // Extract manual hashtags from the input immediately
+        let tags = [...forcedTags, ...extractHashtags(rawText), ...extractHashtags(manualTitle)];
+        
         if (type === 'quick') {
             const today = new Date().toISOString().split('T')[0]; 
             if (!tags.includes(today)) tags.push(today);
@@ -167,7 +175,7 @@ const App: React.FC = () => {
             content: processed.formattedContent,
             rawContent: rawText,
             category: processed.category,
-            tags: Array.from(new Set(tags)), 
+            tags: Array.from(new Set(tags.filter(t => t.trim().length > 0))), 
             color: NoteColor.Yellow, 
             createdAt: Date.now(),
             type: type,
@@ -194,7 +202,20 @@ const App: React.FC = () => {
       if (!canEdit) return;
       const target = notes.find(n => n.id === id);
       if (!target) return;
-      const updated = { ...target, title, content, ...(category ? { category } : {}), ...(tags ? { tags } : {}) };
+      
+      // Also extract any new hashtags from updated content
+      const contentTags = extractHashtags(content);
+      const titleTags = extractHashtags(title);
+      const mergedTags = Array.from(new Set([...(tags || target.tags), ...contentTags, ...titleTags]));
+
+      const updated = { 
+        ...target, 
+        title, 
+        content, 
+        ...(category ? { category } : {}), 
+        tags: mergedTags 
+      };
+      
       setNotes(prev => prev.map(n => n.id === id ? updated : n));
       await saveNote(updated, storageOwner);
   };
