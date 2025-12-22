@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Note, NoteColor, NoteType, ViewMode, Theme, Folder, User } from './types';
 import { processNoteWithAI, getDailyUsage } from './services/geminiService';
@@ -49,13 +50,11 @@ const App: React.FC = () => {
   const [enableImages, setEnableImages] = useState(() => localStorage.getItem('ideaweaver_enableimages') === 'true');
   const [showLinkPreviews, setShowLinkPreviews] = useState(() => localStorage.getItem('ideaweaver_linkpreviews') === 'true');
 
-  // Helper to extract hashtags from text
   const extractHashtags = (text: string): string[] => {
     const matches = text.match(/#(\w+)/g);
     return matches ? matches.map(m => m.substring(1).toLowerCase()) : [];
   };
 
-  // Handle Theme Classes on Body
   useEffect(() => {
     const body = document.body;
     const themeClasses = ['theme-ocean', 'theme-forest', 'theme-sunset', 'theme-rose', 'theme-midnight', 'theme-coffee', 'theme-neon', 'theme-cyberpunk', 'theme-nord', 'theme-dracula', 'theme-lavender', 'theme-earth'];
@@ -66,7 +65,6 @@ const App: React.FC = () => {
     localStorage.setItem('ideaweaver_theme', theme);
   }, [theme]);
 
-  // Handle Dark Mode on HTML tag (Tailwind standard)
   useEffect(() => {
     if (darkMode) {
         document.documentElement.classList.add('dark');
@@ -129,10 +127,8 @@ const App: React.FC = () => {
 
   const handleExpandNote = async (note: Note) => {
     setExpandedNote(note);
-    // Increment view count
     const updatedNote = { ...note, accessCount: (note.accessCount || 0) + 1 };
     setNotes(prev => prev.map(n => n.id === note.id ? updatedNote : n));
-    // Save the view count increment to storage
     await saveNote(updatedNote, storageOwner);
   };
 
@@ -141,7 +137,6 @@ const App: React.FC = () => {
     setIsProcessing(true);
     try {
         let processed;
-        // Extract manual hashtags from the input immediately
         let tags = [...forcedTags, ...extractHashtags(rawText), ...extractHashtags(manualTitle)];
         
         if (type === 'quick') {
@@ -176,7 +171,7 @@ const App: React.FC = () => {
             rawContent: rawText,
             category: processed.category,
             tags: Array.from(new Set(tags.filter(t => t.trim().length > 0))), 
-            color: NoteColor.Yellow, 
+            color: type === 'notebook' ? NoteColor.Slate : NoteColor.Yellow, 
             createdAt: Date.now(),
             type: type,
             attachments: attachments || [],
@@ -203,7 +198,6 @@ const App: React.FC = () => {
       const target = notes.find(n => n.id === id);
       if (!target) return;
       
-      // Also extract any new hashtags from updated content
       const contentTags = extractHashtags(content);
       const titleTags = extractHashtags(title);
       const mergedTags = Array.from(new Set([...(tags || target.tags), ...contentTags, ...titleTags]));
@@ -277,7 +271,6 @@ const App: React.FC = () => {
 
   const handleDeleteNote = async (id: string) => {
       if (!canEdit) return;
-      // Soft Delete
       const updatedNotes = notes.map(n => n.id === id ? { ...n, isDeleted: true, deletedAt: Date.now() } : n);
       setNotes(updatedNotes);
       if (expandedNote?.id === id) setExpandedNote(null);
@@ -394,7 +387,7 @@ const App: React.FC = () => {
 
         <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 overflow-x-auto no-scrollbar">
             <div className="max-w-7xl mx-auto px-4 flex gap-6 whitespace-nowrap">
-                {(['quick', 'deep', 'code', 'project', 'contact', 'document'] as NoteType[]).map(type => (
+                {(['quick', 'notebook', 'deep', 'code', 'project', 'contact', 'document'] as NoteType[]).map(type => (
                     <button key={type} onClick={() => handleTabChange(type)} className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors capitalize ${activeTab === type ? 'border-primary-500 text-primary-600 font-bold' : 'border-transparent text-slate-500'}`}>
                         {type === 'code' ? 'Code/Script' : type}
                     </button>
@@ -453,26 +446,57 @@ const App: React.FC = () => {
                             <MindMap notes={activeNotes} onNoteClick={(id) => { const n = activeNotes.find(n => n.id === id); if (n) { handleExpandNote(n); setViewMode('grid'); } }} />
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
-                            {filteredNotes.map(note => (
-                                <NoteCard 
-                                    key={note.id} 
-                                    note={note} 
-                                    folders={folders} 
-                                    onDelete={handleDeleteNote} 
-                                    onTagClick={(t) => setActiveTagFilter(t)} 
-                                    onChangeColor={async (id, c) => { setNotes(prev => prev.map(n => n.id === id ? { ...n, color: c } : n)); if (storageOwner) await saveNote({ ...notes.find(n => n.id === id)!, color: c }, storageOwner); }}
-                                    onEdit={setEditingNote} 
-                                    onExpand={handleExpandNote} 
-                                    readOnly={!canEdit} 
-                                    onViewImage={setViewingImage} 
-                                    onToggleCheckbox={handleToggleCheckbox} 
-                                    onAddTag={handleAddTag} 
-                                    onRemoveTag={handleRemoveTag} 
-                                    onMoveToFolder={handleMoveNote} 
-                                    onToggleComplete={handleToggleProjectCompletion}
-                                />
-                            ))}
+                        <>
+                            {activeTab === 'deep' ? (
+                                <div className="space-y-3">
+                                    {filteredNotes.map(note => (
+                                        <div 
+                                            key={note.id} 
+                                            onClick={() => handleExpandNote(note)}
+                                            className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center hover:shadow-lg hover:border-primary-400 dark:hover:border-primary-500 cursor-pointer transition-all animate-[fadeIn_0.2s_ease-out]"
+                                        >
+                                            <div className="min-w-0 pr-4">
+                                                <h3 className="font-bold text-lg text-slate-800 dark:text-white truncate">{note.title}</h3>
+                                                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mt-1">{note.content.substring(0, 180)}</p>
+                                                <div className="flex gap-2 mt-2">
+                                                    {note.tags.slice(0, 3).map(tag => (
+                                                        <span key={tag} className="text-[10px] text-primary-600 dark:text-primary-400 font-bold">#{tag}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-2 shrink-0">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(note.createdAt).toLocaleDateString()}</span>
+                                                <div className="p-2 rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400">
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
+                                    {filteredNotes.map(note => (
+                                        <NoteCard 
+                                            key={note.id} 
+                                            note={note} 
+                                            folders={folders} 
+                                            onDelete={handleDeleteNote} 
+                                            onTagClick={(t) => setActiveTagFilter(t)} 
+                                            onChangeColor={async (id, c) => { setNotes(prev => prev.map(n => n.id === id ? { ...n, color: c } : n)); if (storageOwner) await saveNote({ ...notes.find(n => n.id === id)!, color: c }, storageOwner); }}
+                                            onEdit={setEditingNote} 
+                                            onExpand={handleExpandNote} 
+                                            readOnly={!canEdit} 
+                                            onViewImage={setViewingImage} 
+                                            onToggleCheckbox={handleToggleCheckbox} 
+                                            onAddTag={handleAddTag} 
+                                            onRemoveTag={handleRemoveTag} 
+                                            onMoveToFolder={handleMoveNote} 
+                                            onToggleComplete={handleToggleProjectCompletion}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                            
                             {filteredNotes.length === 0 && (
                                 <div className="col-span-full text-center py-20 bg-white/50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
                                     <p className="text-slate-400 text-lg font-bold">No results found.</p>
@@ -480,7 +504,7 @@ const App: React.FC = () => {
                                     {isFiltered && <button onClick={clearFilters} className="mt-4 px-6 py-2 bg-primary-600 text-white rounded-full font-bold shadow-md">Clear all filters</button>}
                                 </div>
                             )}
-                        </div>
+                        </>
                     )}
                 </div>
             </div>

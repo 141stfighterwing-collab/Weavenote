@@ -1,4 +1,5 @@
-export type NoteType = 'quick' | 'deep' | 'code' | 'project' | 'contact' | 'document';
+
+export type NoteType = 'quick' | 'notebook' | 'deep' | 'code' | 'project' | 'contact' | 'document';
 
 export type Theme = 'default' | 'ocean' | 'forest' | 'sunset' | 'rose' | 'midnight' | 'coffee' | 'neon' | 'cyberpunk' | 'nord' | 'dracula' | 'lavender' | 'earth';
 
@@ -112,36 +113,21 @@ export interface ProcessedNoteData {
   projectData?: ProjectData;
 }
 
-export interface AILogEntry {
-    id: string;
-    timestamp: number;
-    username: string;
-    action: string;
-    details: string;
-}
-
-export interface ErrorLogEntry {
-    id: string;
-    timestamp: number;
-    context: string;
-    message: string;
-    stack?: string;
-}
-
+// Added missing exports used in the application
 export type Permission = 'read' | 'edit';
 export type UserStatus = 'active' | 'suspended' | 'pending';
 
 export interface User {
-  uid: string; // Firebase Auth ID
+  uid: string;
   username: string;
   email: string;
   permission: Permission;
   status: UserStatus;
-  role?: 'admin' | 'user'; 
+  role: 'admin' | 'user';
+  lastLogin: number;
   ipAddress?: string;
   country?: string;
   countryFlag?: string;
-  lastLogin?: number;
 }
 
 export interface UserUsageStats {
@@ -149,4 +135,12 @@ export interface UserUsageStats {
   topCategory: string;
   persona: string;
   personaEmoji: string;
+}
+
+export interface AILogEntry {
+  id: string;
+  timestamp: number;
+  username: string;
+  action: string;
+  details: string;
 }

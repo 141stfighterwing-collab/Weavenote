@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { NoteType } from '../types';
 import { parseDocument } from '../services/documentParser';
@@ -71,7 +72,6 @@ ${text}`;
       setText(content);
       setTitle(file.name.split('.')[0]);
       setUploadProgress(null);
-      // Automatically switch to AI mode for large docs usually
     } catch (err: any) {
       alert(err.message || "Failed to parse document.");
       setUploadProgress(null);
@@ -133,6 +133,7 @@ ${text}`;
   const getBackgroundColor = () => {
       switch (selectedType) {
           case 'quick': return 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/10';
+          case 'notebook': return 'bg-white border-slate-300';
           case 'deep': return 'bg-blue-50 border-blue-200 dark:bg-blue-900/10';
           case 'code': return 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/10';
           case 'project': return 'bg-green-50 border-green-200 dark:bg-green-900/10';
@@ -148,7 +149,7 @@ ${text}`;
   return (
     <div className={`rounded-xl shadow-lg border p-1 mb-8 transition-all ${getBackgroundColor()}`}>
         <div className="flex gap-1 p-1 mb-1 overflow-x-auto no-scrollbar">
-            {(['quick', 'deep', 'code', 'project', 'contact', 'document'] as NoteType[]).map(type => (
+            {(['quick', 'notebook', 'deep', 'code', 'project', 'contact', 'document'] as NoteType[]).map(type => (
                 <button key={type} onClick={() => setSelectedType(type)} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all min-w-[70px] ${selectedType === type ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-white/40 dark:hover:bg-slate-800/40'}`}>
                     <span className="capitalize">{type}</span>
                 </button>
@@ -266,7 +267,7 @@ ${text}`;
                           ref={mainTextareaRef}
                           value={text} 
                           onChange={(e) => setText(e.target.value)} 
-                          placeholder="Type your notes here... Paste structured lists or code blocks freely." 
+                          placeholder={selectedType === 'notebook' ? "Draft your entry here..." : "Type your notes here... Paste structured lists or code blocks freely."} 
                           className="w-full h-56 p-4 bg-transparent border-0 focus:ring-0 outline-none resize-none text-slate-700 dark:text-slate-200 text-sm whitespace-pre-wrap" 
                         />
                     </div>

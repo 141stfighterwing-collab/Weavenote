@@ -101,6 +101,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [newFolderName, setNewFolderName] = useState('');
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
 
   const toggleFolderExpansion = (e: React.MouseEvent, folderId: string) => {
     e.stopPropagation();
@@ -130,6 +131,25 @@ const Sidebar: React.FC<SidebarProps> = ({
       onCreateFolder(newFolderName.trim());
       setNewFolderName('');
       setIsCreatingFolder(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string | null) => {
+    e.preventDefault();
+    setDragOverFolderId(id === null ? 'null' : id);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverFolderId(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, folderId: string | undefined) => {
+    e.preventDefault();
+    setDragOverFolderId(null);
+    const noteId = e.dataTransfer.getData('noteId');
+    if (noteId && onMoveNote) {
+      // If folderId is undefined, it removes it from its current folder
+      onMoveNote(noteId, folderId);
     }
   };
 
@@ -163,24 +183,34 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div className="space-y-1">
                <button 
                   onClick={() => onFolderClick(null)} 
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${activeFolderId === null ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
+                  onDragOver={(e) => handleDragOver(e, null)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, undefined)}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all group/all-notes ${activeFolderId === null ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50'} ${dragOverFolderId === 'null' ? 'ring-2 ring-primary-500 ring-inset bg-primary-100/50' : ''}`}
                >
                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                  All Notes
+                 {dragOverFolderId === 'null' && <span className="ml-auto text-[10px] font-bold text-primary-600 animate-pulse">Un-file here</span>}
                </button>
                {folders.map(folder => {
                    const isExpanded = expandedFolders.has(folder.id);
                    const folderNotes = notes.filter(n => n.folderId === folder.id);
+                   const isDragOver = dragOverFolderId === folder.id;
                    
                    return (
                      <div key={folder.id} className="group/folder space-y-1">
-                       <div className={`w-full flex items-center rounded-lg transition-colors ${activeFolderId === folder.id ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}>
+                       <div 
+                         onDragOver={(e) => handleDragOver(e, folder.id)}
+                         onDragLeave={handleDragLeave}
+                         onDrop={(e) => handleDrop(e, folder.id)}
+                         className={`w-full flex items-center rounded-lg transition-all ${activeFolderId === folder.id ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50'} ${isDragOver ? 'ring-2 ring-primary-500 ring-inset bg-primary-100/50 scale-[1.02] shadow-md' : ''}`}
+                       >
                            <button 
                              onClick={(e) => toggleFolderExpansion(e, folder.id)}
                              className={`p-2 transition-transform duration-200 transform ${isExpanded ? 'rotate-90' : ''}`}
                              title={isExpanded ? "Collapse" : "Expand"}
                            >
-                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="m9 18 6-6-6-6"/></svg>
+                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="m9 18 6-6 6-6"/></svg>
                            </button>
                            
                            <button 

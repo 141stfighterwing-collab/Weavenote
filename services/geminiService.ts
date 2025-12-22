@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { ProcessedNoteData, NoteType } from "../types";
 
@@ -71,6 +72,9 @@ export const processNoteWithAI = async (text: string, existingCategories: string
       case 'project':
           specificInstructions = `Generate a structured project plan. Preserve the user's specific tasks and details as they provided them, just structure them into milestones and timeline objects.`;
           break;
+      case 'notebook':
+          specificInstructions = `Organize this as a cohesive notebook entry. Use clear headers and structured sections. Focus on clarity and readability as if this were for a personal journal or professional log.`;
+          break;
       case 'code':
           specificInstructions = `Analyze the code provided. Place the code strictly inside a triple-backtick markdown block. Provide a separate, clean summary and analysis. Preserve all indentation and line breaks in the code part.`;
           break;
@@ -96,6 +100,8 @@ Categories available: ${existingCategories.join(', ')}`;
       model: 'gemini-3-flash-preview',
       contents: prompt,
       config: { 
+        // Use a high thinking budget for structured organization
+        thinkingConfig: { thinkingBudget: 4000 },
         responseMimeType: 'application/json', 
         responseSchema 
       }
