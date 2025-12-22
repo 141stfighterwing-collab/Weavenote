@@ -390,7 +390,7 @@ const App: React.FC = () => {
 
         {/* Global tab navigation (RED area) removed per user request */}
 
-        <main className="flex-grow max-w-[1400px] mx-auto px-4 py-6 w-full flex flex-col lg:flex-row gap-6">
+        <main className="flex-grow max-w-[1600px] mx-auto px-4 py-6 w-full flex flex-col lg:flex-row gap-6">
             <div className="flex-1 min-0 order-2 lg:order-2">
                 {/* NoteInput (YELLOW area) now serves as the primary navigation controller */}
                 {viewMode === 'grid' && (

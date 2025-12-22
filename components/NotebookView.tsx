@@ -183,9 +183,9 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
       </div>
 
       {/* Main Canvas */}
-      <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-8 overflow-y-auto custom-scrollbar flex justify-center">
+      <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-6 overflow-y-auto custom-scrollbar flex justify-center">
         {selectedNote ? (
-          <div className="w-full max-w-5xl relative group animate-[fadeIn_0.2s_ease-out] mb-20">
+          <div className="w-full max-w-none relative group animate-[fadeIn_0.2s_ease-out] mb-20">
              {/* Spiral Rings */}
              <div className="absolute left-0 top-10 bottom-10 w-10 flex flex-col justify-around items-center z-20 pointer-events-none pr-4">
                 {[...Array(12)].map((_, i) => (
@@ -195,7 +195,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
 
              {/* The Paper */}
              <div 
-                className="bg-white dark:bg-slate-50 min-h-[1000px] shadow-2xl rounded-sm border border-slate-300 dark:border-slate-200 relative pl-16 pr-12 py-12"
+                className="bg-white dark:bg-slate-50 min-h-[1400px] shadow-2xl rounded-sm border border-slate-300 dark:border-slate-200 relative pl-16 pr-12 py-12 w-full"
                 style={{
                   backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #e2e8f0 31px, #e2e8f0 32px)',
                   backgroundAttachment: 'local',
@@ -205,7 +205,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
                 {/* Red Margin Line */}
                 <div className="absolute left-16 top-0 bottom-0 w-px bg-rose-300 shadow-[1px_0_0_white]" />
                 
-                <div className="relative z-10 font-hand text-slate-800">
+                <div className="relative z-10 font-hand text-slate-800 w-full">
                   <div className="flex justify-between items-start mb-12">
                     <h2 className="text-4xl font-bold border-b-2 border-primary-100 pb-2">{selectedNote.title}</h2>
                     <div className="flex gap-2">
@@ -218,7 +218,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="prose prose-lg max-w-none prose-slate">
+                  <div className="prose prose-lg max-w-none prose-slate w-full">
                     <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                         {selectedNote.content}
                     </ReactMarkdown>
