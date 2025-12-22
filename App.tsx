@@ -20,6 +20,7 @@ import AnalyticsModal from './components/AnalyticsModal';
 import Sidebar from './components/Sidebar';
 import RightSidebar from './components/RightSidebar';
 import TrashModal from './components/TrashModal';
+import { NotebookView } from './components/NotebookView';
 import { Logo } from './components/Logo';
 
 const App: React.FC = () => {
@@ -132,7 +133,7 @@ const App: React.FC = () => {
     await saveNote(updatedNote, storageOwner);
   };
 
-  const handleAddNote = async (rawText: string, type: NoteType, attachments: string[] = [], forcedTags: string[] = [], useAI: boolean = true, manualTitle: string = '', extraProjectData?: { manualProgress?: number, isCompleted?: boolean }) => {
+  const handleAddNote = async (rawText: string, type: NoteType, attachments: string[] = [], forcedTags: string[] = [], useAI: boolean = true, manualTitle: string = '', extraProjectData?: { manualProgress?: number, isCompleted?: boolean }): Promise<Note | undefined> => {
     if (!canEdit) return;
     setIsProcessing(true);
     try {
@@ -183,11 +184,13 @@ const App: React.FC = () => {
         };
 
         setNotes(prev => [newNote, ...prev]);
-        handleTabChange(type);
+        
+        // Tab switching is now handled by the NoteInput's onTypeChange callback
         await saveNote(newNote, storageOwner);
         setDailyUsage(getDailyUsage());
+        return newNote;
     } catch (err: any) {
-        console.error(err);
+        console.error("Failed to add note:", err);
     } finally {
         setIsProcessing(false);
     }
@@ -385,21 +388,15 @@ const App: React.FC = () => {
             </div>
         </header>
 
-        <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 overflow-x-auto no-scrollbar">
-            <div className="max-w-7xl mx-auto px-4 flex gap-6 whitespace-nowrap">
-                {(['quick', 'notebook', 'deep', 'code', 'project', 'contact', 'document'] as NoteType[]).map(type => (
-                    <button key={type} onClick={() => handleTabChange(type)} className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors capitalize ${activeTab === type ? 'border-primary-500 text-primary-600 font-bold' : 'border-transparent text-slate-500'}`}>
-                        {type === 'code' ? 'Code/Script' : type}
-                    </button>
-                ))}
-            </div>
-        </div>
+        {/* Global tab navigation (RED area) removed per user request */}
 
         <main className="flex-grow max-w-[1400px] mx-auto px-4 py-6 w-full flex flex-col lg:flex-row gap-6">
             <div className="flex-1 min-0 order-2 lg:order-2">
+                {/* NoteInput (YELLOW area) now serves as the primary navigation controller */}
                 {viewMode === 'grid' && (
                     <NoteInput 
                         onAddNote={handleAddNote} 
+                        onTypeChange={handleTabChange}
                         isProcessing={isProcessing} 
                         activeType={activeTab} 
                         readOnly={!canEdit} 
@@ -407,106 +404,119 @@ const App: React.FC = () => {
                     />
                 )}
 
-                <div className="mb-4 overflow-x-auto no-scrollbar pb-2">
-                    <div className="flex items-center gap-2 whitespace-nowrap">
-                        <button 
-                            onClick={() => setActiveFolderId(null)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeFolderId === null ? 'bg-primary-600 text-white border-primary-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary-400'}`}
-                        >
-                            All Folders
-                        </button>
-                        {folders.map(folder => (
+                {activeTab === 'notebook' ? (
+                  <NotebookView 
+                    notes={activeNotes.filter(n => n.type === 'notebook')} 
+                    folders={folders}
+                    onAddNote={handleAddNote}
+                    onEdit={setEditingNote}
+                    onDelete={handleDeleteNote}
+                    onToggleCheckbox={handleToggleCheckbox}
+                  />
+                ) : (
+                  <>
+                    <div className="mb-4 overflow-x-auto no-scrollbar pb-2">
+                        <div className="flex items-center gap-2 whitespace-nowrap">
                             <button 
-                                key={folder.id}
-                                onClick={() => setActiveFolderId(folder.id)}
-                                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeFolderId === folder.id ? 'bg-primary-600 text-white border-primary-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary-400'}`}
+                                onClick={() => setActiveFolderId(null)}
+                                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeFolderId === null ? 'bg-primary-600 text-white border-primary-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary-400'}`}
                             >
-                                📂 {folder.name}
+                                All Folders
                             </button>
-                        ))}
-                    </div>
-                </div>
-
-                {isFiltered && (
-                    <div className="mb-4 p-2 bg-primary-50 dark:bg-primary-900/10 border border-primary-100 dark:border-primary-900/30 rounded-lg flex items-center justify-between text-xs animate-[fadeIn_0.2s_ease-out]">
-                        <div className="flex items-center gap-2">
-                            <span className="font-bold text-primary-700 dark:text-primary-400 uppercase tracking-tighter">Active Filters:</span>
-                            {activeFolderId && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Folder: {folders.find(f => f.id === activeFolderId)?.name} <button onClick={() => setActiveFolderId(null)}>✕</button></span>}
-                            {activeTagFilter && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Tag: #{activeTagFilter} <button onClick={() => setActiveTagFilter(null)}>✕</button></span>}
-                            {activeDateFilter && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Date: {activeDateFilter.toLocaleDateString()} <button onClick={() => setActiveDateFilter(null)}>✕</button></span>}
-                            {searchQuery && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Search: "{searchQuery}" <button onClick={() => setSearchQuery('')}>✕</button></span>}
+                            {folders.map(folder => (
+                                <button 
+                                    key={folder.id}
+                                    onClick={() => setActiveFolderId(folder.id)}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeFolderId === folder.id ? 'bg-primary-600 text-white border-primary-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary-400'}`}
+                                >
+                                    📂 {folder.name}
+                                </button>
+                            ))}
                         </div>
-                        <button onClick={clearFilters} className="text-primary-600 hover:text-primary-800 font-bold underline">Clear All</button>
                     </div>
-                )}
 
-                <div className="mt-4">
-                    {viewMode === 'mindmap' ? (
-                        <div className="h-[600px] border rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/50">
-                            <MindMap notes={activeNotes} onNoteClick={(id) => { const n = activeNotes.find(n => n.id === id); if (n) { handleExpandNote(n); setViewMode('grid'); } }} />
+                    {isFiltered && (
+                        <div className="mb-4 p-2 bg-primary-50 dark:bg-primary-900/10 border border-primary-100 dark:border-primary-900/30 rounded-lg flex items-center justify-between text-xs animate-[fadeIn_0.2s_ease-out]">
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-primary-700 dark:text-primary-400 uppercase tracking-tighter">Active Filters:</span>
+                                {activeFolderId && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Folder: {folders.find(f => f.id === activeFolderId)?.name} <button onClick={() => setActiveFolderId(null)}>✕</button></span>}
+                                {activeTagFilter && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Tag: #{activeTagFilter} <button onClick={() => setActiveTagFilter(null)}>✕</button></span>}
+                                {activeDateFilter && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Date: {activeDateFilter.toLocaleDateString()} <button onClick={() => setActiveDateFilter(null)}>✕</button></span>}
+                                {searchQuery && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Search: "{searchQuery}" <button onClick={() => setSearchQuery('')}>✕</button></span>}
+                            </div>
+                            <button onClick={clearFilters} className="text-primary-600 hover:text-primary-800 font-bold underline">Clear All</button>
                         </div>
-                    ) : (
-                        <>
-                            {activeTab === 'deep' ? (
-                                <div className="space-y-3">
-                                    {filteredNotes.map(note => (
-                                        <div 
-                                            key={note.id} 
-                                            onClick={() => handleExpandNote(note)}
-                                            className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center hover:shadow-lg hover:border-primary-400 dark:hover:border-primary-500 cursor-pointer transition-all animate-[fadeIn_0.2s_ease-out]"
-                                        >
-                                            <div className="min-w-0 pr-4">
-                                                <h3 className="font-bold text-lg text-slate-800 dark:text-white truncate">{note.title}</h3>
-                                                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mt-1">{note.content.substring(0, 180)}</p>
-                                                <div className="flex gap-2 mt-2">
-                                                    {note.tags.slice(0, 3).map(tag => (
-                                                        <span key={tag} className="text-[10px] text-primary-600 dark:text-primary-400 font-bold">#{tag}</span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col items-end gap-2 shrink-0">
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(note.createdAt).toLocaleDateString()}</span>
-                                                <div className="p-2 rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400">
-                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
-                                    {filteredNotes.map(note => (
-                                        <NoteCard 
-                                            key={note.id} 
-                                            note={note} 
-                                            folders={folders} 
-                                            onDelete={handleDeleteNote} 
-                                            onTagClick={(t) => setActiveTagFilter(t)} 
-                                            onChangeColor={async (id, c) => { setNotes(prev => prev.map(n => n.id === id ? { ...n, color: c } : n)); if (storageOwner) await saveNote({ ...notes.find(n => n.id === id)!, color: c }, storageOwner); }}
-                                            onEdit={setEditingNote} 
-                                            onExpand={handleExpandNote} 
-                                            readOnly={!canEdit} 
-                                            onViewImage={setViewingImage} 
-                                            onToggleCheckbox={handleToggleCheckbox} 
-                                            onAddTag={handleAddTag} 
-                                            onRemoveTag={handleRemoveTag} 
-                                            onMoveToFolder={handleMoveNote} 
-                                            onToggleComplete={handleToggleProjectCompletion}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                            
-                            {filteredNotes.length === 0 && (
-                                <div className="col-span-full text-center py-20 bg-white/50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-                                    <p className="text-slate-400 text-lg font-bold">No results found.</p>
-                                    <p className="text-slate-400 text-sm mt-1">Try switching tabs or clearing filters to see more.</p>
-                                    {isFiltered && <button onClick={clearFilters} className="mt-4 px-6 py-2 bg-primary-600 text-white rounded-full font-bold shadow-md">Clear all filters</button>}
-                                </div>
-                            )}
-                        </>
                     )}
-                </div>
+
+                    <div className="mt-4">
+                        {viewMode === 'mindmap' ? (
+                            <div className="h-[600px] border rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/50">
+                                <MindMap notes={activeNotes} onNoteClick={(id) => { const n = activeNotes.find(n => n.id === id); if (n) { handleExpandNote(n); setViewMode('grid'); } }} />
+                            </div>
+                        ) : (
+                            <>
+                                {activeTab === 'deep' ? (
+                                    <div className="space-y-3">
+                                        {filteredNotes.map(note => (
+                                            <div 
+                                                key={note.id} 
+                                                onClick={() => handleExpandNote(note)}
+                                                className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center hover:shadow-lg hover:border-primary-400 dark:hover:border-primary-500 cursor-pointer transition-all animate-[fadeIn_0.2s_ease-out]"
+                                            >
+                                                <div className="min-w-0 pr-4">
+                                                    <h3 className="font-bold text-lg text-slate-800 dark:text-white truncate">{note.title}</h3>
+                                                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mt-1">{note.content.substring(0, 180)}</p>
+                                                    <div className="flex gap-2 mt-2">
+                                                        {note.tags.slice(0, 3).map(tag => (
+                                                            <span key={tag} className="text-[10px] text-primary-600 dark:text-primary-400 font-bold">#{tag}</span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col items-end gap-2 shrink-0">
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(note.createdAt).toLocaleDateString()}</span>
+                                                    <div className="p-2 rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400">
+                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
+                                        {filteredNotes.map(note => (
+                                            <NoteCard 
+                                                key={note.id} 
+                                                note={note} 
+                                                folders={folders} 
+                                                onDelete={handleDeleteNote} 
+                                                onTagClick={(t) => setActiveTagFilter(t)} 
+                                                onChangeColor={async (id, c) => { setNotes(prev => prev.map(n => n.id === id ? { ...n, color: c } : n)); if (storageOwner) await saveNote({ ...notes.find(n => n.id === id)!, color: c }, storageOwner); }}
+                                                onEdit={setEditingNote} 
+                                                onExpand={handleExpandNote} 
+                                                readOnly={!canEdit} 
+                                                onViewImage={setViewingImage} 
+                                                onToggleCheckbox={handleToggleCheckbox} 
+                                                onAddTag={handleAddTag} 
+                                                onRemoveTag={handleRemoveTag} 
+                                                onMoveToFolder={handleMoveNote} 
+                                                onToggleComplete={handleToggleProjectCompletion}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                                
+                                {filteredNotes.length === 0 && (
+                                    <div className="col-span-full text-center py-20 bg-white/50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                                        <p className="text-slate-400 text-lg font-bold">No results found.</p>
+                                        <p className="text-slate-400 text-sm mt-1">Try switching categories in the input area above.</p>
+                                        {isFiltered && <button onClick={clearFilters} className="mt-4 px-6 py-2 bg-primary-600 text-white rounded-full font-bold shadow-md">Clear all filters</button>}
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                  </>
+                )}
             </div>
 
             <Sidebar 
@@ -518,12 +528,12 @@ const App: React.FC = () => {
                 onNoteClick={handleExpandNote} 
                 onFolderClick={setActiveFolderId} 
                 onCreateFolder={handleCreateFolder} 
+                onDateClick={(d) => setActiveDateFilter(d)}
                 onDeleteFolder={handleDeleteFolder} 
                 onReorderFolders={() => {}} 
                 onMoveNote={handleMoveNote} 
                 activeFolderId={activeFolderId}
                 activeDate={activeDateFilter}
-                onDateClick={(d) => setActiveDateFilter(d)}
             />
 
             <RightSidebar 

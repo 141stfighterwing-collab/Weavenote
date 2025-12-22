@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Note } from '../types';
 import { processNoteWithAI } from '../services/geminiService';
@@ -138,7 +139,7 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh] animate-[fadeIn_0.2s_ease-out]">
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col max-h-[95vh] animate-[fadeIn_0.2s_ease-out]">
         <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
           <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
             <span className="text-indigo-500">✏️</span> Edit Note
@@ -180,63 +181,67 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
         )}
 
         <form onSubmit={handleSubmit} className="flex-grow flex flex-col p-6 overflow-hidden bg-white dark:bg-slate-800">
-          <div className="mb-4">
-            <label htmlFor="title" className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Title</label>
-            <input
-              type="text"
-              id="title"
-              value={title}
-              disabled={isProcessing}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-bold text-lg text-slate-800 dark:text-white bg-slate-50 dark:bg-slate-700 focus:bg-white dark:focus:bg-slate-600 disabled:opacity-50"
-              placeholder="Note Title"
-              required
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Tags</label>
-            <div className="flex flex-wrap gap-2 mb-2 min-h-[32px] p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-700">
-                {manualTags.map(tag => (
-                    <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded text-xs font-bold">
-                        #{tag}
-                        <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-500">✕</button>
-                    </span>
-                ))}
-                {manualTags.length === 0 && <span className="text-[10px] text-slate-400 italic">No tags yet. Use # in text or add below.</span>}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="md:col-span-2">
+              <label htmlFor="title" className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Title</label>
+              <input
+                type="text"
+                id="title"
+                value={title}
+                disabled={isProcessing}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-bold text-lg text-slate-800 dark:text-white bg-slate-50 dark:bg-slate-700 focus:bg-white dark:focus:bg-slate-600 disabled:opacity-50"
+                placeholder="Note Title"
+                required
+              />
             </div>
-            <div className="flex gap-2">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Tags & Metadata</label>
+              <div className="flex gap-2">
                 <input 
                     type="text" 
                     value={newTag} 
                     onChange={e => setNewTag(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
                     placeholder="Add manual tag..." 
-                    className="flex-1 px-3 py-1 text-sm bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded outline-none focus:ring-1 focus:ring-primary-500"
+                    className="flex-1 px-3 py-2 text-sm bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg outline-none focus:ring-1 focus:ring-primary-500"
                 />
-                <button type="button" onClick={() => handleAddTag()} className="px-3 py-1 bg-slate-200 dark:bg-slate-600 rounded text-xs font-bold">Add</button>
+                <button type="button" onClick={() => handleAddTag()} className="px-3 py-2 bg-slate-200 dark:bg-slate-600 rounded-lg text-xs font-bold">Add</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <div className="flex flex-wrap gap-2 min-h-[40px] p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-100 dark:border-slate-700">
+                {manualTags.map(tag => (
+                    <span key={tag} className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-md text-xs font-bold">
+                        #{tag}
+                        <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-500 ml-1">✕</button>
+                    </span>
+                ))}
+                {manualTags.length === 0 && <span className="text-[10px] text-slate-400 italic flex items-center">No tags yet. Use # in text or add above.</span>}
             </div>
           </div>
           
-          <div className="mb-4 flex-grow flex flex-col min-h-0">
-            <div className="flex justify-between items-center mb-1">
-                <label htmlFor="content" className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Content</label>
-                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
-                    <button type="button" onClick={() => applyFormat('bold')} disabled={isProcessing} className="p-1 hover:bg-white dark:hover:bg-slate-600 rounded text-slate-600 dark:text-slate-300 disabled:opacity-50" title="Bold">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg>
+          <div className="flex-grow flex flex-col min-h-0">
+            <div className="flex justify-between items-center mb-2">
+                <label htmlFor="content" className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Content Canvas</label>
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-1 shadow-inner">
+                    <button type="button" onClick={() => applyFormat('bold')} disabled={isProcessing} className="p-1.5 hover:bg-white dark:hover:bg-slate-600 rounded-md text-slate-600 dark:text-slate-300 disabled:opacity-50" title="Bold">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg>
                     </button>
-                    <button type="button" onClick={() => applyFormat('italic')} disabled={isProcessing} className="p-1 hover:bg-white dark:hover:bg-slate-600 rounded text-slate-600 dark:text-slate-300 disabled:opacity-50" title="Italic">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="4" x2="10" y2="22"></line><line x1="14" y1="4" x2="5" y2="22"></line></svg>
+                    <button type="button" onClick={() => applyFormat('italic')} disabled={isProcessing} className="p-1.5 hover:bg-white dark:hover:bg-slate-600 rounded-md text-slate-600 dark:text-slate-300 disabled:opacity-50" title="Italic">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="4" x2="10" y2="22"></line><line x1="14" y1="4" x2="5" y2="22"></line></svg>
                     </button>
-                    <button type="button" onClick={() => applyFormat('header')} disabled={isProcessing} className="p-1 hover:bg-white dark:hover:bg-slate-600 rounded text-slate-600 dark:text-slate-300 font-serif font-bold text-xs w-6 disabled:opacity-50" title="Header">
+                    <button type="button" onClick={() => applyFormat('header')} disabled={isProcessing} className="p-1.5 hover:bg-white dark:hover:bg-slate-600 rounded-md text-slate-600 dark:text-slate-300 font-serif font-black text-sm w-8 disabled:opacity-50" title="Header">
                         H3
                     </button>
-                    <div className="w-px h-3 bg-slate-300 dark:bg-slate-500 mx-1"></div>
-                    <button type="button" onClick={() => applyFormat('list')} disabled={isProcessing} className="p-1 hover:bg-white dark:hover:bg-slate-600 rounded text-slate-600 dark:text-slate-300 disabled:opacity-50" title="Bullet List">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                    <div className="w-px h-4 bg-slate-300 dark:bg-slate-500 mx-2"></div>
+                    <button type="button" onClick={() => applyFormat('list')} disabled={isProcessing} className="p-1.5 hover:bg-white dark:hover:bg-slate-600 rounded-md text-slate-600 dark:text-slate-300 disabled:opacity-50" title="Bullet List">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                     </button>
-                    <button type="button" onClick={() => applyFormat('checkbox')} disabled={isProcessing} className="p-1 hover:bg-white dark:hover:bg-slate-600 rounded text-slate-600 dark:text-slate-300 disabled:opacity-50" title="Checkbox">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                    <button type="button" onClick={() => applyFormat('checkbox')} disabled={isProcessing} className="p-1.5 hover:bg-white dark:hover:bg-slate-600 rounded-md text-slate-600 dark:text-slate-300 disabled:opacity-50" title="Checkbox">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
                     </button>
                 </div>
             </div>
@@ -246,27 +251,27 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
               value={content}
               disabled={isProcessing}
               onChange={(e) => setContent(e.target.value)}
-              className="w-full flex-grow px-4 py-3 border border-slate-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-mono text-sm text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-700 focus:bg-white dark:focus:bg-slate-600 resize-none leading-relaxed disabled:opacity-50"
+              className="w-full flex-grow px-6 py-6 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-mono text-sm text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-700 focus:bg-white dark:focus:bg-slate-600 resize-none leading-relaxed disabled:opacity-50 min-h-[500px]"
               placeholder="# Markdown supported... Tip: Use #hashtags within your text to auto-categorize."
               required
             />
           </div>
 
-          <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-700 mt-2">
+          <div className="flex justify-between items-center pt-6 border-t border-slate-100 dark:border-slate-700 mt-6">
             <button
                 type="button"
                 onClick={handleAIOrganize}
                 disabled={isProcessing}
-                className="px-4 py-2 text-sm font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg hover:shadow-lg transition-all disabled:opacity-50 flex items-center gap-2"
+                className="px-6 py-3 text-sm font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl hover:shadow-xl transition-all disabled:opacity-50 flex items-center gap-2 transform hover:-translate-y-0.5"
             >
                 {isProcessing ? (
                     <>
-                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                         <span>Organizing...</span>
                     </>
                 ) : (
                     <>
-                        <span>✨</span> AI Organize
+                        <span className="text-lg">✨</span> AI Organize
                     </>
                 )}
             </button>
@@ -275,14 +280,14 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
                 type="button"
                 onClick={onClose}
                 disabled={isProcessing}
-                className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+                className="px-6 py-3 text-sm font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
                 >
                 Cancel
                 </button>
                 <button
                 type="submit"
                 disabled={!hasUnsavedChanges || isProcessing}
-                className={`px-6 py-2 text-sm font-medium text-white rounded-lg transition-colors shadow-md transform ${hasUnsavedChanges && !isProcessing ? 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:-translate-y-0.5' : 'bg-indigo-300 dark:bg-indigo-900 cursor-not-allowed'}`}
+                className={`px-10 py-3 text-sm font-bold text-white rounded-xl transition-all shadow-md transform ${hasUnsavedChanges && !isProcessing ? 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:-translate-y-0.5' : 'bg-indigo-300 dark:bg-indigo-900 cursor-not-allowed'}`}
                 >
                 Save Changes
                 </button>
