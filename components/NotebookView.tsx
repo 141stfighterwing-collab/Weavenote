@@ -185,7 +185,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
       {/* Main Canvas */}
       <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-8 overflow-y-auto custom-scrollbar flex justify-center">
         {selectedNote ? (
-          <div className="w-full max-w-4xl relative group animate-[fadeIn_0.2s_ease-out]">
+          <div className="w-full max-w-5xl relative group animate-[fadeIn_0.2s_ease-out] mb-20">
              {/* Spiral Rings */}
              <div className="absolute left-0 top-10 bottom-10 w-10 flex flex-col justify-around items-center z-20 pointer-events-none pr-4">
                 {[...Array(12)].map((_, i) => (
@@ -195,7 +195,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
 
              {/* The Paper */}
              <div 
-                className="bg-white dark:bg-slate-50 min-h-full shadow-2xl rounded-sm border border-slate-300 dark:border-slate-200 relative pl-16 pr-12 py-12"
+                className="bg-white dark:bg-slate-50 min-h-[1000px] shadow-2xl rounded-sm border border-slate-300 dark:border-slate-200 relative pl-16 pr-12 py-12"
                 style={{
                   backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #e2e8f0 31px, #e2e8f0 32px)',
                   backgroundAttachment: 'local',
