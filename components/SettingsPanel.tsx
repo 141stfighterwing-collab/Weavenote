@@ -113,12 +113,11 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   };
 
   const isEnvConfigured = () => {
-    try {
-      // Safely check for the key which is replaced at build time by Vite
-      return typeof process !== 'undefined' && !!process.env.API_KEY && process.env.API_KEY !== 'undefined';
-    } catch {
-      return false;
-    }
+    // IMPORTANT: Vite replaces 'process.env.API_KEY' at build time.
+    // In the browser, 'process' doesn't exist, but the string sequence 'process.env.API_KEY' 
+    // will be replaced with the actual key or an empty string from the define block.
+    const key = process.env.API_KEY;
+    return !!key && key !== 'undefined' && key.length > 5;
   };
 
   const runDiagnostics = async () => {

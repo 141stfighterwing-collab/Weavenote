@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { ProcessedNoteData, NoteType } from "../types";
 
@@ -9,8 +8,7 @@ export const getDailyUsage = (): number => parseInt(localStorage.getItem(getUsag
 const incrementUsage = () => localStorage.setItem(getUsageKey(), (getDailyUsage() + 1).toString());
 
 /**
- * AI Organize is fixed by ensuring we use the exact model parameters 
- * and direct process.env.API_KEY access.
+ * AI Organize handles messy copy-pastes by looking for hidden structure.
  */
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string): Promise<ProcessedNoteData> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
@@ -18,22 +16,23 @@ export const processNoteWithAI = async (text: string, existingCategories: string
   let specificInstructions = "";
   switch (noteType) {
       case 'project':
-          specificInstructions = `Generate a structured project plan with milestones and timeline.`;
+          specificInstructions = `Generate a highly structured project plan. If the input is messy or unstructured text, extract deliverables, milestones, and a logical timeline from the context. Look for implicit dates and goals.`;
           break;
       case 'notebook':
-          specificInstructions = `Organize as a cohesive journal or professional log entry with clear headers.`;
+          specificInstructions = `Organize as a cohesive journal or professional log entry. If the input is a brain-dump or copy-paste from various sources, unify the voice and use clear, meaningful headers to separate ideas.`;
           break;
       case 'code':
-          specificInstructions = `Analyze code. Place the actual code strictly in triple backticks.`;
+          specificInstructions = `Analyze the script provided. Even if it's just fragments, identify the language and purpose. Place actual code blocks strictly in triple backticks.`;
           break;
       default:
-          specificInstructions = `Organize thoughts clearly using Markdown. Preserve original structural spacing.`;
+          specificInstructions = `Cleanup messy unstructured input. Extract the core ideas, group related points, and use Markdown for professional formatting. Preserve important data points while removing fluff.`;
           break;
   }
 
   const prompt = `System: You are an expert note organizer for ${username}. 
+Your specialty is taking messy, unstructured copy-pasted text and transforming it into high-quality organized notes.
 Instruction: ${specificInstructions}
-Task: Categorize and format the following input text.
+Task: Categorize and format the following input text into a clean JSON structure.
 Input: ${text}
 Categories available: ${existingCategories.join(', ')}`;
 
@@ -103,7 +102,7 @@ export const expandNoteContent = async (content: string, username: string) => {
     try {
       const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
-          contents: `Expand on this note: ${content}`,
+          contents: `Expand on this note, providing more depth and context: ${content}`,
       });
       incrementUsage();
       return response.text || null;
@@ -122,7 +121,7 @@ export const runConnectivityTest = async () => {
   try {
     // Step 1: Logic check
     const apiKey = process.env.API_KEY;
-    if (!apiKey) throw new Error("API Key is missing or undefined in environment (process.env.API_KEY).");
+    if (!apiKey || apiKey === 'undefined') throw new Error("API Key is missing or undefined in environment (process.env.API_KEY).");
     steps.push({ name: "API Credentials Found", status: "success" });
 
     // Step 2: Connection
