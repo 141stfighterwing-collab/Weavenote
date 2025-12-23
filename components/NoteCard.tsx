@@ -198,27 +198,39 @@ const NoteCard: React.FC<NoteCardProps> = ({
       </div>
 
       {note.type === 'project' ? (
-          <div className="space-y-4 mb-4 mt-2">
+          <div className="space-y-3 mb-4 mt-2">
               <div className="grid grid-cols-2 gap-2">
                   <div className="bg-white/50 dark:bg-black/20 p-2 rounded-lg border border-black/5 flex flex-col">
-                      <p className="text-[9px] font-bold uppercase opacity-60 mb-1">📦 Status</p>
-                      <p className="text-[11px] leading-tight font-black opacity-90 truncate">
+                      <p className="text-[8px] font-black uppercase opacity-60 mb-1">📦 Status</p>
+                      <p className="text-[10px] leading-tight font-black opacity-90 truncate">
                         {isFinished ? 'COMPLETED' : 'IN PROGRESS'}
                       </p>
                   </div>
                   <div className="bg-white/50 dark:bg-black/20 p-2 rounded-lg border border-black/5 flex flex-col">
-                      <p className="text-[9px] font-bold uppercase opacity-60 mb-1">📅 Milestone</p>
-                      <p className="text-[11px] leading-tight font-medium opacity-90 truncate">
+                      <p className="text-[8px] font-black uppercase opacity-60 mb-1">📅 Milestone</p>
+                      <p className="text-[10px] leading-tight font-bold opacity-90 truncate">
                         {note.projectData?.milestones?.[0]?.label || 'Initial Phase'}
+                      </p>
+                  </div>
+                  <div className="bg-white/50 dark:bg-black/20 p-2 rounded-lg border border-black/5 flex flex-col">
+                      <p className="text-[8px] font-black uppercase opacity-60 mb-1">🎯 Objective</p>
+                      <p className="text-[10px] leading-tight font-medium opacity-80 line-clamp-1 italic">
+                        {note.projectData?.objectives?.[0] || 'Undefined'}
+                      </p>
+                  </div>
+                  <div className="bg-white/50 dark:bg-black/20 p-2 rounded-lg border border-black/5 flex flex-col">
+                      <p className="text-[8px] font-black uppercase opacity-60 mb-1">🎁 Deliverable</p>
+                      <p className="text-[10px] leading-tight font-medium opacity-80 line-clamp-1 italic">
+                        {note.projectData?.deliverables?.[0] || 'Pending'}
                       </p>
                   </div>
               </div>
               <div className="bg-white/50 dark:bg-black/20 p-2 rounded-lg border border-black/5">
                   <div className="flex justify-between items-center mb-1.5">
-                    <p className="text-[9px] font-bold uppercase opacity-60">📊 Progress</p>
+                    <p className="text-[8px] font-black uppercase opacity-60">📊 Total Progress</p>
                     <span className="text-[10px] font-bold opacity-80">{calculateProgress}%</span>
                   </div>
-                  <div className="w-full h-2 bg-black/5 dark:bg-white/5 rounded-full overflow-hidden mb-2">
+                  <div className="w-full h-1.5 bg-black/5 dark:bg-white/5 rounded-full overflow-hidden">
                       <div className={`h-full transition-all duration-700 ${isFinished ? 'bg-emerald-500' : 'bg-primary-500'}`} style={{ width: `${calculateProgress}%` }} />
                   </div>
               </div>

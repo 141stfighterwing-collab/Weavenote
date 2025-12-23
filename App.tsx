@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Note, NoteColor, NoteType, ViewMode, Theme, Folder, User, ProjectData } from './types';
+import { Note, NoteColor, NoteType, ViewMode, Theme, Folder, User, ProjectData, ProjectMilestone } from './types';
 import { processNoteWithAI, getDailyUsage } from './services/geminiService';
 import { 
     loadNotes, saveNote, deleteNote, 
@@ -57,7 +57,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const body = document.body;
-    // Updated with all valid theme class names
     const themeClasses = [
       'theme-ocean', 'theme-forest', 'theme-sunset', 'theme-rose', 
       'theme-midnight', 'theme-coffee', 'theme-neon', 'theme-cyberpunk', 
@@ -138,7 +137,13 @@ const App: React.FC = () => {
     await saveNote(updatedNote, storageOwner);
   };
 
-  const handleAddNote = async (rawText: string, type: NoteType, attachments: string[] = [], forcedTags: string[] = [], useAI: boolean = true, manualTitle: string = '', extraProjectData?: { manualProgress?: number, isCompleted?: boolean }): Promise<Note | undefined> => {
+  const handleAddNote = async (rawText: string, type: NoteType, attachments: string[] = [], forcedTags: string[] = [], useAI: boolean = true, manualTitle: string = '', extraProjectData?: { 
+    manualProgress?: number, 
+    isCompleted?: boolean,
+    manualObjectives?: string[],
+    manualDeliverables?: string[],
+    manualMilestones?: ProjectMilestone[]
+  }): Promise<Note | undefined> => {
     if (!canEdit) return;
     setIsProcessing(true);
     try {
@@ -169,6 +174,9 @@ const App: React.FC = () => {
             if (extraProjectData) {
               processed.projectData.manualProgress = extraProjectData.manualProgress;
               processed.projectData.isCompleted = extraProjectData.isCompleted;
+              if (extraProjectData.manualObjectives) processed.projectData.objectives = extraProjectData.manualObjectives;
+              if (extraProjectData.manualDeliverables) processed.projectData.deliverables = extraProjectData.manualDeliverables;
+              if (extraProjectData.manualMilestones) processed.projectData.milestones = extraProjectData.manualMilestones;
             }
         }
 

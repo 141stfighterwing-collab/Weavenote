@@ -1,9 +1,15 @@
 import React, { useState, useRef } from 'react';
-import { NoteType } from '../types';
+import { NoteType, ProjectMilestone } from '../types';
 import { parseDocument } from '../services/documentParser';
 
 interface NoteInputProps {
-  onAddNote: (text: string, type: NoteType, attachments?: string[], forcedTags?: string[], useAI?: boolean, manualTitle?: string, extraProjectData?: { manualProgress?: number, isCompleted?: boolean }) => Promise<any>;
+  onAddNote: (text: string, type: NoteType, attachments?: string[], forcedTags?: string[], useAI?: boolean, manualTitle?: string, extraProjectData?: { 
+    manualProgress?: number, 
+    isCompleted?: boolean,
+    manualObjectives?: string[],
+    manualDeliverables?: string[],
+    manualMilestones?: ProjectMilestone[]
+  }) => Promise<any>;
   onTypeChange?: (type: NoteType) => void;
   isProcessing: boolean;
   activeType: NoteType;
@@ -22,6 +28,9 @@ const NoteInput: React.FC<NoteInputProps> = ({
   // Project-specific manual state
   const [projectProgress, setProjectProgress] = useState(0);
   const [projectCompleted, setProjectCompleted] = useState(false);
+  const [objectives, setObjectives] = useState('');
+  const [deliverables, setDeliverables] = useState('');
+  const [milestoneLabel, setMilestoneLabel] = useState('');
 
   const mainTextareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -31,17 +40,21 @@ const NoteInput: React.FC<NoteInputProps> = ({
     if (activeType === 'code' && code.trim()) {
         rawSubmission = `${text}\n\n### Script/Code\n\`\`\`\n${code}\n\`\`\``;
     }
-    if (!rawSubmission.trim() && !title.trim()) return;
+    if (!rawSubmission.trim() && !title.trim() && !objectives.trim()) return;
     
     const extraData = activeType === 'project' ? { 
         manualProgress: projectProgress, 
-        isCompleted: projectCompleted 
+        isCompleted: projectCompleted,
+        manualObjectives: objectives.split('\n').filter(l => l.trim()),
+        manualDeliverables: deliverables.split('\n').filter(l => l.trim()),
+        manualMilestones: milestoneLabel ? [{ label: milestoneLabel, date: new Date().toISOString().split('T')[0], status: 'pending' as const }] : []
     } : undefined;
 
     await onAddNote(rawSubmission, activeType, [], [], useAI, title, extraData);
     
     setText(''); setCode(''); setTitle('');
     setProjectProgress(0); setProjectCompleted(false);
+    setObjectives(''); setDeliverables(''); setMilestoneLabel('');
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,7 +115,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
       }
   };
 
-  const isDisabled = (!text.trim() && !code.trim() && !title.trim()) || isProcessing || isParsingDoc;
+  const isDisabled = (!text.trim() && !code.trim() && !title.trim() && !objectives.trim()) || isProcessing || isParsingDoc;
 
   if (readOnly) return <div className="p-6 text-center border-dashed border rounded-xl text-slate-400">🔒 Read Only</div>;
 
@@ -150,25 +163,58 @@ const NoteInput: React.FC<NoteInputProps> = ({
         </div>
 
         {activeType === 'project' && (
-          <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/20 border-b border-slate-100 dark:border-slate-700 flex flex-wrap gap-4 items-center">
-             <div className="flex-1 min-w-[200px]">
-                <div className="flex justify-between mb-1">
-                   <label className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Current Progress</label>
-                   <span className="text-xs font-bold">{projectProgress}%</span>
+          <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/20 border-b border-slate-100 dark:border-slate-700 flex flex-col gap-4">
+             <div className="flex flex-wrap gap-4 items-center">
+                <div className="flex-1 min-w-[200px]">
+                    <div className="flex justify-between mb-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Current Progress</label>
+                    <span className="text-xs font-bold">{projectProgress}%</span>
+                    </div>
+                    <input 
+                        type="range" min="0" max="100" value={projectProgress} 
+                        onChange={(e) => setProjectProgress(parseInt(e.target.value))}
+                        className="w-full h-1 bg-emerald-200 dark:bg-emerald-900 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                    />
                 </div>
-                <input 
-                    type="range" min="0" max="100" value={projectProgress} 
-                    onChange={(e) => setProjectProgress(parseInt(e.target.value))}
-                    className="w-full h-1 bg-emerald-200 dark:bg-emerald-900 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                />
+                <button 
+                    type="button"
+                    onClick={() => setProjectCompleted(!projectCompleted)}
+                    className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase transition-all border ${projectCompleted ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'}`}
+                >
+                    {projectCompleted ? '✓ Completed' : 'Mark as Completed'}
+                </button>
              </div>
-             <button 
-                type="button"
-                onClick={() => setProjectCompleted(!projectCompleted)}
-                className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase transition-all border ${projectCompleted ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'}`}
-             >
-                {projectCompleted ? '✓ Completed' : 'Mark as Completed'}
-             </button>
+
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Target Objectives</label>
+                    <textarea 
+                        value={objectives} 
+                        onChange={(e) => setObjectives(e.target.value)} 
+                        placeholder="Key goals..." 
+                        className="w-full h-16 p-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded text-xs focus:ring-1 focus:ring-emerald-500 outline-none resize-none"
+                    />
+                </div>
+                <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Deliverables</label>
+                    <textarea 
+                        value={deliverables} 
+                        onChange={(e) => setDeliverables(e.target.value)} 
+                        placeholder="Final products..." 
+                        className="w-full h-16 p-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded text-xs focus:ring-1 focus:ring-emerald-500 outline-none resize-none"
+                    />
+                </div>
+                <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Current Milestone</label>
+                    <input 
+                        type="text"
+                        value={milestoneLabel} 
+                        onChange={(e) => setMilestoneLabel(e.target.value)} 
+                        placeholder="What's next?" 
+                        className="w-full p-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded text-xs focus:ring-1 focus:ring-emerald-500 outline-none"
+                    />
+                </div>
+             </div>
           </div>
         )}
 
@@ -178,13 +224,13 @@ const NoteInput: React.FC<NoteInputProps> = ({
                   ref={mainTextareaRef}
                   value={text} 
                   onChange={(e) => setText(e.target.value)} 
-                  placeholder={activeType === 'project' ? "Outline your project goals, milestones, or paste a rough plan..." : activeType === 'notebook' ? "Draft your entry here..." : "Type your notes here or upload a document..."} 
-                  className="w-full h-56 p-4 bg-transparent border-0 focus:ring-0 outline-none resize-none text-slate-700 dark:text-slate-200 text-sm whitespace-pre-wrap" 
+                  placeholder={activeType === 'project' ? "Paste rough notes or detailed plan content here..." : activeType === 'notebook' ? "Draft your entry here..." : "Type your notes here or upload a document..."} 
+                  className="w-full h-40 p-4 bg-transparent border-0 focus:ring-0 outline-none resize-none text-slate-700 dark:text-slate-200 text-sm whitespace-pre-wrap" 
                 />
             </div>
             {activeType === 'code' && (
                 <div className="flex-1 bg-slate-950 dark:bg-black/40">
-                    <textarea value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste the actual code snippet here..." className="w-full h-56 p-4 bg-transparent border-0 focus:ring-0 outline-none resize-none text-indigo-300 font-mono text-xs whitespace-pre" />
+                    <textarea value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste the actual code snippet here..." className="w-full h-40 p-4 bg-transparent border-0 focus:ring-0 outline-none resize-none text-indigo-300 font-mono text-xs whitespace-pre" />
                 </div>
             )}
         </div>
