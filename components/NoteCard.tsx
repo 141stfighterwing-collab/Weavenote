@@ -197,25 +197,21 @@ const NoteCard: React.FC<NoteCardProps> = ({
         )}
       </div>
 
-      {note.type === 'project' && note.projectData ? (
+      {note.type === 'project' ? (
           <div className="space-y-4 mb-4 mt-2">
               <div className="grid grid-cols-2 gap-2">
-                  {note.projectData.deliverables.length > 0 && (
-                      <div className="bg-white/50 dark:bg-black/20 p-2 rounded-lg border border-black/5 flex flex-col">
-                          <p className="text-[9px] font-bold uppercase opacity-60 mb-1">📦 Outputs</p>
-                          <p className="text-[11px] leading-tight font-medium opacity-90 line-clamp-2">
-                            {note.projectData.deliverables.slice(0, 3).join(', ')}
-                          </p>
-                      </div>
-                  )}
-                  {note.projectData.estimatedDuration && (
-                      <div className="bg-white/50 dark:bg-black/20 p-2 rounded-lg border border-black/5 flex flex-col">
-                          <p className="text-[9px] font-bold uppercase opacity-60 mb-1">📅 Timeline</p>
-                          <p className="text-[11px] leading-tight font-medium opacity-90 truncate">
-                            {note.projectData.estimatedDuration}
-                          </p>
-                      </div>
-                  )}
+                  <div className="bg-white/50 dark:bg-black/20 p-2 rounded-lg border border-black/5 flex flex-col">
+                      <p className="text-[9px] font-bold uppercase opacity-60 mb-1">📦 Status</p>
+                      <p className="text-[11px] leading-tight font-black opacity-90 truncate">
+                        {isFinished ? 'COMPLETED' : 'IN PROGRESS'}
+                      </p>
+                  </div>
+                  <div className="bg-white/50 dark:bg-black/20 p-2 rounded-lg border border-black/5 flex flex-col">
+                      <p className="text-[9px] font-bold uppercase opacity-60 mb-1">📅 Milestone</p>
+                      <p className="text-[11px] leading-tight font-medium opacity-90 truncate">
+                        {note.projectData?.milestones?.[0]?.label || 'Initial Phase'}
+                      </p>
+                  </div>
               </div>
               <div className="bg-white/50 dark:bg-black/20 p-2 rounded-lg border border-black/5">
                   <div className="flex justify-between items-center mb-1.5">
