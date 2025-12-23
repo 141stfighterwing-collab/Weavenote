@@ -113,9 +113,8 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   };
 
   const isEnvConfigured = () => {
-    // IMPORTANT: Vite replaces 'process.env.API_KEY' at build time.
-    // In the browser, 'process' doesn't exist, but the string sequence 'process.env.API_KEY' 
-    // will be replaced with the actual key or an empty string from the define block.
+    // IMPORTANT: Vite replaces the actual string literal 'process.env.API_KEY' at build time.
+    // If the key was missing during the build, this value will be "" or "undefined".
     const key = process.env.API_KEY;
     return !!key && key !== 'undefined' && key.length > 5;
   };
@@ -211,10 +210,14 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 </div>
                 <div>
                   <h4 className="font-bold text-slate-800 dark:text-white mb-3 text-sm">Theme Selection</h4>
-                  <div className="grid grid-cols-4 gap-2">
-                    {(['default', 'ocean', 'forest', 'sunset', 'rose', 'midnight', 'coffee', 'neon', 'yellow', 'hyperblue'] as Theme[]).map(t => (
-                      <button key={t} onClick={() => setTheme(t)} className={`px-2 py-2 rounded-lg text-[10px] font-bold border transition-all ${theme === t ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-slate-200 text-slate-500 dark:border-slate-700'}`}>
-                        {t.toUpperCase()}
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {(['default', 'ocean', 'forest', 'sunset', 'rose', 'midnight', 'coffee', 'neon', 'cyberpunk', 'nord', 'dracula', 'lavender', 'earth', 'yellow', 'hyperblue'] as Theme[]).map(t => (
+                      <button 
+                        key={t} 
+                        onClick={() => setTheme(t)} 
+                        className={`px-2 py-2.5 rounded-lg text-[9px] font-black border transition-all uppercase tracking-tighter ${theme === t ? 'border-primary-600 bg-primary-50 text-primary-700 shadow-sm' : 'border-slate-200 text-slate-500 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
+                      >
+                        {t}
                       </button>
                     ))}
                   </div>
@@ -256,19 +259,28 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     )}
                 </div>
 
-                {diagnosticSteps.some(s => s.status === 'error' && s.name.includes("Discovery")) && (
-                    <div className="p-4 bg-red-50 dark:bg-red-900/10 rounded-xl border-2 border-red-200 dark:border-red-900/30">
-                        <h5 className="text-xs font-black text-red-600 uppercase mb-2 flex items-center gap-2">
-                           <span>⚠️</span> Critical: Missing Credentials
+                {!isEnvConfigured() && (
+                    <div className="p-5 bg-red-50 dark:bg-red-900/20 rounded-xl border-2 border-red-200 dark:border-red-900/40">
+                        <h5 className="text-sm font-black text-red-600 dark:text-red-400 uppercase mb-3 flex items-center gap-2">
+                           <span>⚠️</span> Deployment Sync Required
                         </h5>
-                        <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed mb-3">
-                            The application is currently unable to communicate with AI services. Please ensure:
-                        </p>
-                        <ul className="list-disc ml-5 text-[11px] text-slate-600 dark:text-slate-400 space-y-1">
-                            <li>The variable name is exactly <code>API_KEY</code> in your environment.</li>
-                            <li>If using Vite, ensure the key is correctly defined in your hosting platform (Vercel).</li>
-                            <li><strong>IMPORTANT:</strong> You must trigger a new deployment in Vercel after adding the key so it is injected into the build.</li>
-                        </ul>
+                        <div className="space-y-3">
+                          <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                              Environment variables like <strong>API_KEY</strong> must be injected into the code during the <strong>Build Phase</strong>. Simply adding them to the dashboard is not enough.
+                          </p>
+                          <div className="bg-white/50 dark:bg-black/20 p-3 rounded-lg border border-red-100 dark:border-red-900/20">
+                            <p className="text-[11px] font-bold text-slate-800 dark:text-white mb-2">To fix this on Vercel:</p>
+                            <ol className="list-decimal ml-5 text-[11px] text-slate-600 dark:text-slate-400 space-y-1.5">
+                                <li>Open your project in the <strong>Vercel Dashboard</strong>.</li>
+                                <li>Navigate to the <strong>Deployments</strong> tab.</li>
+                                <li>Click the <strong>(...) icon</strong> on your latest deployment.</li>
+                                <li>Select <strong>Redeploy</strong> (ensure "Use existing cache" is OFF).</li>
+                            </ol>
+                          </div>
+                          <p className="text-[10px] text-slate-500 italic">
+                            The app will only detect the key once a new build has been completed with the variables present.
+                          </p>
+                        </div>
                     </div>
                 )}
 

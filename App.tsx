@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Note, NoteColor, NoteType, ViewMode, Theme, Folder, User } from './types';
 import { processNoteWithAI, getDailyUsage } from './services/geminiService';
@@ -58,7 +57,13 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const body = document.body;
-    const themeClasses = ['theme-ocean', 'theme-forest', 'theme-sunset', 'theme-rose', 'theme-midnight', 'theme-coffee', 'theme-neon', 'theme-cyberpunk', 'theme-nord', 'theme-dracula', 'theme-lavender', 'theme-earth'];
+    // Updated with all valid theme class names
+    const themeClasses = [
+      'theme-ocean', 'theme-forest', 'theme-sunset', 'theme-rose', 
+      'theme-midnight', 'theme-coffee', 'theme-neon', 'theme-cyberpunk', 
+      'theme-nord', 'theme-dracula', 'theme-lavender', 'theme-earth',
+      'theme-yellow', 'theme-hyperblue'
+    ];
     body.classList.remove(...themeClasses);
     if (theme !== 'default') {
         body.classList.add(`theme-${theme}`);
@@ -184,8 +189,6 @@ const App: React.FC = () => {
         };
 
         setNotes(prev => [newNote, ...prev]);
-        
-        // Tab switching is now handled by the NoteInput's onTypeChange callback
         await saveNote(newNote, storageOwner);
         setDailyUsage(getDailyUsage());
         return newNote;
@@ -388,11 +391,8 @@ const App: React.FC = () => {
             </div>
         </header>
 
-        {/* Global tab navigation (RED area) removed per user request */}
-
         <main className="flex-grow max-w-[1600px] mx-auto px-4 py-6 w-full flex flex-col lg:flex-row gap-6">
             <div className="flex-1 min-0 order-2 lg:order-2">
-                {/* NoteInput (YELLOW area) now serves as the primary navigation controller */}
                 {viewMode === 'grid' && (
                     <NoteInput 
                         onAddNote={handleAddNote} 

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -32,62 +31,50 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Kalam:wght@300;400;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <style>
       :root {
-        --color-primary-50: 238 242 255;
-        --color-primary-100: 224 231 255;
-        --color-primary-200: 199 210 254;
-        --color-primary-300: 165 180 252;
-        --color-primary-400: 129 140 248;
-        --color-primary-500: 99 102 241;
-        --color-primary-600: 79 70 229;
-        --color-primary-700: 67 56 202;
-        --color-primary-800: 55 48 163;
-        --color-primary-900: 49 46 129;
+        --color-primary-50: 238 242 255; --color-primary-100: 224 231 255; --color-primary-200: 199 210 254; --color-primary-300: 165 180 252; --color-primary-400: 129 140 248; --color-primary-500: 99 102 241; --color-primary-600: 79 70 229; --color-primary-700: 67 56 202; --color-primary-800: 55 48 163; --color-primary-900: 49 46 129;
       }
 
       body.theme-ocean {
-        --color-primary-50: 240 249 255; --color-primary-100: 224 242 254; --color-primary-500: 14 165 233; --color-primary-600: 2 132 199;
+        --color-primary-50: 240 249 255; --color-primary-100: 224 242 254; --color-primary-200: 186 230 253; --color-primary-300: 125 211 252; --color-primary-400: 56 189 248; --color-primary-500: 14 165 233; --color-primary-600: 2 132 199; --color-primary-700: 3 105 161; --color-primary-800: 7 89 133; --color-primary-900: 12 74 110;
       }
       body.theme-forest {
-        --color-primary-50: 236 253 245; --color-primary-100: 209 250 229; --color-primary-500: 16 185 129; --color-primary-600: 5 150 105;
+        --color-primary-50: 236 253 245; --color-primary-100: 209 250 229; --color-primary-200: 167 243 208; --color-primary-300: 110 231 183; --color-primary-400: 52 211 153; --color-primary-500: 16 185 129; --color-primary-600: 5 150 105; --color-primary-700: 4 120 87; --color-primary-800: 6 95 70; --color-primary-900: 6 77 58;
       }
       body.theme-sunset {
-        --color-primary-50: 255 247 237; --color-primary-100: 255 237 213; --color-primary-500: 249 115 22; --color-primary-600: 234 88 12;
+        --color-primary-50: 255 247 237; --color-primary-100: 255 237 213; --color-primary-200: 254 215 170; --color-primary-300: 253 186 116; --color-primary-400: 251 146 60; --color-primary-500: 249 115 22; --color-primary-600: 234 88 12; --color-primary-700: 194 65 12; --color-primary-800: 154 52 18; --color-primary-900: 124 45 18;
       }
       body.theme-rose {
-        --color-primary-50: 255 241 242; --color-primary-100: 255 228 230; --color-primary-200: 254 205 211; --color-primary-500: 244 63 94; --color-primary-600: 225 29 72;
+        --color-primary-50: 255 241 242; --color-primary-100: 255 228 230; --color-primary-200: 254 205 211; --color-primary-300: 253 164 175; --color-primary-400: 251 113 133; --color-primary-500: 244 63 94; --color-primary-600: 225 29 72; --color-primary-700: 190 18 60; --color-primary-800: 159 18 57; --color-primary-900: 136 19 55;
       }
       body.theme-midnight {
-        --color-primary-50: 15 23 42; --color-primary-100: 30 41 59; --color-primary-500: 99 102 241; --color-primary-600: 79 70 229;
-        background-color: #020617 !important;
+        --color-primary-50: 238 242 255; --color-primary-100: 199 210 254; --color-primary-200: 165 180 252; --color-primary-300: 129 140 248; --color-primary-400: 99 102 241; --color-primary-500: 79 70 229; --color-primary-600: 67 56 202; --color-primary-700: 55 48 163; --color-primary-800: 49 46 129; --color-primary-900: 30 27 75;
       }
       body.theme-coffee {
-        --color-primary-50: 254 252 232; --color-primary-100: 254 249 195; --color-primary-200: 254 240 138; --color-primary-500: 120 113 108; --color-primary-600: 68 64 60;
+        --color-primary-50: 250 250 249; --color-primary-100: 245 245 244; --color-primary-200: 231 229 228; --color-primary-300: 214 211 209; --color-primary-400: 168 162 158; --color-primary-500: 120 113 108; --color-primary-600: 87 83 78; --color-primary-700: 68 64 60; --color-primary-800: 41 37 36; --color-primary-900: 28 25 23;
       }
       body.theme-neon {
-        --color-primary-50: 20 20 20; --color-primary-100: 30 30 30; --color-primary-500: 57 255 20; --color-primary-600: 50 205 50;
-        background-color: #000 !important;
+        --color-primary-50: 240 253 244; --color-primary-100: 220 252 231; --color-primary-200: 187 247 208; --color-primary-300: 134 239 172; --color-primary-400: 74 222 128; --color-primary-500: 34 197 94; --color-primary-600: 22 163 74; --color-primary-700: 21 128 61; --color-primary-800: 22 101 52; --color-primary-900: 20 83 45;
       }
       body.theme-cyberpunk {
-        --color-primary-50: 20 20 20; --color-primary-100: 40 40 40; --color-primary-500: 255 0 255; --color-primary-600: 0 255 255;
-        background-color: #0d0d0d !important;
+        --color-primary-50: 253 242 255; --color-primary-100: 250 232 255; --color-primary-200: 245 208 254; --color-primary-300: 240 171 252; --color-primary-400: 232 121 249; --color-primary-500: 217 70 239; --color-primary-600: 192 38 211; --color-primary-700: 162 28 175; --color-primary-800: 134 25 143; --color-primary-900: 112 26 117;
       }
       body.theme-nord {
-        --color-primary-50: 236 239 244; --color-primary-100: 216 222 233; --color-primary-500: 136 192 208; --color-primary-600: 129 161 193;
+        --color-primary-50: 248 250 252; --color-primary-100: 241 245 249; --color-primary-200: 226 232 240; --color-primary-300: 203 213 225; --color-primary-400: 148 163 184; --color-primary-500: 100 116 139; --color-primary-600: 71 85 105; --color-primary-700: 51 65 85; --color-primary-800: 30 41 59; --color-primary-900: 15 23 42;
       }
       body.theme-dracula {
-        --color-primary-50: 40 42 54; --color-primary-100: 68 71 90; --color-primary-500: 189 147 249; --color-primary-600: 255 121 198;
+        --color-primary-50: 250 245 255; --color-primary-100: 243 232 255; --color-primary-200: 233 213 255; --color-primary-300: 216 180 254; --color-primary-400: 192 132 252; --color-primary-500: 168 85 247; --color-primary-600: 147 51 234; --color-primary-700: 126 34 206; --color-primary-800: 107 33 168; --color-primary-900: 88 28 135;
       }
       body.theme-lavender {
-        --color-primary-50: 245 243 255; --color-primary-100: 237 233 254; --color-primary-500: 139 92 246; --color-primary-600: 124 58 237;
+        --color-primary-50: 245 243 255; --color-primary-100: 237 233 254; --color-primary-200: 221 214 254; --color-primary-300: 196 181 253; --color-primary-400: 167 139 250; --color-primary-500: 139 92 246; --color-primary-600: 124 58 237; --color-primary-700: 109 40 217; --color-primary-800: 91 33 182; --color-primary-900: 76 29 149;
       }
       body.theme-earth {
-        --color-primary-50: 252 250 242; --color-primary-100: 245 245 220; --color-primary-500: 120 113 108; --color-primary-600: 68 64 60;
+        --color-primary-50: 240 244 244; --color-primary-100: 220 228 228; --color-primary-200: 190 200 200; --color-primary-300: 140 160 160; --color-primary-400: 100 120 120; --color-primary-500: 80 100 100; --color-primary-600: 60 80 80; --color-primary-700: 45 60 60; --color-primary-800: 30 40 40; --color-primary-900: 15 20 20;
       }
       body.theme-yellow {
-        --color-primary-50: 254 252 232; --color-primary-100: 254 249 195; --color-primary-200: 253 224 71; --color-primary-500: 250 204 21; --color-primary-600: 234 179 8;
+        --color-primary-50: 254 252 232; --color-primary-100: 254 249 195; --color-primary-200: 254 240 138; --color-primary-300: 253 224 71; --color-primary-400: 250 204 21; --color-primary-500: 234 179 8; --color-primary-600: 202 138 4; --color-primary-700: 161 98 7; --color-primary-800: 133 77 14; --color-primary-900: 113 63 18;
       }
       body.theme-hyperblue {
-        --color-primary-50: 239 246 255; --color-primary-100: 219 234 254; --color-primary-200: 191 219 254; --color-primary-500: 0 80 255; --color-primary-600: 0 60 210;
+        --color-primary-50: 239 246 255; --color-primary-100: 219 234 254; --color-primary-200: 191 219 254; --color-primary-300: 147 197 253; --color-primary-400: 96 165 250; --color-primary-500: 59 130 246; --color-primary-600: 37 99 235; --color-primary-700: 29 78 216; --color-primary-800: 30 64 175; --color-primary-900: 30 58 138;
       }
 
       body {
