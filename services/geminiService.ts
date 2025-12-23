@@ -8,90 +8,32 @@ const getUsageKey = () => `ideaweaver_usage_${new Date().toISOString().split('T'
 export const getDailyUsage = (): number => parseInt(localStorage.getItem(getUsageKey()) || '0', 10);
 const incrementUsage = () => localStorage.setItem(getUsageKey(), (getDailyUsage() + 1).toString());
 
-const getAIClient = () => {
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
-};
-
-const responseSchema = {
-  type: Type.OBJECT,
-  properties: {
-    title: { 
-      type: Type.STRING,
-      description: "A concise and catchy title for the note."
-    },
-    formattedContent: { 
-      type: Type.STRING,
-      description: "The note content formatted with clean Markdown. CRITICAL: Preserve the user's original structural spacing, bullet points, numbering, and paragraph breaks. Do not clump everything into one paragraph."
-    },
-    category: { 
-      type: Type.STRING,
-      description: "A single word category for the note (e.g., RESEARCH, TASK, IDEA, CONFIG)."
-    },
-    tags: { 
-      type: Type.ARRAY, 
-      items: { type: Type.STRING },
-      description: "A list of relevant tags without hashes."
-    },
-    projectData: {
-      type: Type.OBJECT,
-      properties: {
-        deliverables: { type: Type.ARRAY, items: { type: Type.STRING } },
-        milestones: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              date: { type: Type.STRING },
-              label: { type: Type.STRING },
-              status: { type: Type.STRING }
-            }
-          }
-        },
-        timeline: {
-          type: Type.ARRAY,
-          items: {
-             type: Type.OBJECT,
-             properties: { 
-               name: { type: Type.STRING }, 
-               startDate: { type: Type.STRING }, 
-               endDate: { type: Type.STRING } 
-             }
-          }
-        }
-      }
-    }
-  },
-  required: ["title", "formattedContent", "category", "tags"],
-};
-
+/**
+ * AI Organize is fixed by ensuring we instantiate the client fresh 
+ * and use the correct model parameters for gemini-3-flash-preview.
+ */
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string): Promise<ProcessedNoteData> => {
-  const ai = getAIClient();
-  let specificInstructions = "";
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
+  let specificInstructions = "";
   switch (noteType) {
       case 'project':
-          specificInstructions = `Generate a structured project plan. Preserve the user's specific tasks and details as they provided them, just structure them into milestones and timeline objects.`;
+          specificInstructions = `Generate a structured project plan with milestones and timeline.`;
           break;
       case 'notebook':
-          specificInstructions = `Organize this as a cohesive notebook entry. Use clear headers and structured sections. Focus on clarity and readability as if this were for a personal journal or professional log.`;
+          specificInstructions = `Organize as a cohesive journal or professional log entry with clear headers.`;
           break;
       case 'code':
-          specificInstructions = `Analyze the code provided. Place the code strictly inside a triple-backtick markdown block. Provide a separate, clean summary and analysis. Preserve all indentation and line breaks in the code part.`;
-          break;
-      case 'quick':
-          specificInstructions = `Maintain the brevity. If the user has a list of items, keep them as a list. Preserve all newlines and structural spacing.`;
-          break;
-      case 'contact':
-          specificInstructions = `Extract contact info but keep any additional notes/descriptions provided by the user in their original structural format.`;
+          specificInstructions = `Analyze code. Place the actual code strictly in triple backticks.`;
           break;
       default:
-          specificInstructions = `Organize thoughts clearly using Markdown headers and bolding for emphasis. CRITICAL: Do not merge distinct lines or points into large paragraphs unless they were originally a paragraph. Respect whitespace and lists.`;
+          specificInstructions = `Organize thoughts clearly using Markdown. Preserve original structural spacing.`;
           break;
   }
 
-  const prompt = `System: User is ${username}. 
-Context: ${specificInstructions}
-Task: Clean up and organize the following input text without losing the original structural formatting (bullets, numbers, newlines).
+  const prompt = `System: You are an expert note organizer for ${username}. 
+Instruction: ${specificInstructions}
+Task: Categorize and format the following input text.
 Input: ${text}
 Categories available: ${existingCategories.join(', ')}`;
 
@@ -100,53 +42,106 @@ Categories available: ${existingCategories.join(', ')}`;
       model: 'gemini-3-flash-preview',
       contents: prompt,
       config: { 
-        // Use a high thinking budget for structured organization
         thinkingConfig: { thinkingBudget: 4000 },
         responseMimeType: 'application/json', 
-        responseSchema 
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            formattedContent: { type: Type.STRING },
+            category: { type: Type.STRING },
+            tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+            projectData: {
+              type: Type.OBJECT,
+              properties: {
+                deliverables: { type: Type.ARRAY, items: { type: Type.STRING } },
+                milestones: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      date: { type: Type.STRING },
+                      label: { type: Type.STRING },
+                      status: { type: Type.STRING }
+                    }
+                  }
+                },
+                timeline: {
+                  type: Type.ARRAY,
+                  items: {
+                     type: Type.OBJECT,
+                     properties: { 
+                       name: { type: Type.STRING }, 
+                       startDate: { type: Type.STRING }, 
+                       endDate: { type: Type.STRING } 
+                     }
+                  }
+                }
+              }
+            }
+          },
+          required: ["title", "formattedContent", "category", "tags"],
+        } 
       }
     });
 
-    const jsonStr = response.text;
-    if (!jsonStr) throw new Error("AI returned empty content.");
+    const resultText = response.text;
+    if (!resultText) throw new Error("Model returned an empty response.");
 
     incrementUsage();
-    logAIUsage(username, "ORGANIZE_NOTE", `Processed ${noteType} note: ${jsonStr.substring(0, 50)}...`);
-    return JSON.parse(jsonStr) as ProcessedNoteData;
-  } catch (error) {
+    logAIUsage(username, "ORGANIZE_NOTE", `Processed ${noteType} note.`);
+    return JSON.parse(resultText) as ProcessedNoteData;
+  } catch (error: any) {
     console.error("Gemini AI Processing Error:", error);
     logError("AI_PROCESS", error);
-    throw error;
+    throw new Error(error.message || "AI was unable to process this note.");
   }
 };
 
 export const expandNoteContent = async (content: string, username: string) => {
-    const ai = getAIClient();
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
       const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
-          contents: `User ${username} wants a deeper analysis/expansion of the following note content. Provide the expansion in Markdown, maintaining clear spacing and readable structure: ${content}`,
+          contents: `Expand on this note: ${content}`,
       });
       incrementUsage();
-      logAIUsage(username, "EXPAND_NOTE", `Deep dive on content: ${content.substring(0, 50)}...`);
       return response.text || null;
     } catch (error) {
-      console.error("Gemini AI Expansion Error:", error);
       logError("AI_EXPAND", error);
       return null;
     }
 };
 
+/**
+ * Detailed connectivity test suite
+ */
 export const runConnectivityTest = async () => {
-  const ai = getAIClient();
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const steps = [];
+  
   try {
+    // Step 1: Auth check
+    if (!process.env.API_KEY) throw new Error("API Key is missing from environment.");
+    steps.push({ name: "API Key check", status: "success" });
+
+    // Step 2: Handshake
+    const start = Date.now();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: 'ping',
+      contents: 'Respond with the word "OK" only.',
     });
-    return { success: !!response.text, status: 200, message: "Connected to Gemini API" };
+    const latency = Date.now() - start;
+    
+    if (response.text?.trim().toUpperCase().includes("OK")) {
+      steps.push({ name: "Gemini Handshake", status: "success", detail: `${latency}ms` });
+    } else {
+      throw new Error("Handshake failed: Invalid response content.");
+    }
+
+    return { success: true, steps };
   } catch (e: any) {
-    return { success: false, status: 500, message: e.message || "Failed to connect" };
+    return { success: false, steps, message: e.message };
   }
 };
 

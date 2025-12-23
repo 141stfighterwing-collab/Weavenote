@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -37,22 +38,12 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(600);
   
-  const [workflowNodes, setWorkflowNodes] = useState<WorkflowNode[]>([]);
-  const [workflowEdges, setWorkflowEdges] = useState<WorkflowEdge[]>([]);
-
   const checkboxCounter = useRef(0);
   checkboxCounter.current = 0;
 
   useEffect(() => {
     if (isOpen && containerRef.current) {
         setContainerWidth(containerRef.current.clientWidth - 64);
-    }
-    if (note?.projectData?.workflow) {
-        setWorkflowNodes(note.projectData.workflow.nodes || []);
-        setWorkflowEdges(note.projectData.workflow.edges || []);
-    } else {
-        setWorkflowNodes([]);
-        setWorkflowEdges([]);
     }
   }, [isOpen, note]);
 
@@ -139,29 +130,14 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
             <div>
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-bold uppercase tracking-wider opacity-60 font-sans">{note.category}</span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 opacity-70 font-sans flex items-center gap-1">
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                        {note.accessCount || 0} views
-                    </span>
                 </div>
                 <h2 className="text-3xl font-bold leading-tight mt-1">{note.title}</h2>
-                <div className="text-xs opacity-50 font-sans mt-1">
-                    {new Date(note.createdAt).toLocaleDateString()} • {new Date(note.createdAt).toLocaleTimeString()}
-                </div>
             </div>
             <div className="flex items-center gap-2">
                 {onSaveExpanded && (
                   <button onClick={handleDeepDive} disabled={isExpanding} className="px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm bg-indigo-600 text-white hover:bg-indigo-700 flex items-center gap-1 disabled:opacity-50">
                     {isExpanding ? '✨ Diving...' : '✨ Deep Dive'}
                   </button>
-                )}
-                {note.type === 'project' && onToggleComplete && (
-                    <button 
-                        onClick={() => onToggleComplete(note.id)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm flex items-center gap-1 ${isCompleted ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600'}`}
-                    >
-                        {isCompleted ? '✓ Completed' : 'Mark Complete'}
-                    </button>
                 )}
                 <button onClick={onClose} className="p-2 rounded-full hover:bg-black/10 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -170,15 +146,6 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ note, isOpen, onClose
         </div>
 
         <div className="p-8 overflow-y-auto custom-scrollbar flex-grow bg-white/20 dark:bg-black/20">
-             {note.type === 'project' && note.projectData && (
-                <div className="mb-8 font-sans">
-                    <div className="bg-white/50 dark:bg-black/20 p-4 rounded-lg border border-black/10 mb-4">
-                        <h3 className="text-sm font-bold uppercase tracking-wider mb-2 opacity-70">📅 Project Timeline</h3>
-                        <GanttChart data={note.projectData} width={containerWidth} />
-                    </div>
-                </div>
-             )}
-
              <div className="prose prose-lg max-w-none font-sans opacity-95 prose-headings:font-hand prose-headings:font-bold prose-p:my-4 prose-li:my-2 break-words whitespace-pre-wrap">
                 <ReactMarkdown 
                     remarkPlugins={[remarkGfm]}

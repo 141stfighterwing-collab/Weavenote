@@ -1,7 +1,7 @@
 
 export type NoteType = 'quick' | 'notebook' | 'deep' | 'code' | 'project' | 'contact' | 'document';
 
-export type Theme = 'default' | 'ocean' | 'forest' | 'sunset' | 'rose' | 'midnight' | 'coffee' | 'neon' | 'cyberpunk' | 'nord' | 'dracula' | 'lavender' | 'earth';
+export type Theme = 'default' | 'ocean' | 'forest' | 'sunset' | 'rose' | 'midnight' | 'coffee' | 'neon' | 'cyberpunk' | 'nord' | 'dracula' | 'lavender' | 'earth' | 'yellow' | 'hyperblue';
 
 export interface Folder {
   id: string;
