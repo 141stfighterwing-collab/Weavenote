@@ -83,8 +83,12 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   };
 
   const loadLogsData = () => {
-      setAiLogs(getAIUsageLogs());
-      setErrorLogs(getErrorLogs());
+      try {
+        setAiLogs(getAIUsageLogs());
+        setErrorLogs(getErrorLogs());
+      } catch (e) {
+        console.error("Logs data load error", e);
+      }
   };
 
   const handleApprove = async (uid: string) => {
@@ -121,11 +125,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
       // 1. Env Check - Robust detection of process.env to prevent ReferenceError in production
       let apiKeyFound = false;
       try {
+        // Attempt to check if the bundler injected the key
         if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
           apiKeyFound = true;
-        } else if ((import.meta as any).env?.VITE_API_KEY) {
-          apiKeyFound = true;
-        }
+        } 
       } catch (e) {
         apiKeyFound = false;
       }
@@ -153,21 +156,24 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
       }
 
       // 3. Database
-      const dbResult = await checkDatabaseConnection();
-      if (!dbResult.success) {
-          setDiagnosticSteps(prev => prev.map((s, i) => i === 2 ? { ...s, status: 'error', detail: dbResult.message } : s));
-      } else {
-          setDiagnosticSteps(prev => prev.map((s, i) => i === 2 ? { ...s, status: 'success', detail: `${dbResult.latency}ms` } : s));
+      try {
+        const dbResult = await checkDatabaseConnection();
+        if (!dbResult.success) {
+            setDiagnosticSteps(prev => prev.map((s, i) => i === 2 ? { ...s, status: 'error', detail: dbResult.message } : s));
+        } else {
+            setDiagnosticSteps(prev => prev.map((s, i) => i === 2 ? { ...s, status: 'success', detail: `${dbResult.latency}ms` } : s));
+        }
+      } catch (e: any) {
+          setDiagnosticSteps(prev => prev.map((s, i) => i === 2 ? { ...s, status: 'error', detail: 'DB CRASH' } : s));
       }
 
       setIsTesting(false);
   };
 
-  // Safe checks for rendering process.env content in UI
+  // Safe checks for rendering env content in UI
   const getEnvStatus = () => {
     try {
       if (typeof process !== 'undefined' && process.env && process.env.API_KEY) return "DETECTED ✓";
-      if ((import.meta as any).env?.VITE_API_KEY) return "DETECTED (VITE) ✓";
       return "MISSING ✕";
     } catch {
       return "ERROR CHECKING";
@@ -176,7 +182,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
   const isEnvConfigured = () => {
     try {
-      return !!((typeof process !== 'undefined' && process.env && process.env.API_KEY) || (import.meta as any).env?.VITE_API_KEY);
+      return !!(typeof process !== 'undefined' && process.env && process.env.API_KEY);
     } catch {
       return false;
     }
@@ -252,7 +258,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 </div>
 
                 <div className="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono shadow-inner min-h-[140px]">
-                    <p className="text-[10px] text-primary-400 mb-2 opacity-60 uppercase tracking-widest">>> Root Diagnostic Protocol</p>
+                    <p className="text-[10px] text-primary-400 mb-2 opacity-60 uppercase tracking-widest">
+                        {">> Root Diagnostic Protocol"}
+                    </p>
                     {diagnosticSteps.map((step, i) => (
                         <div key={i} className="flex items-center justify-between text-xs py-1.5 border-b border-white/5 last:border-0">
                             <div className="flex items-center gap-3">
@@ -280,8 +288,8 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                         </p>
                         <ul className="list-disc ml-5 text-[11px] text-slate-600 dark:text-slate-400 space-y-1">
                             <li>The variable name is exactly <code>API_KEY</code> in your environment.</li>
-                            <li>Try adding a secondary variable named <code>VITE_API_KEY</code> if you are using a Vite build.</li>
-                            <li>Redeploy your application on Vercel to ensure new environment variables are injected.</li>
+                            <li>If using Vite, ensure the key is correctly defined in your hosting platform (Vercel).</li>
+                            <li>Redeploy your application on Vercel to ensure new environment variables are injected into the build.</li>
                         </ul>
                     </div>
                 )}
