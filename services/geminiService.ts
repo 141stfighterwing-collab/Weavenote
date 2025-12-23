@@ -9,11 +9,22 @@ export const getDailyUsage = (): number => parseInt(localStorage.getItem(getUsag
 const incrementUsage = () => localStorage.setItem(getUsageKey(), (getDailyUsage() + 1).toString());
 
 /**
- * AI Organize is fixed by ensuring we instantiate the client fresh 
- * and use the correct model parameters for gemini-3-flash-preview.
+ * Accesses the API key directly from process.env as required.
  */
+const safeApiKey = () => {
+    try {
+        // Direct access as per guidelines
+        return process.env.API_KEY;
+    } catch (e) {
+        return undefined;
+    }
+};
+
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string): Promise<ProcessedNoteData> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = safeApiKey();
+  if (!apiKey) throw new Error("API_KEY environment variable is not accessible in this context.");
+  
+  const ai = new GoogleGenAI({ apiKey });
   
   let specificInstructions = "";
   switch (noteType) {
@@ -99,7 +110,9 @@ Categories available: ${existingCategories.join(', ')}`;
 };
 
 export const expandNoteContent = async (content: string, username: string) => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = safeApiKey();
+    if (!apiKey) return null;
+    const ai = new GoogleGenAI({ apiKey });
     try {
       const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
@@ -113,30 +126,31 @@ export const expandNoteContent = async (content: string, username: string) => {
     }
 };
 
-/**
- * Detailed connectivity test suite
- */
 export const runConnectivityTest = async () => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = safeApiKey();
   const steps = [];
   
   try {
-    // Step 1: Auth check
-    if (!process.env.API_KEY) throw new Error("API Key is missing from environment.");
-    steps.push({ name: "API Key check", status: "success" });
+    // Step 1: Env Check
+    if (!apiKey) throw new Error("API Key (process.env.API_KEY) is undefined.");
+    steps.push({ name: "Environment Discovery", status: "success", detail: "Found Key" });
 
-    // Step 2: Handshake
+    // Step 2: Construction
+    const ai = new GoogleGenAI({ apiKey });
+    steps.push({ name: "SDK Initialization", status: "success" });
+
+    // Step 3: Latency & Handshake
     const start = Date.now();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: 'Respond with the word "OK" only.',
+      contents: 'Respond with the word "READY"',
     });
     const latency = Date.now() - start;
     
-    if (response.text?.trim().toUpperCase().includes("OK")) {
+    if (response.text?.toUpperCase().includes("READY")) {
       steps.push({ name: "Gemini Handshake", status: "success", detail: `${latency}ms` });
     } else {
-      throw new Error("Handshake failed: Invalid response content.");
+      throw new Error("Handshake failed: Model returned unexpected content.");
     }
 
     return { success: true, steps };

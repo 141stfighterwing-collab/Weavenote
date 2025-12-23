@@ -103,35 +103,39 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const runDiagnostics = async () => {
       setIsTesting(true);
       const initialSteps: DiagnosticStep[] = [
-          { name: "Checking API Credentials", status: 'running' },
-          { name: "Gemini Model Handshake", status: 'pending' },
-          { name: "Database Read/Write Test", status: 'pending' },
+          { name: "Environment Check", status: 'running' },
+          { name: "Gemini SDK Handshake", status: 'pending' },
+          { name: "Database Connectivity", status: 'pending' },
       ];
       setDiagnosticSteps(initialSteps);
 
-      // 1. API Key
-      if (!process.env.API_KEY) {
+      // Step 1: API Key Check
+      const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : undefined;
+      if (!apiKey) {
           setDiagnosticSteps(prev => prev.map((s, i) => i === 0 ? { ...s, status: 'error', detail: 'Missing Key' } : s));
           setIsTesting(false);
           return;
       }
-      setDiagnosticSteps(prev => prev.map((s, i) => i === 0 ? { ...s, status: 'success' } : i === 1 ? { ...s, status: 'running' } : s));
+      setDiagnosticSteps(prev => prev.map((s, i) => i === 0 ? { ...s, status: 'success', detail: 'Found Key' } : i === 1 ? { ...s, status: 'running' } : s));
 
-      // 2. AI Handshake
+      // Step 2: AI Handshake
       const aiResult = await runConnectivityTest();
       if (!aiResult.success) {
           setDiagnosticSteps(prev => prev.map((s, i) => i === 1 ? { ...s, status: 'error', detail: aiResult.message } : s));
           setIsTesting(false);
           return;
       }
-      setDiagnosticSteps(prev => prev.map((s, i) => i === 1 ? { ...s, status: 'success', detail: 'Connected' } : i === 2 ? { ...s, status: 'running' } : s));
+      setDiagnosticSteps(prev => [
+          ...aiResult.steps.map(step => ({ name: step.name, status: step.status as any, detail: step.detail })),
+          { name: "Database Connectivity", status: 'running' } as const
+      ]);
 
-      // 3. Database
+      // Step 3: Database
       const dbResult = await checkDatabaseConnection();
       if (!dbResult.success) {
-          setDiagnosticSteps(prev => prev.map((s, i) => i === 2 ? { ...s, status: 'error', detail: dbResult.message } : s));
+          setDiagnosticSteps(prev => prev.map((s, i) => i === prev.length - 1 ? { ...s, status: 'error', detail: dbResult.message } : s));
       } else {
-          setDiagnosticSteps(prev => prev.map((s, i) => i === 2 ? { ...s, status: 'success', detail: `${dbResult.latency}ms` } : s));
+          setDiagnosticSteps(prev => prev.map((s, i) => i === prev.length - 1 ? { ...s, status: 'success', detail: `${dbResult.latency}ms` } : s));
       }
 
       setIsTesting(false);
@@ -141,9 +145,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div className="bg-white dark:bg-slate-800 w-full max-w-6xl h-[85vh] rounded-2xl shadow-2xl flex overflow-hidden">
+        <div className="bg-white dark:bg-slate-800 w-full max-w-6xl h-[85vh] rounded-2xl shadow-2xl flex overflow-hidden text-slate-900 dark:text-slate-100">
             <div className="w-64 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 p-4 flex flex-col gap-2">
-                <h2 className="font-bold text-lg px-2 mb-4 text-slate-800 dark:text-white">Settings</h2>
+                <h2 className="font-bold text-lg px-2 mb-4">Settings</h2>
                 <button onClick={() => setActiveTab('appearance')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'appearance' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Appearance</button>
                 <button onClick={() => setActiveTab('data')} className={`text-left px-4 py-2 rounded-lg text-sm font-medium ${activeTab === 'data' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>Data & Storage</button>
                 
@@ -163,7 +167,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
             <div className="flex-1 p-8 overflow-y-auto custom-scrollbar">
                 <div className="flex justify-between mb-6">
-                    <h3 className="text-xl font-bold text-slate-800 dark:text-white capitalize">{activeTab.replace('_', ' ')}</h3>
+                    <h3 className="text-xl font-bold capitalize">{activeTab.replace('_', ' ')}</h3>
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full">✕</button>
                 </div>
 
@@ -171,7 +175,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     <div className="space-y-6">
                         <div className="flex justify-between items-center p-4 border rounded-xl dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/20">
                             <div>
-                                <p className="font-bold text-slate-800 dark:text-white">Dark Mode</p>
+                                <p className="font-bold">Dark Mode</p>
                                 <p className="text-xs text-slate-500">Enable high-contrast dark interface</p>
                             </div>
                             <button onClick={toggleDarkMode} className={`w-12 h-6 rounded-full transition-colors ${darkMode ? 'bg-primary-600' : 'bg-slate-300'} relative`}>
@@ -180,7 +184,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                         </div>
                         
                         <div>
-                             <p className="font-bold text-slate-800 dark:text-white mb-3">Color Themes</p>
+                             <p className="font-bold mb-3">Color Themes</p>
                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                 {['default', 'ocean', 'forest', 'sunset', 'rose', 'midnight', 'coffee', 'neon', 'cyberpunk', 'nord', 'dracula', 'lavender', 'earth', 'yellow', 'hyperblue'].map((t) => (
                                     <button 
@@ -225,7 +229,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                                         {step.status === 'pending' && (
                                             <div className="w-5 h-5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
                                         )}
-                                        <span className={`font-bold ${step.status === 'error' ? 'text-red-500' : 'text-slate-700 dark:text-slate-200'}`}>
+                                        <span className={`font-bold ${step.status === 'error' ? 'text-red-500' : ''}`}>
                                             {step.name}
                                         </span>
                                     </div>
@@ -237,44 +241,11 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                         </div>
 
                         <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/30">
-                            <p className="text-[10px] uppercase font-black text-blue-600 dark:text-blue-400 mb-2 tracking-widest">Deployment Environment</p>
+                            <p className="text-[10px] uppercase font-black text-blue-600 dark:text-blue-400 mb-2 tracking-widest">Environment Info</p>
                             <div className="grid grid-cols-2 gap-4 text-xs font-medium">
-                                <div className="flex justify-between"><span className="text-slate-500">API Key Configured:</span> <span className={process.env.API_KEY ? "text-green-600" : "text-red-600"}>{process.env.API_KEY ? "Yes" : "No"}</span></div>
-                                <div className="flex justify-between"><span className="text-slate-500">Model:</span> <span className="text-indigo-600">gemini-3-flash-preview</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">API Key Configured:</span> <span className={(typeof process !== 'undefined' && process.env?.API_KEY) ? "text-green-600" : "text-red-600"}>{(typeof process !== 'undefined' && process.env?.API_KEY) ? "Yes" : "No"}</span></div>
+                                <div className="flex justify-between"><span className="text-slate-500">Target Model:</span> <span className="text-indigo-600">gemini-3-flash-preview</span></div>
                             </div>
-                        </div>
-                    </div>
-                )}
-                
-                {activeTab === 'logs' && userIsAdmin && (
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-center">
-                            <h4 className="font-bold text-slate-700 dark:text-slate-300">AI Activity Stream</h4>
-                            <button onClick={loadLogsData} className="text-xs text-primary-600 font-bold hover:underline">Refresh</button>
-                        </div>
-                        <div className="border rounded-2xl overflow-hidden dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
-                            <table className="w-full text-xs text-left">
-                                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 border-b dark:border-slate-700 font-bold">
-                                    <tr>
-                                        <th className="p-4">Time</th>
-                                        <th className="p-4">User</th>
-                                        <th className="p-4">Action</th>
-                                        <th className="p-4">Summary</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y dark:divide-slate-700">
-                                    {aiLogs.length === 0 ? (
-                                        <tr><td colSpan={4} className="p-8 text-center text-slate-400 italic">No AI activity recorded.</td></tr>
-                                    ) : aiLogs.map(log => (
-                                        <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
-                                            <td className="p-4 text-slate-400 font-mono">{new Date(log.timestamp).toLocaleTimeString()}</td>
-                                            <td className="p-4 font-bold">{log.username}</td>
-                                            <td className="p-4 text-indigo-600 font-bold">{log.action}</td>
-                                            <td className="p-4 text-slate-500 truncate max-w-xs">{log.details}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
                         </div>
                     </div>
                 )}
