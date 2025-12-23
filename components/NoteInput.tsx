@@ -26,7 +26,6 @@ const NoteInput: React.FC<NoteInputProps> = ({
   const [title, setTitle] = useState('');
   const [isParsingDoc, setIsParsingDoc] = useState(false);
   
-  // Project-specific manual state
   const [projectProgress, setProjectProgress] = useState(0);
   const [projectCompleted, setProjectCompleted] = useState(false);
   const [objectives, setObjectives] = useState('');
@@ -63,22 +62,27 @@ const NoteInput: React.FC<NoteInputProps> = ({
     if (!file) return;
 
     setIsParsingDoc(true);
+    let rawText = "";
     try {
-      // 1. Raw Parsing
-      const rawText = await parseDocument(file);
+      // 1. Raw Parsing (Local Browser)
+      rawText = await parseDocument(file);
       
-      // 2. Intelligent AI Cleanup & Reconstruction
-      // We use Pro model for this to ensure high fidelity and artifact removal
+      // 2. Intelligent AI Cleanup (API Call)
       const cleaned = await cleanAndFormatIngestedText(rawText, file.name, "User"); 
       
-      // 3. Update State
       setTitle(cleaned.title || file.name.split('.')[0]);
       setText(cleaned.formattedContent);
-      
-      alert(`Ingestion Complete! Artifacts removed and layout structured.`);
+      alert(`Success! Document ingested and structured.`);
     } catch (err: any) {
-      console.error(err);
-      alert(err.message || "Failed to parse and clean document.");
+      console.error("Ingestion Error:", err);
+      // Fallback: If AI fails but parsing succeeded, show raw text so user doesn't lose progress
+      if (rawText) {
+          setTitle(file.name.split('.')[0]);
+          setText(rawText);
+          alert(`Document parsed, but AI formatting failed: ${err.message}. Showing raw content instead.`);
+      } else {
+          alert(`Critical Ingestion Error: ${err.message}`);
+      }
     } finally {
       setIsParsingDoc(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -157,7 +161,6 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 <button key={emoji} onClick={() => insertEmoji(emoji)} className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded text-sm">{emoji}</button>
             ))}
             
-            {/* ONLY ALLOW INGEST when Document tab is selected */}
             {activeType === 'document' && (
               <>
                 <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>

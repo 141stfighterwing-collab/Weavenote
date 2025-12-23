@@ -1,8 +1,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Set up the worker source using unpkg to ensure strict version matching
-const version = pdfjsLib.version || '5.4.449';
-
+// Force worker source to match the import version from ESM.sh
+const version = '5.4.449';
 // @ts-ignore
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
 
@@ -14,9 +13,7 @@ export const parseDocument = async (file: File): Promise<string> => {
     else if (
       file.type === 'text/plain' || 
       file.name.toLowerCase().endsWith('.txt') ||
-      file.name.toLowerCase().endsWith('.md') ||
-      file.name.toLowerCase().endsWith('.json') ||
-      file.name.toLowerCase().endsWith('.csv')
+      file.name.toLowerCase().endsWith('.md')
     ) {
       return await parseText(file);
     }
@@ -47,26 +44,16 @@ const parsePDF = async (file: File): Promise<string> => {
   });
   
   const pdf = await loadingTask.promise;
-  
-  if (pdf.numPages > 1000) {
-    throw new Error(`PDF exceeds the 1000-page limit (Has ${pdf.numPages} pages). Please upload a smaller document.`);
-  }
-
   let fullText = "";
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const textContent = await page.getTextContent();
     
-    // Improved item sorting and cleaning
     const items = textContent.items
       .map((item: any) => {
         let str = item.str || "";
-        
-        // Advanced cleaning: remove common PDF garbage like [ ] [][], non-printable chars, and box symbols
-        // \u25A1, \u25FB-\u25FE are square box characters
+        // Clean characters that look like [] or weird boxes
         str = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F\uFFFD\u25A1\u25FB-\u25FE]/g, "");
-        
-        // Remove empty bracket patterns that appear from checkboxes or weird fonts
         str = str.replace(/\[\s*\]/g, "");
         
         return {
@@ -77,7 +64,6 @@ const parsePDF = async (file: File): Promise<string> => {
       })
       .filter(item => item.text.trim().length > 0);
 
-    // Group text by vertical coordinate (lines)
     const lines: Record<number, any[]> = {};
     items.forEach(item => {
       const y = Math.round(item.y);
@@ -85,17 +71,15 @@ const parsePDF = async (file: File): Promise<string> => {
       lines[y].push(item);
     });
 
-    // Sort lines from top to bottom
     const sortedY = Object.keys(lines).map(Number).sort((a, b) => b - a);
     let pageText = "";
     sortedY.forEach(y => {
-      // Sort items within a line from left to right
       const lineItems = lines[y].sort((a, b) => a.x - b.x);
       const lineStr = lineItems.map(item => item.text).join(" ").trim();
       if (lineStr) pageText += lineStr + "\n";
     });
 
-    fullText += `[Page ${i}]\n${pageText}\n\n`;
+    fullText += pageText + "\n";
   }
   return fullText.trim();
 };
