@@ -140,13 +140,13 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
   const isCompleted = note.projectData?.isCompleted;
 
   // Ensure projectData exists for project notes
-  const projectData = note.projectData || { deliverables: [], milestones: [], timeline: [] };
+  const projectData = note.projectData || { deliverables: [], milestones: [], timeline: [], objectives: [] };
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" onClick={onClose}>
       <div 
         ref={containerRef}
-        className={`relative w-full max-w-5xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden ${colorClass} font-hand dark:brightness-95`}
+        className={`relative w-full max-w-6xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden ${colorClass} font-hand dark:brightness-95`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-start p-6 pb-4 border-b border-black/5 bg-black/5">
@@ -176,15 +176,25 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
         </div>
 
         <div className="p-8 overflow-y-auto custom-scrollbar flex-grow bg-white/20 dark:bg-black/20">
-             {/* Progress Bar for Projects */}
+             {/* Status Bar / Progress Bar for Projects */}
              {note.type === 'project' && (
-               <div className="mb-8 p-4 bg-white/40 dark:bg-black/20 rounded-xl border border-black/5">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-black uppercase tracking-widest opacity-60 font-sans">Project Progress</span>
-                    <span className="text-lg font-black font-sans">{calculateProgress}%</span>
+               <div className="mb-8 p-6 bg-white/40 dark:bg-black/20 rounded-2xl border border-black/5 shadow-inner">
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center gap-3">
+                        <span className="p-2 bg-emerald-500 rounded-lg text-white shadow-sm">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        </span>
+                        <div>
+                            <span className="text-xs font-black uppercase tracking-widest opacity-60 font-sans block">Project Status</span>
+                            <span className="text-sm font-bold font-sans text-emerald-700 dark:text-emerald-400">{isCompleted ? 'FINISHED' : 'IN PROGRESS'}</span>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <span className="text-2xl font-black font-sans">{calculateProgress}%</span>
+                    </div>
                   </div>
-                  <div className="w-full h-3 bg-black/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${calculateProgress}%` }} />
+                  <div className="w-full h-4 bg-black/5 rounded-full overflow-hidden shadow-inner">
+                    <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-1000" style={{ width: `${calculateProgress}%` }} />
                   </div>
                </div>
              )}
@@ -198,64 +208,86 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
                 </ReactMarkdown>
             </div>
 
-            {/* PROJECT DASHBOARD SECTION - Force show for project notes */}
+            {/* PROJECT DASHBOARD SECTION */}
             {note.type === 'project' && (
               <div className="mt-12 space-y-10 animate-[fadeIn_0.3s_ease-out] font-sans">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="bg-white/40 dark:bg-black/20 p-6 rounded-2xl border border-black/5 shadow-sm">
-                          <h4 className="text-xs font-black uppercase tracking-widest mb-4 opacity-60">Deliverables</h4>
-                          <ul className="space-y-2">
-                              {projectData.deliverables && projectData.deliverables.length > 0 ? projectData.deliverables.map((d, i) => (
-                                  <li key={i} className="text-sm font-bold flex items-center gap-3">
-                                      <span className="text-emerald-500 text-lg">▹</span> {d}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {/* Box 1: Objectives */}
+                      <div className="bg-white/50 dark:bg-black/30 p-8 rounded-3xl border border-black/5 shadow-xl flex flex-col min-h-[300px]">
+                          <div className="flex items-center gap-3 mb-6">
+                            <span className="text-2xl">🎯</span>
+                            <h4 className="text-sm font-black uppercase tracking-widest opacity-60">Objectives</h4>
+                          </div>
+                          <ul className="space-y-4 flex-1">
+                              {(projectData.objectives || projectData.deliverables).length > 0 ? (projectData.objectives || projectData.deliverables).map((o, i) => (
+                                  <li key={i} className="text-sm font-bold flex items-start gap-3 p-3 rounded-xl bg-white/20 border border-white/10">
+                                      <span className="text-emerald-500 text-lg leading-none mt-0.5">▹</span> 
+                                      <span className="leading-tight">{o}</span>
                                   </li>
-                              )) : <p className="text-xs text-slate-400 italic">No deliverables extracted yet.</p>}
+                              )) : <p className="text-xs text-slate-400 italic text-center py-10">No objectives extracted yet.</p>}
                           </ul>
                       </div>
-                      <div className="bg-white/40 dark:bg-black/20 p-6 rounded-2xl border border-black/5 shadow-sm">
-                          <h4 className="text-xs font-black uppercase tracking-widest mb-4 opacity-60">Milestones</h4>
-                          <div className="space-y-3">
+
+                      {/* Box 2: Milestones */}
+                      <div className="bg-white/50 dark:bg-black/30 p-8 rounded-3xl border border-black/5 shadow-xl flex flex-col min-h-[300px]">
+                          <div className="flex items-center gap-3 mb-6">
+                            <span className="text-2xl">🚩</span>
+                            <h4 className="text-sm font-black uppercase tracking-widest opacity-60">Milestones</h4>
+                          </div>
+                          <div className="space-y-4 flex-1">
                               {projectData.milestones && projectData.milestones.length > 0 ? projectData.milestones.map((m, i) => (
-                                  <div key={i} className="flex items-center justify-between bg-white/30 dark:bg-black/10 p-3 rounded-xl border border-black/5">
-                                      <span className="text-xs font-bold">{m.label}</span>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-[9px] opacity-40 font-mono">{m.date}</span>
-                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${m.status === 'completed' ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
-                                            {m.status.toUpperCase()}
-                                        </span>
+                                  <div key={i} className="flex items-center justify-between bg-white/30 dark:bg-black/10 p-4 rounded-2xl border border-black/5 hover:border-emerald-200 transition-all">
+                                      <div className="flex flex-col">
+                                        <span className="text-sm font-bold leading-tight">{m.label}</span>
+                                        <span className="text-[10px] opacity-50 font-mono mt-1">{m.date}</span>
+                                      </div>
+                                      <div className={`text-[10px] font-black px-3 py-1 rounded-full shadow-sm ${m.status === 'completed' ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}>
+                                          {m.status.toUpperCase()}
                                       </div>
                                   </div>
-                              )) : <p className="text-xs text-slate-400 italic">No milestones defined yet.</p>}
+                              )) : <p className="text-xs text-slate-400 italic text-center py-10">No milestones defined yet.</p>}
                           </div>
                       </div>
                   </div>
                   
-                  <div className="bg-white/40 dark:bg-black/20 p-6 rounded-2xl border border-black/5 shadow-sm">
-                      <div className="flex justify-between items-center mb-6">
-                        <h4 className="text-xs font-black uppercase tracking-widest opacity-60">Project Roadmap</h4>
-                        <span className="text-[10px] font-bold opacity-40 uppercase tracking-tighter">Timeline Visualization</span>
+                  {/* Box 3: Timeline */}
+                  <div className="bg-white/50 dark:bg-black/30 p-8 rounded-3xl border border-black/5 shadow-xl">
+                      <div className="flex justify-between items-center mb-8">
+                        <div className="flex items-center gap-3">
+                            <span className="text-2xl">🗓️</span>
+                            <h4 className="text-sm font-black uppercase tracking-widest opacity-60">Timeline</h4>
+                        </div>
+                        <span className="text-[10px] font-bold opacity-40 uppercase tracking-tighter">Roadmap Visualization</span>
                       </div>
                       {projectData.timeline && projectData.timeline.length > 0 ? (
-                        <GanttChart data={projectData} width={containerWidth} />
+                        <div className="bg-white/20 p-4 rounded-2xl border border-white/10">
+                            <GanttChart data={projectData} width={containerWidth} />
+                        </div>
                       ) : (
-                        <div className="text-center py-10 text-xs text-slate-400 border border-dashed border-slate-300 rounded-xl">
-                          Timelines are generated by AI during Organization.
+                        <div className="text-center py-16 text-xs text-slate-400 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl">
+                          Timelines are automatically generated by AI during note organization.
                         </div>
                       )}
                   </div>
 
+                  {/* Optional Box 4: Workflow Graph */}
                   {projectData.workflow && (
-                      <div className="bg-white/40 dark:bg-black/20 p-6 rounded-2xl border border-black/5 shadow-sm">
-                          <div className="flex justify-between items-center mb-6">
-                            <h4 className="text-xs font-black uppercase tracking-widest opacity-60">Neural Workflow Graph</h4>
-                            <span className="text-[10px] font-bold opacity-40 uppercase tracking-tighter">Interaction Mapping</span>
+                      <div className="bg-white/50 dark:bg-black/30 p-8 rounded-3xl border border-black/5 shadow-xl">
+                          <div className="flex justify-between items-center mb-8">
+                            <div className="flex items-center gap-3">
+                                <span className="text-2xl">🔗</span>
+                                <h4 className="text-sm font-black uppercase tracking-widest opacity-60">Process Workflow</h4>
+                            </div>
+                            <span className="text-[10px] font-bold opacity-40 uppercase tracking-tighter">Neural Graph Mapping</span>
                           </div>
-                          <WorkflowEditor 
-                              nodes={projectData.workflow.nodes} 
-                              edges={projectData.workflow.edges} 
-                              readOnly={true}
-                              onUpdate={() => {}} 
-                          />
+                          <div className="rounded-2xl overflow-hidden border border-black/5">
+                            <WorkflowEditor 
+                                nodes={projectData.workflow.nodes} 
+                                edges={projectData.workflow.edges} 
+                                readOnly={true}
+                                onUpdate={() => {}} 
+                            />
+                          </div>
                       </div>
                   )}
               </div>
@@ -263,7 +295,7 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
 
             <div className="mt-12 pt-6 border-t border-black/10 flex flex-wrap gap-2">
                 {note.tags.map(tag => (
-                     <span key={tag} className="text-xs font-bold font-sans px-3 py-1 rounded-full bg-white/50 border border-black/5 shadow-sm text-slate-700">
+                     <span key={tag} className="text-xs font-bold font-sans px-3 py-1 rounded-full bg-white/50 border border-black/5 shadow-sm text-slate-700 dark:text-slate-300">
                         #{tag}
                      </span>
                 ))}

@@ -16,7 +16,7 @@ export const processNoteWithAI = async (text: string, existingCategories: string
   let specificInstructions = "";
   switch (noteType) {
       case 'project':
-          specificInstructions = `Generate a highly structured project plan. If the input is messy or unstructured text, extract deliverables, milestones, and a logical timeline from the context. Look for implicit dates and goals.`;
+          specificInstructions = `Generate a highly structured project plan. If the input is messy or unstructured text, extract clear high-level objectives, specific deliverables, key milestones, and a logical timeline from the context. Look for implicit dates and goals.`;
           break;
       case 'notebook':
           specificInstructions = `Organize as a cohesive journal or professional log entry. If the input is a brain-dump or copy-paste from various sources, unify the voice and use clear, meaningful headers to separate ideas.`;
@@ -53,6 +53,7 @@ Categories available: ${existingCategories.join(', ')}`;
             projectData: {
               type: Type.OBJECT,
               properties: {
+                objectives: { type: Type.ARRAY, items: { type: Type.STRING } },
                 deliverables: { type: Type.ARRAY, items: { type: Type.STRING } },
                 milestones: {
                   type: Type.ARRAY,
