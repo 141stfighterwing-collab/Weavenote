@@ -9,22 +9,13 @@ export const getDailyUsage = (): number => parseInt(localStorage.getItem(getUsag
 const incrementUsage = () => localStorage.setItem(getUsageKey(), (getDailyUsage() + 1).toString());
 
 /**
- * Accesses the API key directly from process.env as required.
+ * AI Organize is fixed by ensuring we use the exact model parameters 
+ * and direct process.env.API_KEY access.
  */
-const safeApiKey = () => {
-    try {
-        // Direct access as per guidelines
-        return process.env.API_KEY;
-    } catch (e) {
-        return undefined;
-    }
-};
-
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string): Promise<ProcessedNoteData> => {
-  const apiKey = safeApiKey();
-  if (!apiKey) throw new Error("API_KEY environment variable is not accessible in this context.");
-  
-  const ai = new GoogleGenAI({ apiKey });
+  // Use the key directly from process.env as per strict instructions.
+  // In this environment, process.env.API_KEY is replaced with the literal value at build time.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
   
   let specificInstructions = "";
   switch (noteType) {
@@ -110,9 +101,7 @@ Categories available: ${existingCategories.join(', ')}`;
 };
 
 export const expandNoteContent = async (content: string, username: string) => {
-    const apiKey = safeApiKey();
-    if (!apiKey) return null;
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
     try {
       const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
@@ -126,31 +115,31 @@ export const expandNoteContent = async (content: string, username: string) => {
     }
 };
 
+/**
+ * Detailed connectivity test suite
+ */
 export const runConnectivityTest = async () => {
-  const apiKey = safeApiKey();
   const steps = [];
   
   try {
-    // Step 1: Env Check
-    if (!apiKey) throw new Error("API Key (process.env.API_KEY) is undefined.");
-    steps.push({ name: "Environment Discovery", status: "success", detail: "Found Key" });
+    // Step 1: Auth check
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) throw new Error("API Key is missing from environment (process.env.API_KEY is null or undefined).");
+    steps.push({ name: "API Key check", status: "success" });
 
-    // Step 2: Construction
-    const ai = new GoogleGenAI({ apiKey });
-    steps.push({ name: "SDK Initialization", status: "success" });
-
-    // Step 3: Latency & Handshake
+    // Step 2: Handshake
+    const ai = new GoogleGenAI({ apiKey: apiKey });
     const start = Date.now();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: 'Respond with the word "READY"',
+      contents: 'Respond with the word "OK" only.',
     });
     const latency = Date.now() - start;
     
-    if (response.text?.toUpperCase().includes("READY")) {
+    if (response.text?.trim().toUpperCase().includes("OK")) {
       steps.push({ name: "Gemini Handshake", status: "success", detail: `${latency}ms` });
     } else {
-      throw new Error("Handshake failed: Model returned unexpected content.");
+      throw new Error("Handshake failed: Invalid response content.");
     }
 
     return { success: true, steps };
