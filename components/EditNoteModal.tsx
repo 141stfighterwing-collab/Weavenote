@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Note } from '../types';
 import { processNoteWithAI } from '../services/geminiService';
@@ -15,6 +14,7 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [manualTags, setManualTags] = useState<string[]>([]);
+  const [newTagInput, setNewTagInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<{category: string, tags: string[]} | null>(null);
@@ -33,6 +33,11 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
 
   if (!isOpen || !note) return null;
 
+  const extractHashtags = (text: string): string[] => {
+    const matches = text.match(/#(\w+)/g);
+    return matches ? matches.map(m => m.substring(1).toLowerCase()) : [];
+  };
+
   const handleAIOrganize = async () => {
       setIsProcessing(true);
       setError(null);
@@ -41,7 +46,10 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
           setTitle(processed.title);
           setContent(processed.formattedContent);
           setAiResult({ category: processed.category, tags: processed.tags });
-          setManualTags(prev => Array.from(new Set([...prev, ...processed.tags])));
+          
+          // Merge AI tags with current manual tags and any newly found hashtags in the text
+          const currentTextTags = [...extractHashtags(processed.formattedContent), ...extractHashtags(processed.title)];
+          setManualTags(prev => Array.from(new Set([...prev, ...processed.tags, ...currentTextTags])));
       } catch (err: any) {
           setError(err.message || "AI Organization failed.");
       } finally {
@@ -49,9 +57,23 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
       }
   };
 
+  const addTag = (tag: string) => {
+    const clean = tag.trim().toLowerCase().replace('#', '');
+    if (clean && !manualTags.includes(clean)) {
+        setManualTags([...manualTags, clean]);
+    }
+    setNewTagInput('');
+  };
+
+  const removeTag = (tag: string) => {
+    setManualTags(manualTags.filter(t => t !== tag));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(note.id, title, content, aiResult?.category, manualTags);
+    // Final sync of tags from text content before saving
+    const finalTags = Array.from(new Set([...manualTags, ...extractHashtags(title), ...extractHashtags(content)]));
+    onSave(note.id, title, content, aiResult?.category, finalTags);
     onClose();
   };
 
@@ -90,6 +112,29 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Title</label>
               <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-4 py-2 border rounded-lg font-bold text-lg dark:bg-slate-700 dark:text-white" required />
             </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Tags (Press Enter)</label>
+              <div className="flex flex-col gap-2">
+                  <div className="flex gap-1">
+                      <input 
+                        type="text" 
+                        value={newTagInput} 
+                        onChange={(e) => setNewTagInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(newTagInput); } }}
+                        className="flex-1 px-3 py-1.5 text-sm border rounded dark:bg-slate-700 dark:text-white outline-none focus:ring-1 focus:ring-primary-500" 
+                        placeholder="Add #tag..."
+                      />
+                  </div>
+                  <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
+                    {manualTags.map(tag => (
+                        <span key={tag} className="px-2 py-0.5 bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 rounded text-[10px] font-bold flex items-center gap-1 border border-primary-100">
+                            #{tag}
+                            <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-500">✕</button>
+                        </span>
+                    ))}
+                  </div>
+              </div>
+            </div>
           </div>
           <div className="flex-grow flex flex-col min-h-0">
             <div className="flex justify-between items-center mb-2">
@@ -98,6 +143,7 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
                     <button type="button" onClick={() => applyFormat('bold')} className="p-1.5 hover:bg-white dark:hover:bg-slate-600 rounded">B</button>
                     <button type="button" onClick={() => applyFormat('italic')} className="p-1.5 hover:bg-white dark:hover:bg-slate-600 rounded">I</button>
                     <button type="button" onClick={() => applyFormat('checkbox')} className="p-1.5 hover:bg-white dark:hover:bg-slate-600 rounded">[/]</button>
+                    <button type="button" onClick={() => applyFormat('header')} className="p-1.5 hover:bg-white dark:hover:bg-slate-600 rounded text-[10px] font-bold">H3</button>
                 </div>
             </div>
             <textarea

@@ -36,13 +36,14 @@ Your goal is to transform messy, raw extracted text into a professionally format
 TASK:
 1. ARTIFACT REMOVAL: Strip all random square boxes like "[]", "[][ ]", "☐", or broken line artifacts. 
 2. MAXIMUM RETENTION: Keep every single meaningful detail, fact, date, and description. DO NOT summarize. DO NOT delete paragraphs.
-3. STRUCTURE: Reconstruct the logical flow using proper Markdown headers (##, ###) and bullet points.
-4. FORMATTING: Use ACTUAL newlines for line breaks. DO NOT use the literal string "\\n" or "\\r" in your text content.
+3. HASHTAG PRESERVATION: If you find words starting with # (hashtags), YOU MUST PRESERVE THEM in the text.
+4. STRUCTURE: Reconstruct the logical flow using proper Markdown headers (##, ###) and bullet points.
+5. FORMATTING: Use ACTUAL newlines for line breaks. DO NOT use the literal string "\\n" or "\\r" in your text content.
 
 INPUT DATA (Raw Extraction):
 ${rawText.substring(0, 30000)}
 
-Output must be strictly JSON following the schema.`;
+Output must be strictly JSON following the schema. Ensure all identified hashtags are also included in the 'tags' array.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -69,7 +70,6 @@ Output must be strictly JSON following the schema.`;
     let parsed = JSON.parse(resultText) as ProcessedNoteData;
     
     // HEURISTIC: Sometimes the model accidentally escapes newlines as literal strings "\n"
-    // We clean these up to ensure the UI shows real line breaks.
     if (parsed.formattedContent) {
         parsed.formattedContent = parsed.formattedContent
             .replace(/\\n/g, '\n')
@@ -99,22 +99,23 @@ export const processNoteWithAI = async (text: string, existingCategories: string
   let specificInstructions = "";
   switch (noteType) {
       case 'project':
-          specificInstructions = `Generate a highly structured project plan. Extract clear high-level objectives, specific deliverables, key milestones, and a logical timeline.`;
+          specificInstructions = `Generate a highly structured project plan. Extract clear high-level objectives, specific deliverables, key milestones, and a logical timeline. PRESERVE all #hashtags found in the input.`;
           break;
       case 'notebook':
-          specificInstructions = `Organize as a cohesive journal or professional log entry. Unify the voice and use clear headers.`;
+          specificInstructions = `Organize as a cohesive journal or professional log entry. Unify the voice and use clear headers. PRESERVE all #hashtags found in the input.`;
           break;
       case 'code':
-          specificInstructions = `Analyze the script. Place actual code blocks strictly in triple backticks.`;
+          specificInstructions = `Analyze the script. Place actual code blocks strictly in triple backticks. Keep any #comments or hashtags.`;
           break;
       default:
-          specificInstructions = `Cleanup messy unstructured input. Extract core ideas and use Markdown formatting.`;
+          specificInstructions = `Cleanup messy unstructured input. Extract core ideas and use Markdown formatting. CRITICAL: Do not remove any hashtags (words starting with #).`;
           break;
   }
 
   const prompt = `System: You are an expert note organizer for ${username}. 
 Instruction: ${specificInstructions}
-Task: Categorize and format the following input text into a clean JSON structure. Use real newlines, not \\n strings.
+Task: Categorize and format the following input text into a clean JSON structure. Use real newlines, not \\n strings. 
+CRITICAL: If the user has manual hashtags in their text (e.g. #important), DO NOT REMOVE THEM from the content and ensure they are also in the 'tags' array.
 Input: ${text}`;
 
   try {
@@ -175,7 +176,7 @@ export const expandNoteContent = async (content: string, username: string, userI
     try {
       const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
-          contents: `Expand on this note, providing more depth and context: ${content}. Use standard Markdown and real newlines.`,
+          contents: `Expand on this note, providing more depth and context: ${content}. Use standard Markdown and real newlines. Preserve all hashtags.`,
       });
       let result = response.text || null;
       if (result) {
