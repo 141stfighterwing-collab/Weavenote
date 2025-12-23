@@ -15,6 +15,57 @@ const incrementUsage = (userId?: string) => {
 };
 
 /**
+ * Specifically cleans up raw text extracted from documents.
+ * Focuses on removing OCR artifacts and square boxes while PRESERVING almost all content.
+ */
+export const cleanAndFormatIngestedText = async (rawText: string, filename: string, username: string, userId?: string): Promise<ProcessedNoteData> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  
+  const prompt = `System: You are an expert document reconstruction AI.
+Task: The following text was extracted from a document named "${filename}". 
+Extraction artifacts like random square boxes (e.g. [], [][]), broken lines, or weird spacing are present.
+Your job: 
+1. Clean up all formatting artifacts.
+2. PRESERVE ALL meaningful content. Do not summarize unless it is purely repetitive boilerplate.
+3. Organize the text into logical Markdown sections (Headers, Lists, Tables if applicable).
+4. Identify a meaningful title and relevant tags.
+
+Input Text:
+${rawText.substring(0, 30000)} // Safety cap for context limits
+
+Output as JSON following the schema.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-preview', // Use Pro for complex document reconstruction
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            formattedContent: { type: Type.STRING },
+            category: { type: Type.STRING },
+            tags: { type: Type.ARRAY, items: { type: Type.STRING } }
+          },
+          required: ["title", "formattedContent", "category", "tags"],
+        }
+      }
+    });
+
+    const resultText = response.text;
+    if (!resultText) throw new Error("Empty response from AI.");
+
+    incrementUsage(userId);
+    return JSON.parse(resultText) as ProcessedNoteData;
+  } catch (error: any) {
+    console.error("AI Cleanup Error:", error);
+    throw error;
+  }
+};
+
+/**
  * AI Organize handles messy copy-pastes by looking for hidden structure.
  */
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string, userId?: string): Promise<ProcessedNoteData> => {

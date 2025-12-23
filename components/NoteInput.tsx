@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { NoteType, ProjectMilestone } from '../types';
 import { parseDocument } from '../services/documentParser';
+import { cleanAndFormatIngestedText } from '../services/geminiService';
 
 interface NoteInputProps {
   onAddNote: (text: string, type: NoteType, attachments?: string[], forcedTags?: string[], useAI?: boolean, manualTitle?: string, extraProjectData?: { 
@@ -63,11 +64,24 @@ const NoteInput: React.FC<NoteInputProps> = ({
 
     setIsParsingDoc(true);
     try {
-      const parsedText = await parseDocument(file);
-      setText(prev => (prev ? prev + '\n\n' : '') + parsedText);
-      if (!title) setTitle(file.name.split('.')[0]);
+      const rawText = await parseDocument(file);
+      
+      // NEW: Automatically clean and format the ingested text
+      // We pass the filename to give AI context
+      const cleaned = await cleanAndFormatIngestedText(rawText, file.name, "Guest"); 
+      
+      setTitle(cleaned.title || file.name.split('.')[0]);
+      setText(cleaned.formattedContent);
+      
+      // If we are in project mode, maybe AI found some objectives or tags
+      if (activeType === 'project' && cleaned.tags.length > 0) {
+          // You could optionally add more logic here to auto-fill project fields
+      }
+      
+      alert(`Success! "${file.name}" has been parsed and formatted.`);
     } catch (err: any) {
-      alert(err.message || "Failed to parse document");
+      console.error(err);
+      alert(err.message || "Failed to parse and clean document.");
     } finally {
       setIsParsingDoc(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -151,7 +165,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
               disabled={isParsingDoc}
               className="px-2 py-1 text-[10px] font-bold text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded flex items-center gap-1 transition-colors"
             >
-              {isParsingDoc ? '⌛ Parsing...' : '📄 Ingest Document'}
+              {isParsingDoc ? '⌛ Ingesting & Cleaning...' : '📄 Ingest Document'}
             </button>
             <input 
               ref={fileInputRef}

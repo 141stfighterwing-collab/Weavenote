@@ -1,4 +1,3 @@
-
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Set up the worker source using unpkg to ensure strict version matching
@@ -41,7 +40,13 @@ const parseText = (file: File): Promise<string> => {
 
 const parsePDF = async (file: File): Promise<string> => {
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const loadingTask = pdfjsLib.getDocument({ 
+    data: arrayBuffer,
+    disableRange: true,
+    disableStream: true
+  });
+  
+  const pdf = await loadingTask.promise;
   
   if (pdf.numPages > 1000) {
     throw new Error(`PDF exceeds the 1000-page limit (Has ${pdf.numPages} pages). Please upload a smaller document.`);
@@ -51,12 +56,38 @@ const parsePDF = async (file: File): Promise<string> => {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const textContent = await page.getTextContent();
-    const pageText = textContent.items
-      .map((item: any) => item.str)
-      .join(' ')
-      .replace(/\s+/g, ' ');
+    
+    // Improved item sorting and cleaning
+    const strings = textContent.items
+      .map((item: any) => {
+        // Filter out control characters and common PDF artifacts that look like []
+        let str = item.str || "";
+        // Remove common non-printable characters or weird artifacts
+        str = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F\uFFFD\u25A1\u25FB-\u25FE]/g, "");
+        return {
+          text: str,
+          y: item.transform[5],
+          x: item.transform[4]
+        };
+      });
 
-    fullText += `--- Page ${i} ---\n${pageText}\n\n`;
+    // Simple heuristic: group by Y coordinate (lines) then sort by X
+    const lines: Record<number, any[]> = {};
+    strings.forEach(s => {
+      const y = Math.round(s.y);
+      if (!lines[y]) lines[y] = [];
+      lines[y].push(s);
+    });
+
+    const sortedY = Object.keys(lines).map(Number).sort((a, b) => b - a);
+    let pageText = "";
+    sortedY.forEach(y => {
+      const lineItems = lines[y].sort((a, b) => a.x - b.x);
+      const lineStr = lineItems.map(item => item.text).join(" ").trim();
+      if (lineStr) pageText += lineStr + "\n";
+    });
+
+    fullText += `[Page ${i}]\n${pageText}\n\n`;
   }
-  return fullText;
+  return fullText.trim();
 };
