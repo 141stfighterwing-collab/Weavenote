@@ -21,23 +21,23 @@ const incrementUsage = (userId?: string) => {
 export const cleanAndFormatIngestedText = async (rawText: string, filename: string, username: string, userId?: string): Promise<ProcessedNoteData> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
   
-  const prompt = `System: You are an expert document reconstruction AI.
-Task: The following text was extracted from a document named "${filename}". 
-Extraction artifacts like random square boxes (e.g. [], [][]), broken lines, or weird spacing are present.
-Your job: 
-1. Clean up all formatting artifacts.
-2. PRESERVE ALL meaningful content. Do not summarize unless it is purely repetitive boilerplate.
-3. Organize the text into logical Markdown sections (Headers, Lists, Tables if applicable).
-4. Identify a meaningful title and relevant tags.
+  const prompt = `System: You are an expert Document Reconstruction Engine. 
+Your goal is to transform messy, raw extracted text into a professionally formatted document WITHOUT losing details.
 
-Input Text:
-${rawText.substring(0, 30000)} // Safety cap for context limits
+TASK:
+1. ARTIFACT REMOVAL: Strip all random square boxes like "[]", "[][ ]", "☐", or broken line artifacts. 
+2. MAXIMUM RETENTION: Keep every single meaningful detail, fact, date, and description. DO NOT summarize. DO NOT delete paragraphs unless they are purely empty artifacts.
+3. STRUCTURE: Reconstruct the logical flow. Use proper Markdown headers (##, ###), bullet points, and tables if the raw text implies a grid.
+4. METADATA: Generate a precise, professional title based on the content (filename was: ${filename}).
 
-Output as JSON following the schema.`;
+INPUT DATA (Raw Extraction):
+${rawText.substring(0, 32000)}
+
+Output must be strictly JSON following the schema.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview', // Use Pro for complex document reconstruction
+      model: 'gemini-3-pro-preview', // Pro is required for high-fidelity reconstruction
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -55,12 +55,12 @@ Output as JSON following the schema.`;
     });
 
     const resultText = response.text;
-    if (!resultText) throw new Error("Empty response from AI.");
+    if (!resultText) throw new Error("Empty response from AI engine.");
 
     incrementUsage(userId);
     return JSON.parse(resultText) as ProcessedNoteData;
   } catch (error: any) {
-    console.error("AI Cleanup Error:", error);
+    console.error("AI Document Cleanup Error:", error);
     throw error;
   }
 };

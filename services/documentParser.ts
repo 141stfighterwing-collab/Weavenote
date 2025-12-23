@@ -1,7 +1,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Set up the worker source using unpkg to ensure strict version matching
-const version = pdfjsLib.version || '4.10.38';
+const version = pdfjsLib.version || '5.4.449';
 
 // @ts-ignore
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
@@ -58,30 +58,38 @@ const parsePDF = async (file: File): Promise<string> => {
     const textContent = await page.getTextContent();
     
     // Improved item sorting and cleaning
-    const strings = textContent.items
+    const items = textContent.items
       .map((item: any) => {
-        // Filter out control characters and common PDF artifacts that look like []
         let str = item.str || "";
-        // Remove common non-printable characters or weird artifacts
+        
+        // Advanced cleaning: remove common PDF garbage like [ ] [][], non-printable chars, and box symbols
+        // \u25A1, \u25FB-\u25FE are square box characters
         str = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F\uFFFD\u25A1\u25FB-\u25FE]/g, "");
+        
+        // Remove empty bracket patterns that appear from checkboxes or weird fonts
+        str = str.replace(/\[\s*\]/g, "");
+        
         return {
           text: str,
           y: item.transform[5],
           x: item.transform[4]
         };
-      });
+      })
+      .filter(item => item.text.trim().length > 0);
 
-    // Simple heuristic: group by Y coordinate (lines) then sort by X
+    // Group text by vertical coordinate (lines)
     const lines: Record<number, any[]> = {};
-    strings.forEach(s => {
-      const y = Math.round(s.y);
+    items.forEach(item => {
+      const y = Math.round(item.y);
       if (!lines[y]) lines[y] = [];
-      lines[y].push(s);
+      lines[y].push(item);
     });
 
+    // Sort lines from top to bottom
     const sortedY = Object.keys(lines).map(Number).sort((a, b) => b - a);
     let pageText = "";
     sortedY.forEach(y => {
+      // Sort items within a line from left to right
       const lineItems = lines[y].sort((a, b) => a.x - b.x);
       const lineStr = lineItems.map(item => item.text).join(" ").trim();
       if (lineStr) pageText += lineStr + "\n";
