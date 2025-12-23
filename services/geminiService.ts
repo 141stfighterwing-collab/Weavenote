@@ -37,7 +37,7 @@ TASK:
 1. ARTIFACT REMOVAL: Strip all random square boxes like "[]", "[][ ]", "☐", or broken line artifacts. 
 2. MAXIMUM RETENTION: Keep every single meaningful detail, fact, date, and description. DO NOT summarize. DO NOT delete paragraphs.
 3. STRUCTURE: Reconstruct the logical flow using proper Markdown headers (##, ###) and bullet points.
-4. METADATA: Generate a precise, professional title based on the content (filename was: ${filename}).
+4. FORMATTING: Use ACTUAL newlines for line breaks. DO NOT use the literal string "\\n" or "\\r" in your text content.
 
 INPUT DATA (Raw Extraction):
 ${rawText.substring(0, 30000)}
@@ -46,7 +46,7 @@ Output must be strictly JSON following the schema.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview', // Switched to Flash for better compatibility and speed
+      model: 'gemini-3-flash-preview', 
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -66,11 +66,20 @@ Output must be strictly JSON following the schema.`;
     const resultText = response.text;
     if (!resultText) throw new Error("Empty response from AI engine.");
 
+    let parsed = JSON.parse(resultText) as ProcessedNoteData;
+    
+    // HEURISTIC: Sometimes the model accidentally escapes newlines as literal strings "\n"
+    // We clean these up to ensure the UI shows real line breaks.
+    if (parsed.formattedContent) {
+        parsed.formattedContent = parsed.formattedContent
+            .replace(/\\n/g, '\n')
+            .replace(/\\r/g, '\r');
+    }
+
     incrementUsage(userId);
-    return JSON.parse(resultText) as ProcessedNoteData;
+    return parsed;
   } catch (error: any) {
     console.error("AI Document Cleanup Error:", error);
-    // Detect "Failed to fetch" which is usually an adblocker or network issue
     if (error.message?.includes('fetch') || error.stack?.includes('fetch')) {
         throw new Error("Network request blocked. Please disable ad-blockers and check your connection.");
     }
@@ -105,7 +114,7 @@ export const processNoteWithAI = async (text: string, existingCategories: string
 
   const prompt = `System: You are an expert note organizer for ${username}. 
 Instruction: ${specificInstructions}
-Task: Categorize and format the following input text into a clean JSON structure.
+Task: Categorize and format the following input text into a clean JSON structure. Use real newlines, not \\n strings.
 Input: ${text}`;
 
   try {
@@ -145,8 +154,16 @@ Input: ${text}`;
       }
     });
 
+    const resultText = response.text;
+    if (!resultText) throw new Error("AI failed to return text.");
+    
+    let parsed = JSON.parse(resultText) as ProcessedNoteData;
+    if (parsed.formattedContent) {
+        parsed.formattedContent = parsed.formattedContent.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+    }
+
     incrementUsage(userId);
-    return JSON.parse(response.text) as ProcessedNoteData;
+    return parsed;
   } catch (error: any) {
     console.error("Gemini AI Processing Error:", error);
     throw new Error(error.message || "AI was unable to process this note.");
@@ -158,10 +175,14 @@ export const expandNoteContent = async (content: string, username: string, userI
     try {
       const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
-          contents: `Expand on this note, providing more depth and context: ${content}`,
+          contents: `Expand on this note, providing more depth and context: ${content}. Use standard Markdown and real newlines.`,
       });
+      let result = response.text || null;
+      if (result) {
+          result = result.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+      }
       incrementUsage(userId);
-      return response.text || null;
+      return result;
     } catch (error) {
       return null;
     }
