@@ -58,18 +58,28 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
   const loadAdminData = async () => {
       setIsLoading(true);
-      const reqs = await getRequests();
-      const allUsers = await getUsers();
-      setRequests(reqs);
-      setUsers(allUsers);
-      setIsLoading(false);
+      try {
+        const reqs = await getRequests();
+        const allUsers = await getUsers();
+        setRequests(reqs);
+        setUsers(allUsers);
+      } catch (e) {
+        console.error("Admin data load error", e);
+      } finally {
+        setIsLoading(false);
+      }
   };
 
   const loadSecurityData = async () => {
       setIsLoading(true);
-      const logs = await getAuditLogs();
-      setAuditLogs(logs);
-      setIsLoading(false);
+      try {
+        const logs = await getAuditLogs();
+        setAuditLogs(logs);
+      } catch (e) {
+        console.error("Security data load error", e);
+      } finally {
+        setIsLoading(false);
+      }
   };
 
   const loadLogsData = () => {
@@ -102,36 +112,40 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const runDiagnostics = async () => {
       setIsTesting(true);
       const initialSteps: DiagnosticStep[] = [
-          { name: "Environment Check", status: 'running' },
+          { name: "Environment Discovery", status: 'running' },
           { name: "AI Handshake", status: 'pending' },
           { name: "Cloud Sync DB", status: 'pending' },
       ];
       setDiagnosticSteps(initialSteps);
 
-      // 1. Env Check - Robust detection
-      let keyFound = false;
+      // 1. Env Check - Robust detection of process.env to prevent ReferenceError in production
+      let apiKeyFound = false;
       try {
-        keyFound = !!(process?.env?.API_KEY);
+        if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+          apiKeyFound = true;
+        } else if ((import.meta as any).env?.VITE_API_KEY) {
+          apiKeyFound = true;
+        }
       } catch (e) {
-        keyFound = false;
+        apiKeyFound = false;
       }
       
-      if (!keyFound) {
-          setDiagnosticSteps(prev => prev.map((s, i) => i === 0 ? { ...s, status: 'error', detail: 'KEY NOT DETECTED' } : s));
+      if (!apiKeyFound) {
+          setDiagnosticSteps(prev => prev.map((s, i) => i === 0 ? { ...s, status: 'error', detail: 'KEY MISSING' } : s));
           setIsTesting(false);
           return;
       }
-      setDiagnosticSteps(prev => prev.map((s, i) => i === 0 ? { ...s, status: 'success', detail: 'API_KEY OK' } : i === 1 ? { ...s, status: 'running' } : s));
+      setDiagnosticSteps(prev => prev.map((s, i) => i === 0 ? { ...s, status: 'success', detail: 'KEY DETECTED' } : i === 1 ? { ...s, status: 'running' } : s));
 
       // 2. AI Handshake
       try {
         const aiResult = await runConnectivityTest();
         if (!aiResult.success) {
-            setDiagnosticSteps(prev => prev.map((s, i) => i === 1 ? { ...s, status: 'error', detail: aiResult.message || 'SDK Error' } : s));
+            setDiagnosticSteps(prev => prev.map((s, i) => i === 1 ? { ...s, status: 'error', detail: aiResult.message || 'API ERROR' } : s));
             setIsTesting(false);
             return;
         }
-        setDiagnosticSteps(prev => prev.map((s, i) => i === 1 ? { ...s, status: 'success', detail: 'REACHED' } : i === 2 ? { ...s, status: 'running' } : s));
+        setDiagnosticSteps(prev => prev.map((s, i) => i === 1 ? { ...s, status: 'success', detail: 'CONNECTED' } : i === 2 ? { ...s, status: 'running' } : s));
       } catch (e: any) {
         setDiagnosticSteps(prev => prev.map((s, i) => i === 1 ? { ...s, status: 'error', detail: e.message } : s));
         setIsTesting(false);
@@ -147,6 +161,25 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
       }
 
       setIsTesting(false);
+  };
+
+  // Safe checks for rendering process.env content in UI
+  const getEnvStatus = () => {
+    try {
+      if (typeof process !== 'undefined' && process.env && process.env.API_KEY) return "DETECTED ✓";
+      if ((import.meta as any).env?.VITE_API_KEY) return "DETECTED (VITE) ✓";
+      return "MISSING ✕";
+    } catch {
+      return "ERROR CHECKING";
+    }
+  };
+
+  const isEnvConfigured = () => {
+    try {
+      return !!((typeof process !== 'undefined' && process.env && process.env.API_KEY) || (import.meta as any).env?.VITE_API_KEY);
+    } catch {
+      return false;
+    }
   };
 
   if (!isOpen) return null;
@@ -218,12 +251,13 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     </button>
                 </div>
 
-                <div className="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono shadow-inner">
+                <div className="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono shadow-inner min-h-[140px]">
+                    <p className="text-[10px] text-primary-400 mb-2 opacity-60 uppercase tracking-widest">>> Root Diagnostic Protocol</p>
                     {diagnosticSteps.map((step, i) => (
                         <div key={i} className="flex items-center justify-between text-xs py-1.5 border-b border-white/5 last:border-0">
                             <div className="flex items-center gap-3">
                                 {step.status === 'running' && <span className="text-blue-400 animate-pulse">●</span>}
-                                {step.status === 'success' && <span className="text-green-500">✓</span>}
+                                {step.status === 'success' && <span className="text-green-500 font-bold">✓</span>}
                                 {step.status === 'error' && <span className="text-red-500 font-bold">✕</span>}
                                 {step.status === 'pending' && <span className="text-slate-600">○</span>}
                                 <span className={step.status === 'error' ? 'text-red-400' : 'text-slate-300'}>{step.name}</span>
@@ -231,30 +265,34 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                             <span className={`font-bold uppercase ${step.status === 'error' ? 'text-red-500' : 'text-slate-500'}`}>{step.detail || step.status}</span>
                         </div>
                     ))}
+                    {diagnosticSteps.length === 0 && (
+                      <p className="text-xs text-slate-500 italic py-4">Click "Refresh Health" to initiate scan.</p>
+                    )}
                 </div>
 
-                {diagnosticSteps.some(s => s.status === 'error' && s.name.includes("Environment")) && (
-                    <div className="p-4 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-200 dark:border-red-900/30">
-                        <h5 className="text-xs font-black text-red-600 uppercase mb-2">⚠️ API Connection Issue</h5>
+                {diagnosticSteps.some(s => s.status === 'error' && s.name.includes("Discovery")) && (
+                    <div className="p-4 bg-red-50 dark:bg-red-900/10 rounded-xl border-2 border-red-200 dark:border-red-900/30">
+                        <h5 className="text-xs font-black text-red-600 uppercase mb-2 flex items-center gap-2">
+                           <span>⚠️</span> Critical: Missing Credentials
+                        </h5>
                         <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed mb-3">
-                            The application is currently unable to detect the <b>API_KEY</b>. Since you have configured it in Vercel, please ensure:
+                            The application is currently unable to communicate with AI services. Please ensure:
                         </p>
                         <ul className="list-disc ml-5 text-[11px] text-slate-600 dark:text-slate-400 space-y-1">
-                            <li>The variable name is exactly <code>API_KEY</code>.</li>
-                            <li>Try adding a secondary variable named <code>VITE_API_KEY</code> with the same value if <code>API_KEY</code> is not being injected.</li>
-                            <li>The key must start with <code>AIza...</code>.</li>
-                            <li>Redeploy your application to ensure new environment variables are picked up.</li>
+                            <li>The variable name is exactly <code>API_KEY</code> in your environment.</li>
+                            <li>Try adding a secondary variable named <code>VITE_API_KEY</code> if you are using a Vite build.</li>
+                            <li>Redeploy your application on Vercel to ensure new environment variables are injected.</li>
                         </ul>
                     </div>
                 )}
 
                 <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p className="text-[10px] uppercase font-black text-slate-500 mb-2 tracking-widest">Environment Info</p>
+                    <p className="text-[10px] uppercase font-black text-slate-500 mb-2 tracking-widest">Runtime Environment</p>
                     <div className="grid grid-cols-1 gap-2 text-xs font-medium">
-                        <div className="flex justify-between items-center">
-                            <span className="text-slate-500">API_KEY Status:</span> 
-                            <span className={process?.env?.API_KEY ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
-                                {process?.env?.API_KEY ? "DETECTED ✓" : "MISSING ✕"}
+                        <div className="flex justify-between items-center py-1">
+                            <span className="text-slate-500">API Key Access:</span> 
+                            <span className={isEnvConfigured() ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
+                                {getEnvStatus()}
                             </span>
                         </div>
                     </div>
@@ -296,6 +334,20 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     ))}
                     {requests.length === 0 && <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-dashed border-slate-200">No pending access requests.</p>}
                   </div>
+                </div>
+              </div>
+            )}
+            
+            {activeTab === 'security' && userIsAdmin && (
+              <div className="space-y-3">
+                <h4 className="font-bold text-slate-800 dark:text-white text-sm">Recent Audit Logs</h4>
+                <div className="space-y-1.5 max-h-96 overflow-y-auto custom-scrollbar">
+                  {auditLogs.map(log => (
+                    <div key={log.id} className="text-[10px] font-mono p-2 bg-slate-50 dark:bg-slate-900 rounded border border-slate-100 dark:border-slate-700">
+                      <span className="text-slate-400">[{new Date(log.timestamp).toLocaleTimeString()}]</span> <span className="text-indigo-600 font-bold">{log.actor}</span>: <span className="text-slate-700 dark:text-slate-300">{log.action}</span> - {log.details}
+                    </div>
+                  ))}
+                  {auditLogs.length === 0 && <p className="text-xs text-slate-400 italic text-center py-10">No security logs recorded.</p>}
                 </div>
               </div>
             )}
