@@ -1,7 +1,8 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Force worker source to match the import version from ESM.sh
-const version = '5.4.449';
+// Use the dynamic version property from the library to ensure the worker matches exactly.
+const version = pdfjsLib.version || '4.10.38';
+
 // @ts-ignore
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
 
