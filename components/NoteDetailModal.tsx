@@ -42,10 +42,12 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
   const [containerWidth, setContainerWidth] = useState(600);
   
   // Edit states for project dashboard
-  const [editSection, setEditSection] = useState<'objectives' | 'milestones' | 'timeline' | null>(null);
+  const [editSection, setEditSection] = useState<'objectives' | 'milestones' | 'timeline' | 'progress' | null>(null);
   const [editedObjectives, setEditedObjectives] = useState<string[]>([]);
   const [editedMilestones, setEditedMilestones] = useState<ProjectMilestone[]>([]);
   const [editedTimeline, setEditedTimeline] = useState<ProjectPhase[]>([]);
+  const [editedProgress, setEditedProgress] = useState<number>(0);
+  const [editedIsCompleted, setEditedIsCompleted] = useState<boolean>(false);
 
   const checkboxCounter = useRef(0);
   checkboxCounter.current = 0;
@@ -59,6 +61,8 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
       setEditedObjectives(note.projectData.objectives || note.projectData.deliverables || []);
       setEditedMilestones(note.projectData.milestones || []);
       setEditedTimeline(note.projectData.timeline || []);
+      setEditedProgress(note.projectData.manualProgress || 0);
+      setEditedIsCompleted(note.projectData.isCompleted || false);
     }
     setEditSection(null);
   }, [isOpen, note]);
@@ -85,16 +89,15 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
       ...(note.projectData || { deliverables: [], milestones: [], timeline: [], objectives: [] }),
       objectives: editedObjectives,
       milestones: editedMilestones,
-      timeline: editedTimeline
+      timeline: editedTimeline,
+      manualProgress: editedProgress,
+      isCompleted: editedIsCompleted
     };
     onUpdateProjectData(note.id, newData);
     setEditSection(null);
   };
 
-  const processedContent = useMemo(() => note ? processContent(note.content) : "", [note]);
-  const colorClass = note ? NOTE_COLORS[note.color] : "";
-
-  const calculateProgress = useMemo(() => {
+  const currentDisplayProgress = useMemo(() => {
     if (!note?.projectData) return 0;
     if (note.projectData.isCompleted) return 100;
     if (typeof note.projectData.manualProgress === 'number') return note.projectData.manualProgress;
@@ -111,6 +114,9 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
     }
     return total === 0 ? 0 : Math.round((completed / total) * 100);
   }, [note]);
+
+  const processedContent = useMemo(() => note ? processContent(note.content) : "", [note]);
+  const colorClass = note ? NOTE_COLORS[note.color] : "";
 
   const markdownComponents = {
       a: (props: any) => {
@@ -204,24 +210,64 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
         <div className="p-8 overflow-y-auto custom-scrollbar flex-grow bg-white/20 dark:bg-black/20">
              {/* Status Bar / Progress Bar for Projects */}
              {note.type === 'project' && (
-               <div className="mb-8 p-6 bg-white/40 dark:bg-black/20 rounded-2xl border border-black/5 shadow-inner">
-                  <div className="flex justify-between items-center mb-3">
-                    <div className="flex items-center gap-3">
-                        <span className="p-2 bg-emerald-500 rounded-lg text-white shadow-sm">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                        </span>
-                        <div>
-                            <span className="text-xs font-black uppercase tracking-widest opacity-60 font-sans block">Project Status</span>
-                            <span className="text-sm font-bold font-sans text-emerald-700 dark:text-emerald-400">{isCompleted ? 'FINISHED' : 'IN PROGRESS'}</span>
+               <div className="mb-8 p-6 bg-white/40 dark:bg-black/20 rounded-2xl border border-black/5 shadow-inner relative group/progress">
+                  {editSection === 'progress' ? (
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                         <span className="text-xs font-black uppercase tracking-widest opacity-60">Adjust Progress</span>
+                         <span className="text-xl font-black">{editedProgress}%</span>
+                      </div>
+                      <input 
+                        type="range" min="0" max="100" value={editedProgress} 
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value);
+                          setEditedProgress(val);
+                          if (val === 100) setEditedIsCompleted(true);
+                          else if (val < 100) setEditedIsCompleted(false);
+                        }}
+                        className="w-full h-2 bg-emerald-100 dark:bg-emerald-900 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                      />
+                      <div className="flex justify-between items-center gap-4">
+                        <button 
+                          onClick={() => setEditedIsCompleted(!editedIsCompleted)}
+                          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all border ${editedIsCompleted ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200'}`}
+                        >
+                          {editedIsCompleted ? '✓ Completed' : 'Mark as Completed'}
+                        </button>
+                        <div className="flex gap-2">
+                           <button onClick={() => setEditSection(null)} className="px-4 py-1.5 text-xs font-bold text-slate-500">Cancel</button>
+                           <button onClick={saveProjectChanges} className="px-6 py-1.5 bg-primary-600 text-white rounded-lg text-xs font-bold shadow-md">Save Changes</button>
                         </div>
+                      </div>
                     </div>
-                    <div className="text-right">
-                        <span className="text-2xl font-black font-sans">{calculateProgress}%</span>
-                    </div>
-                  </div>
-                  <div className="w-full h-4 bg-black/5 rounded-full overflow-hidden shadow-inner">
-                    <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-1000" style={{ width: `${calculateProgress}%` }} />
-                  </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-center mb-3">
+                        <div className="flex items-center gap-3">
+                            <span className="p-2 bg-emerald-500 rounded-lg text-white shadow-sm">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                            </span>
+                            <div>
+                                <span className="text-xs font-black uppercase tracking-widest opacity-60 font-sans block">Project Status</span>
+                                <span className="text-sm font-bold font-sans text-emerald-700 dark:text-emerald-400">{isCompleted ? 'FINISHED' : 'IN PROGRESS'}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                           <span className="text-2xl font-black font-sans">{currentDisplayProgress}%</span>
+                           <button 
+                              onClick={() => setEditSection('progress')}
+                              className="opacity-0 group-hover/progress:opacity-100 p-2 bg-white/80 dark:bg-slate-800 rounded-full shadow-sm hover:text-primary-600 transition-all"
+                              title="Edit Progress"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
+                        </div>
+                      </div>
+                      <div className="w-full h-4 bg-black/5 rounded-full overflow-hidden shadow-inner">
+                        <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-1000" style={{ width: `${currentDisplayProgress}%` }} />
+                      </div>
+                    </>
+                  )}
                </div>
              )}
 
