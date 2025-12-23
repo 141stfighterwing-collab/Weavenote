@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
     getRequests, approveRequest, denyRequest, 
@@ -30,6 +31,9 @@ interface DiagnosticStep {
     detail?: string;
 }
 
+/**
+ * SettingsPanel component fixed with default export and complete implementation.
+ */
 const SettingsPanel: React.FC<SettingsPanelProps> = ({ 
     isOpen, onClose, currentUser, darkMode, toggleDarkMode, theme, setTheme,
     reducedMotion, toggleReducedMotion, enableImages, toggleEnableImages,
@@ -125,7 +129,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
       // 1. Env Check - Robust detection of process.env to prevent ReferenceError in production
       let apiKeyFound = false;
       try {
-        // Attempt to check if the bundler injected the key
         if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
           apiKeyFound = true;
         } 
@@ -170,24 +173,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
       setIsTesting(false);
   };
 
-  // Safe checks for rendering env content in UI
-  const getEnvStatus = () => {
-    try {
-      if (typeof process !== 'undefined' && process.env && process.env.API_KEY) return "DETECTED ✓";
-      return "MISSING ✕";
-    } catch {
-      return "ERROR CHECKING";
-    }
-  };
-
-  const isEnvConfigured = () => {
-    try {
-      return !!(typeof process !== 'undefined' && process.env && process.env.API_KEY);
-    } catch {
-      return false;
-    }
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -205,38 +190,39 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         <div className="flex flex-1 overflow-hidden">
           <div className="w-48 border-r border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 p-4 space-y-1">
             <button onClick={() => setActiveTab('appearance')} className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'appearance' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>Appearance</button>
-            <button onClick={() => setActiveTab('data')} className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'data' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>Data Sync</button>
-            
-            {/* Admin Exclusive Sections */}
+            <button onClick={() => setActiveTab('data')} className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'data' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>Data Management</button>
             {userIsAdmin && (
               <>
-                <div className="pt-4 pb-1 px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Administration</div>
                 <button onClick={() => setActiveTab('admin')} className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'admin' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>Users</button>
-                <button onClick={() => setActiveTab('security')} className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'security' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>Audits</button>
-                <button onClick={() => setActiveTab('logs')} className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'logs' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>AI Logs</button>
-                <button onClick={() => setActiveTab('status')} className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'status' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>System Health</button>
+                <button onClick={() => setActiveTab('security')} className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'security' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>Security Logs</button>
+                <button onClick={() => setActiveTab('health')} className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'health' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>System Health</button>
               </>
             )}
           </div>
-
-          <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
+          
+          <div className="flex-1 p-6 overflow-y-auto bg-white dark:bg-slate-800">
             {activeTab === 'appearance' && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border dark:border-slate-700">
                   <div>
-                    <h4 className="font-bold text-slate-800 dark:text-white">Dark Mode</h4>
-                    <p className="text-xs text-slate-500">Enable high-contrast night theme.</p>
+                    <h3 className="font-bold text-slate-800 dark:text-white">Dark Mode</h3>
+                    <p className="text-xs text-slate-500">Enable high-contrast dark theme.</p>
                   </div>
                   <button onClick={toggleDarkMode} className={`w-12 h-6 rounded-full transition-colors relative ${darkMode ? 'bg-primary-600' : 'bg-slate-300'}`}>
-                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${darkMode ? 'right-1' : 'left-1'}`} />
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${darkMode ? 'left-7' : 'left-1'}`} />
                   </button>
                 </div>
+
                 <div>
-                  <h4 className="font-bold text-slate-800 dark:text-white mb-3 text-sm">Theme Selection</h4>
-                  <div className="grid grid-cols-4 gap-2">
-                    {(['default', 'ocean', 'forest', 'sunset', 'rose', 'midnight', 'coffee', 'neon', 'yellow', 'hyperblue'] as Theme[]).map(t => (
-                      <button key={t} onClick={() => setTheme(t)} className={`px-2 py-2 rounded-lg text-[10px] font-bold border transition-all ${theme === t ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-slate-200 text-slate-500 dark:border-slate-700'}`}>
-                        {t.toUpperCase()}
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">UI Themes</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {(['default', 'ocean', 'forest', 'sunset', 'rose', 'midnight', 'cyberpunk', 'nord', 'dracula'] as Theme[]).map(t => (
+                      <button 
+                        key={t}
+                        onClick={() => setTheme(t)}
+                        className={`px-3 py-2 rounded-lg text-xs font-bold border transition-all ${theme === t ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/20' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300'}`}
+                      >
+                        {t.charAt(0).toUpperCase() + t.slice(1)}
                       </button>
                     ))}
                   </div>
@@ -244,118 +230,59 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               </div>
             )}
 
-            {activeTab === 'status' && userIsAdmin && (
-              <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
-                <div className="flex justify-between items-center">
-                    <h4 className="font-bold text-slate-800 dark:text-white">System Diagnostics</h4>
-                    <button 
-                        onClick={runDiagnostics} 
-                        disabled={isTesting}
-                        className="px-4 py-1.5 bg-primary-600 text-white text-xs font-bold rounded-full hover:bg-primary-700 shadow-md transition-all active:scale-95 disabled:opacity-50"
-                    >
-                        {isTesting ? 'Analyzing...' : 'Refresh Health'}
-                    </button>
-                </div>
-
-                <div className="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono shadow-inner min-h-[140px]">
-                    <p className="text-[10px] text-primary-400 mb-2 opacity-60 uppercase tracking-widest">
-                        {">> Root Diagnostic Protocol"}
-                    </p>
-                    {diagnosticSteps.map((step, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs py-1.5 border-b border-white/5 last:border-0">
-                            <div className="flex items-center gap-3">
-                                {step.status === 'running' && <span className="text-blue-400 animate-pulse">●</span>}
-                                {step.status === 'success' && <span className="text-green-500 font-bold">✓</span>}
-                                {step.status === 'error' && <span className="text-red-500 font-bold">✕</span>}
-                                {step.status === 'pending' && <span className="text-slate-600">○</span>}
-                                <span className={step.status === 'error' ? 'text-red-400' : 'text-slate-300'}>{step.name}</span>
-                            </div>
-                            <span className={`font-bold uppercase ${step.status === 'error' ? 'text-red-500' : 'text-slate-500'}`}>{step.detail || step.status}</span>
-                        </div>
-                    ))}
-                    {diagnosticSteps.length === 0 && (
-                      <p className="text-xs text-slate-500 italic py-4">Click "Refresh Health" to initiate scan.</p>
-                    )}
-                </div>
-
-                {diagnosticSteps.some(s => s.status === 'error' && s.name.includes("Discovery")) && (
-                    <div className="p-4 bg-red-50 dark:bg-red-900/10 rounded-xl border-2 border-red-200 dark:border-red-900/30">
-                        <h5 className="text-xs font-black text-red-600 uppercase mb-2 flex items-center gap-2">
-                           <span>⚠️</span> Critical: Missing Credentials
-                        </h5>
-                        <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed mb-3">
-                            The application is currently unable to communicate with AI services. Please ensure:
-                        </p>
-                        <ul className="list-disc ml-5 text-[11px] text-slate-600 dark:text-slate-400 space-y-1">
-                            <li>The variable name is exactly <code>API_KEY</code> in your environment.</li>
-                            <li>If using Vite, ensure the key is correctly defined in your hosting platform (Vercel).</li>
-                            <li>Redeploy your application on Vercel to ensure new environment variables are injected into the build.</li>
-                        </ul>
-                    </div>
-                )}
-
-                <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <p className="text-[10px] uppercase font-black text-slate-500 mb-2 tracking-widest">Runtime Environment</p>
-                    <div className="grid grid-cols-1 gap-2 text-xs font-medium">
-                        <div className="flex justify-between items-center py-1">
-                            <span className="text-slate-500">API Key Access:</span> 
-                            <span className={isEnvConfigured() ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
-                                {getEnvStatus()}
-                            </span>
-                        </div>
-                    </div>
+            {activeTab === 'data' && (
+              <div className="space-y-6">
+                <div className="p-4 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 rounded-xl">
+                  <h3 className="font-bold text-indigo-800 dark:text-indigo-300 mb-1">Local Backup</h3>
+                  <p className="text-xs text-indigo-600 dark:text-indigo-400 mb-4">Export all active notes to a JSON file for safe keeping.</p>
+                  <button onClick={handleExport} className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors shadow-sm text-sm">Download Backup</button>
                 </div>
               </div>
             )}
 
-            {activeTab === 'logs' && userIsAdmin && (
+            {activeTab === 'health' && userIsAdmin && (
               <div className="space-y-6">
                 <div>
-                  <h4 className="font-bold text-slate-800 dark:text-white mb-2 text-sm">AI Usage History</h4>
-                  <div className="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar">
-                    {aiLogs.length > 0 ? aiLogs.map(log => (
-                      <div key={log.id} className="text-[10px] font-mono p-2 bg-slate-50 dark:bg-slate-900 rounded border border-slate-100 dark:border-slate-700">
-                         <span className="font-bold text-primary-600">[{log.action}]</span> {log.username}: {log.details}
-                      </div>
-                    )) : <p className="text-xs text-slate-400 italic">No logs yet.</p>}
-                  </div>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">Connectivity Suite</h3>
+                  <button onClick={runDiagnostics} disabled={isTesting} className="w-full py-3 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 transition-all shadow-md disabled:opacity-50">
+                    {isTesting ? 'Running Handshakes...' : 'Run System Diagnostics'}
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {diagnosticSteps.map(step => (
+                    <div key={step.name} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border dark:border-slate-700">
+                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{step.name}</span>
+                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
+                        step.status === 'success' ? 'bg-green-100 text-green-700' : 
+                        step.status === 'error' ? 'bg-red-100 text-red-700' : 
+                        'bg-slate-200 text-slate-600'
+                      }`}>
+                        {step.detail || step.status}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
 
             {activeTab === 'admin' && userIsAdmin && (
               <div className="space-y-6">
-                <div>
-                  <h4 className="font-bold text-slate-800 dark:text-white mb-3 text-sm">User Requests ({requests.length})</h4>
-                  <div className="space-y-2">
-                    {requests.map(r => (
-                      <div key={r.uid} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
-                        <div>
-                          <p className="text-sm font-bold text-slate-800 dark:text-white">{r.username}</p>
-                          <p className="text-[10px] text-slate-500">{r.email}</p>
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => handleApprove(r.uid)} className="px-3 py-1 bg-green-600 text-white text-[10px] rounded-full font-bold hover:bg-green-700 transition-colors">Approve</button>
-                          <button onClick={() => handleDeny(r.uid)} className="px-3 py-1 bg-red-600 text-white text-[10px] rounded-full font-bold hover:bg-red-700 transition-colors">Deny</button>
-                        </div>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">User Management ({users.length})</h3>
+                <div className="space-y-2">
+                  {users.map(u => (
+                    <div key={u.uid} className="flex justify-between items-center p-3 bg-white dark:bg-slate-900 border rounded-xl dark:border-slate-700">
+                      <div>
+                        <p className="text-sm font-bold text-slate-800 dark:text-white">{u.username} <span className="text-[10px] opacity-40">({u.role})</span></p>
+                        <p className="text-[10px] text-slate-500">{u.email}</p>
                       </div>
-                    ))}
-                    {requests.length === 0 && <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-dashed border-slate-200">No pending access requests.</p>}
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {activeTab === 'security' && userIsAdmin && (
-              <div className="space-y-3">
-                <h4 className="font-bold text-slate-800 dark:text-white text-sm">Recent Audit Logs</h4>
-                <div className="space-y-1.5 max-h-96 overflow-y-auto custom-scrollbar">
-                  {auditLogs.map(log => (
-                    <div key={log.id} className="text-[10px] font-mono p-2 bg-slate-50 dark:bg-slate-900 rounded border border-slate-100 dark:border-slate-700">
-                      <span className="text-slate-400">[{new Date(log.timestamp).toLocaleTimeString()}]</span> <span className="text-indigo-600 font-bold">{log.actor}</span>: <span className="text-slate-700 dark:text-slate-300">{log.action}</span> - {log.details}
+                      <button 
+                        onClick={() => handleToggleStatus(u.uid, u.status)}
+                        className={`text-[10px] font-bold px-3 py-1 rounded-full ${u.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
+                      >
+                        {u.status.toUpperCase()}
+                      </button>
                     </div>
                   ))}
-                  {auditLogs.length === 0 && <p className="text-xs text-slate-400 italic text-center py-10">No security logs recorded.</p>}
                 </div>
               </div>
             )}
