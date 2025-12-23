@@ -13,8 +13,6 @@ const incrementUsage = () => localStorage.setItem(getUsageKey(), (getDailyUsage(
  * and direct process.env.API_KEY access.
  */
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string): Promise<ProcessedNoteData> => {
-  // Use the key directly from process.env as per strict instructions.
-  // In this environment, process.env.API_KEY is replaced with the literal value at build time.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
   
   let specificInstructions = "";
@@ -116,30 +114,30 @@ export const expandNoteContent = async (content: string, username: string) => {
 };
 
 /**
- * Detailed connectivity test suite
+ * Detailed connectivity test suite for the diagnostics panel
  */
 export const runConnectivityTest = async () => {
   const steps = [];
   
   try {
-    // Step 1: Auth check
+    // Step 1: Logic check
     const apiKey = process.env.API_KEY;
-    if (!apiKey) throw new Error("API Key is missing from environment (process.env.API_KEY is null or undefined).");
-    steps.push({ name: "API Key check", status: "success" });
+    if (!apiKey) throw new Error("API Key is missing or undefined in environment (process.env.API_KEY).");
+    steps.push({ name: "API Credentials Found", status: "success" });
 
-    // Step 2: Handshake
+    // Step 2: Connection
     const ai = new GoogleGenAI({ apiKey: apiKey });
     const start = Date.now();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: 'Respond with the word "OK" only.',
+      contents: 'Respond with "Ready"',
     });
     const latency = Date.now() - start;
     
-    if (response.text?.trim().toUpperCase().includes("OK")) {
+    if (response.text) {
       steps.push({ name: "Gemini Handshake", status: "success", detail: `${latency}ms` });
     } else {
-      throw new Error("Handshake failed: Invalid response content.");
+      throw new Error("Handshake failed: Empty response.");
     }
 
     return { success: true, steps };

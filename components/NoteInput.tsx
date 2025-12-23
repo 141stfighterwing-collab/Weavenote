@@ -18,8 +18,10 @@ const NoteInput: React.FC<NoteInputProps> = ({
   const [text, setText] = useState('');
   const [code, setCode] = useState('');
   const [title, setTitle] = useState('');
+  const [isParsingDoc, setIsParsingDoc] = useState(false);
 
   const mainTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAction = async (useAI: boolean) => {
     let rawSubmission = text;
@@ -29,6 +31,23 @@ const NoteInput: React.FC<NoteInputProps> = ({
     if (!rawSubmission.trim() && !title.trim()) return;
     await onAddNote(rawSubmission, activeType, [], [], useAI, title);
     setText(''); setCode(''); setTitle('');
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsParsingDoc(true);
+    try {
+      const parsedText = await parseDocument(file);
+      setText(prev => (prev ? prev + '\n\n' : '') + parsedText);
+      if (!title) setTitle(file.name.split('.')[0]);
+    } catch (err: any) {
+      alert(err.message || "Failed to parse document");
+    } finally {
+      setIsParsingDoc(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const applyFormat = (format: 'bold' | 'italic' | 'bullet' | 'checkbox') => {
@@ -72,7 +91,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
       }
   };
 
-  const isDisabled = (!text.trim() && !code.trim() && !title.trim()) || isProcessing;
+  const isDisabled = (!text.trim() && !code.trim() && !title.trim()) || isProcessing || isParsingDoc;
 
   if (readOnly) return <div className="p-6 text-center border-dashed border rounded-xl text-slate-400">🔒 Read Only</div>;
 
@@ -102,6 +121,21 @@ const NoteInput: React.FC<NoteInputProps> = ({
             {['✨', '🔥', '✅', '🚀', '💡'].map(emoji => (
                 <button key={emoji} onClick={() => insertEmoji(emoji)} className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded text-sm">{emoji}</button>
             ))}
+            <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+            <button 
+              onClick={() => fileInputRef.current?.click()} 
+              disabled={isParsingDoc}
+              className="px-2 py-1 text-[10px] font-bold text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded flex items-center gap-1 transition-colors"
+            >
+              {isParsingDoc ? '⌛ Parsing...' : '📄 Ingest Document'}
+            </button>
+            <input 
+              ref={fileInputRef}
+              type="file" 
+              accept=".pdf,.txt,.md" 
+              className="hidden" 
+              onChange={handleFileUpload}
+            />
         </div>
 
         <div className="flex flex-col md:flex-row">
@@ -110,7 +144,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
                   ref={mainTextareaRef}
                   value={text} 
                   onChange={(e) => setText(e.target.value)} 
-                  placeholder={activeType === 'notebook' ? "Draft your entry here..." : "Type your notes here..."} 
+                  placeholder={activeType === 'notebook' ? "Draft your entry here..." : "Type your notes here or upload a document..."} 
                   className="w-full h-56 p-4 bg-transparent border-0 focus:ring-0 outline-none resize-none text-slate-700 dark:text-slate-200 text-sm whitespace-pre-wrap" 
                 />
             </div>
