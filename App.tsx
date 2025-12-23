@@ -157,7 +157,7 @@ const App: React.FC = () => {
 
         if (useAI) {
             const username = currentUser?.username || 'Guest';
-            processed = await processNoteWithAI(rawText, [], type, username);
+            processed = await processNoteWithAI(rawText, [], type, username, currentUser?.uid);
             tags = [...processed.tags.map(t => t.toLowerCase().replace('#', '')), ...tags];
             if (manualTitle.trim()) processed.title = manualTitle.trim();
         } else {

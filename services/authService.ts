@@ -17,7 +17,8 @@ import {
     getDocs,
     deleteDoc,
     limit,
-    orderBy
+    orderBy,
+    increment
 } from 'firebase/firestore';
 import { User, Permission, UserStatus } from '../types';
 
@@ -48,7 +49,6 @@ const fetchClientInfo = async (): Promise<{ ip: string; country: string; flag: s
 
 /**
  * Returns true if the user is a Global Admin (God Control).
- * Only Shootre and the main 'admin' account qualify.
  */
 export const isGlobalAdmin = (user: User | null) => {
     if (!user) return false;
@@ -57,15 +57,14 @@ export const isGlobalAdmin = (user: User | null) => {
 };
 
 /**
- * Returns true if the user has Admin privileges (can see logs, approve users).
- * Global admins are always admins.
+ * Returns true if the user has Admin privileges.
  */
 export const isAdmin = (user: User | null) => {
     if (!user) return false;
     return user.role === 'admin' || isGlobalAdmin(user);
 };
 
-const logAudit = async (action: string, actor: string, target?: string, details?: string) => {
+export const logAudit = async (action: string, actor: string, target?: string, details?: string) => {
     const entry: AuditLogEntry = {
         id: crypto.randomUUID(),
         timestamp: Date.now(),
@@ -107,6 +106,7 @@ export const subscribeToAuthChanges = (callback: (user: User | null) => void) =>
                         await signOut(auth);
                         callback(null);
                     } else {
+                        // Silent update of last login and potentially client info
                         updateDoc(userDocRef, { lastLogin: Date.now() }).catch(() => {});
                         callback(userData);
                     }
@@ -164,7 +164,8 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
                             lastLogin: Date.now(),
                             ipAddress: clientInfo.ip,
                             country: clientInfo.country,
-                            countryFlag: clientInfo.flag
+                            countryFlag: clientInfo.flag,
+                            aiUsageCount: 0
                         };
                         await setDoc(doc(db, 'users', newCred.user.uid), adminUser);
                         return { success: true, user: adminUser };
@@ -255,7 +256,8 @@ export const requestAccount = async (username: string, password: string, email: 
             ipAddress: clientInfo.ip,
             country: clientInfo.country,
             countryFlag: clientInfo.flag,
-            lastLogin: 0
+            lastLogin: 0,
+            aiUsageCount: 0
         };
 
         await setDoc(doc(db, 'users', uid), newUser);
@@ -278,7 +280,6 @@ export const getRequests = async (): Promise<User[]> => {
 export const approveRequest = async (uid: string): Promise<boolean> => {
     if (!db) return false;
     try {
-        // Approving a request makes them a standard user with edit permissions
         await updateDoc(doc(db, 'users', uid), { status: 'active', permission: 'edit', role: 'user' });
         await logAudit('APPROVE_USER', 'Admin', uid);
         return true;
@@ -308,6 +309,17 @@ export const toggleUserStatus = async (uid: string, currentStatus: UserStatus) =
     await logAudit('TOGGLE_STATUS', 'Admin', uid, newStatus);
 };
 
+export const deleteUserAccount = async (uid: string) => {
+    if (!db) return;
+    try {
+        // Delete Firestore user profile.
+        // NOTE: We cannot delete the actual Firebase Auth record from client SDK without being the user.
+        // We handle this by setting a status 'suspended' or deleting the doc so onAuthStateChanged kicks them.
+        await deleteDoc(doc(db, 'users', uid));
+        await logAudit('DELETE_USER', 'Admin', uid);
+    } catch (e) { console.error(e) }
+};
+
 export const updateUserPermission = async (uid: string, permission: Permission) => {
     if (!db) return;
     await updateDoc(doc(db, 'users', uid), { permission });
@@ -318,6 +330,11 @@ export const updateUserRole = async (uid: string, role: 'admin' | 'user') => {
     if (!db) return;
     await updateDoc(doc(db, 'users', uid), { role });
     await logAudit('UPDATE_ROLE', 'Admin', uid, role);
+};
+
+export const incrementUserAIUsage = async (uid: string) => {
+    if (!db) return;
+    await updateDoc(doc(db, 'users', uid), { aiUsageCount: increment(1) });
 };
 
 export const getAuditLogs = async (): Promise<AuditLogEntry[]> => {

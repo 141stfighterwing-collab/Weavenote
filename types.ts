@@ -128,6 +128,7 @@ export interface User {
   ipAddress?: string;
   country?: string;
   countryFlag?: string;
+  aiUsageCount?: number;
 }
 
 export interface UserUsageStats {

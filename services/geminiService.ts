@@ -1,16 +1,23 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ProcessedNoteData, NoteType } from "../types";
+import { incrementUserAIUsage } from "./authService";
 
 export const DAILY_REQUEST_LIMIT = 800;
 const getUsageKey = () => `ideaweaver_usage_${new Date().toISOString().split('T')[0]}`;
 
 export const getDailyUsage = (): number => parseInt(localStorage.getItem(getUsageKey()) || '0', 10);
-const incrementUsage = () => localStorage.setItem(getUsageKey(), (getDailyUsage() + 1).toString());
+
+const incrementUsage = (userId?: string) => {
+    localStorage.setItem(getUsageKey(), (getDailyUsage() + 1).toString());
+    if (userId) {
+        incrementUserAIUsage(userId).catch(console.error);
+    }
+};
 
 /**
  * AI Organize handles messy copy-pastes by looking for hidden structure.
  */
-export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string): Promise<ProcessedNoteData> => {
+export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string, userId?: string): Promise<ProcessedNoteData> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
   
   let specificInstructions = "";
@@ -88,7 +95,7 @@ Categories available: ${existingCategories.join(', ')}`;
     const resultText = response.text;
     if (!resultText) throw new Error("Model returned an empty response.");
 
-    incrementUsage();
+    incrementUsage(userId);
     logAIUsage(username, "ORGANIZE_NOTE", `Processed ${noteType} note.`);
     return JSON.parse(resultText) as ProcessedNoteData;
   } catch (error: any) {
@@ -98,14 +105,14 @@ Categories available: ${existingCategories.join(', ')}`;
   }
 };
 
-export const expandNoteContent = async (content: string, username: string) => {
+export const expandNoteContent = async (content: string, username: string, userId?: string) => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
     try {
       const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
           contents: `Expand on this note, providing more depth and context: ${content}`,
       });
-      incrementUsage();
+      incrementUsage(userId);
       return response.text || null;
     } catch (error) {
       logError("AI_EXPAND", error);
