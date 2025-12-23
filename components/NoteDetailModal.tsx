@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Note, NOTE_COLORS, WorkflowNode, WorkflowEdge } from '../types';
+import { Note, NOTE_COLORS, WorkflowNode, WorkflowEdge, ProjectData, ProjectMilestone, ProjectPhase } from '../types';
 import { expandNoteContent } from '../services/geminiService';
 import GanttChart from './GanttChart';
 import WorkflowEditor from './WorkflowEditor';
@@ -15,6 +15,7 @@ interface NoteDetailModalProps {
   onToggleCheckbox: (noteId: string, index: number) => void;
   onSaveExpanded?: (id: string, content: string) => void;
   onToggleComplete?: (id: string) => void;
+  onUpdateProjectData?: (id: string, data: ProjectData) => void;
   currentUser: string;
 }
 
@@ -34,12 +35,18 @@ const processContent = (text: string) => {
 
 const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ 
     note, isOpen, onClose, showLinkPreviews = false, onViewImage, 
-    onToggleCheckbox, onSaveExpanded, onToggleComplete, currentUser 
+    onToggleCheckbox, onSaveExpanded, onToggleComplete, onUpdateProjectData, currentUser 
 }) => {
   const [isExpanding, setIsExpanding] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(600);
   
+  // Edit states for project dashboard
+  const [editSection, setEditSection] = useState<'objectives' | 'milestones' | 'timeline' | null>(null);
+  const [editedObjectives, setEditedObjectives] = useState<string[]>([]);
+  const [editedMilestones, setEditedMilestones] = useState<ProjectMilestone[]>([]);
+  const [editedTimeline, setEditedTimeline] = useState<ProjectPhase[]>([]);
+
   const checkboxCounter = useRef(0);
   checkboxCounter.current = 0;
 
@@ -47,6 +54,13 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
     if (isOpen && containerRef.current) {
         setContainerWidth(containerRef.current.clientWidth - 64);
     }
+    // Reset edit states when note changes or modal opens
+    if (note && note.projectData) {
+      setEditedObjectives(note.projectData.objectives || note.projectData.deliverables || []);
+      setEditedMilestones(note.projectData.milestones || []);
+      setEditedTimeline(note.projectData.timeline || []);
+    }
+    setEditSection(null);
   }, [isOpen, note]);
 
   const handleDeepDive = async () => {
@@ -63,6 +77,18 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
     } finally {
         setIsExpanding(false);
     }
+  };
+
+  const saveProjectChanges = () => {
+    if (!note || !onUpdateProjectData) return;
+    const newData: ProjectData = {
+      ...(note.projectData || { deliverables: [], milestones: [], timeline: [], objectives: [] }),
+      objectives: editedObjectives,
+      milestones: editedMilestones,
+      timeline: editedTimeline
+    };
+    onUpdateProjectData(note.id, newData);
+    setEditSection(null);
   };
 
   const processedContent = useMemo(() => note ? processContent(note.content) : "", [note]);
@@ -213,60 +239,210 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
               <div className="mt-12 space-y-10 animate-[fadeIn_0.3s_ease-out] font-sans">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       {/* Box 1: Objectives */}
-                      <div className="bg-white/50 dark:bg-black/30 p-8 rounded-3xl border border-black/5 shadow-xl flex flex-col min-h-[300px]">
-                          <div className="flex items-center gap-3 mb-6">
-                            <span className="text-2xl">🎯</span>
-                            <h4 className="text-sm font-black uppercase tracking-widest opacity-60">Objectives</h4>
+                      <div className="bg-white/50 dark:bg-black/30 p-8 rounded-3xl border border-black/5 shadow-xl flex flex-col min-h-[300px] relative group">
+                          <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl">🎯</span>
+                              <h4 className="text-sm font-black uppercase tracking-widest opacity-60">Objectives</h4>
+                            </div>
+                            <button 
+                              onClick={() => setEditSection(editSection === 'objectives' ? null : 'objectives')}
+                              className="opacity-0 group-hover:opacity-100 p-2 bg-white/80 dark:bg-slate-800 rounded-full shadow-sm hover:text-primary-600 transition-all"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
                           </div>
-                          <ul className="space-y-4 flex-1">
-                              {(projectData.objectives || projectData.deliverables).length > 0 ? (projectData.objectives || projectData.deliverables).map((o, i) => (
-                                  <li key={i} className="text-sm font-bold flex items-start gap-3 p-3 rounded-xl bg-white/20 border border-white/10">
-                                      <span className="text-emerald-500 text-lg leading-none mt-0.5">▹</span> 
-                                      <span className="leading-tight">{o}</span>
-                                  </li>
-                              )) : <p className="text-xs text-slate-400 italic text-center py-10">No objectives extracted yet.</p>}
-                          </ul>
+
+                          {editSection === 'objectives' ? (
+                            <div className="flex flex-col h-full gap-4">
+                              <textarea 
+                                value={editedObjectives.join('\n')}
+                                onChange={(e) => setEditedObjectives(e.target.value.split('\n'))}
+                                className="flex-1 w-full bg-white/40 dark:bg-black/20 p-4 rounded-xl border border-primary-200 outline-none text-sm font-bold resize-none"
+                                placeholder="Enter one objective per line..."
+                              />
+                              <div className="flex justify-end gap-2">
+                                <button onClick={() => setEditSection(null)} className="px-4 py-1 text-xs font-bold text-slate-500">Cancel</button>
+                                <button onClick={saveProjectChanges} className="px-4 py-1 bg-primary-600 text-white rounded-lg text-xs font-bold">Save</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <ul className="space-y-4 flex-1">
+                                {editedObjectives.length > 0 ? editedObjectives.map((o, i) => (
+                                    <li key={i} className="text-sm font-bold flex items-start gap-3 p-3 rounded-xl bg-white/20 border border-white/10">
+                                        <span className="text-emerald-500 text-lg leading-none mt-0.5">▹</span> 
+                                        <span className="leading-tight">{o}</span>
+                                    </li>
+                                )) : <p className="text-xs text-slate-400 italic text-center py-10">No objectives defined.</p>}
+                            </ul>
+                          )}
                       </div>
 
                       {/* Box 2: Milestones */}
-                      <div className="bg-white/50 dark:bg-black/30 p-8 rounded-3xl border border-black/5 shadow-xl flex flex-col min-h-[300px]">
-                          <div className="flex items-center gap-3 mb-6">
-                            <span className="text-2xl">🚩</span>
-                            <h4 className="text-sm font-black uppercase tracking-widest opacity-60">Milestones</h4>
+                      <div className="bg-white/50 dark:bg-black/30 p-8 rounded-3xl border border-black/5 shadow-xl flex flex-col min-h-[300px] relative group">
+                          <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl">🚩</span>
+                              <h4 className="text-sm font-black uppercase tracking-widest opacity-60">Milestones</h4>
+                            </div>
+                            <button 
+                              onClick={() => setEditSection(editSection === 'milestones' ? null : 'milestones')}
+                              className="opacity-0 group-hover:opacity-100 p-2 bg-white/80 dark:bg-slate-800 rounded-full shadow-sm hover:text-primary-600 transition-all"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
                           </div>
-                          <div className="space-y-4 flex-1">
-                              {projectData.milestones && projectData.milestones.length > 0 ? projectData.milestones.map((m, i) => (
-                                  <div key={i} className="flex items-center justify-between bg-white/30 dark:bg-black/10 p-4 rounded-2xl border border-black/5 hover:border-emerald-200 transition-all">
-                                      <div className="flex flex-col">
-                                        <span className="text-sm font-bold leading-tight">{m.label}</span>
-                                        <span className="text-[10px] opacity-50 font-mono mt-1">{m.date}</span>
-                                      </div>
-                                      <div className={`text-[10px] font-black px-3 py-1 rounded-full shadow-sm ${m.status === 'completed' ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}>
-                                          {m.status.toUpperCase()}
-                                      </div>
+
+                          {editSection === 'milestones' ? (
+                            <div className="flex flex-col h-full gap-3 overflow-y-auto max-h-[400px]">
+                              {editedMilestones.map((m, i) => (
+                                <div key={i} className="flex flex-col gap-2 p-3 bg-white/40 dark:bg-black/20 rounded-xl border border-slate-200">
+                                  <input 
+                                    value={m.label}
+                                    onChange={(e) => {
+                                      const newList = [...editedMilestones];
+                                      newList[i].label = e.target.value;
+                                      setEditedMilestones(newList);
+                                    }}
+                                    className="bg-transparent border-0 text-sm font-bold outline-none"
+                                    placeholder="Milestone Label"
+                                  />
+                                  <div className="flex gap-2">
+                                    <input 
+                                      type="date"
+                                      value={m.date}
+                                      onChange={(e) => {
+                                        const newList = [...editedMilestones];
+                                        newList[i].date = e.target.value;
+                                        setEditedMilestones(newList);
+                                      }}
+                                      className="flex-1 bg-transparent border-0 text-[10px] font-mono outline-none"
+                                    />
+                                    <select 
+                                      value={m.status}
+                                      onChange={(e) => {
+                                        const newList = [...editedMilestones];
+                                        newList[i].status = e.target.value as any;
+                                        setEditedMilestones(newList);
+                                      }}
+                                      className="bg-transparent border-0 text-[10px] font-bold outline-none"
+                                    >
+                                      <option value="pending">PENDING</option>
+                                      <option value="completed">COMPLETED</option>
+                                    </select>
+                                    <button 
+                                      onClick={() => setEditedMilestones(editedMilestones.filter((_, idx) => idx !== i))}
+                                      className="text-red-500 text-xs"
+                                    >✕</button>
                                   </div>
-                              )) : <p className="text-xs text-slate-400 italic text-center py-10">No milestones defined yet.</p>}
-                          </div>
+                                </div>
+                              ))}
+                              <button 
+                                onClick={() => setEditedMilestones([...editedMilestones, { label: 'New Milestone', date: new Date().toISOString().split('T')[0], status: 'pending' }])}
+                                className="w-full py-2 border-2 border-dashed border-slate-200 text-slate-400 text-xs rounded-xl"
+                              >+ Add Milestone</button>
+                              <div className="flex justify-end gap-2 mt-4">
+                                <button onClick={() => setEditSection(null)} className="px-4 py-1 text-xs font-bold text-slate-500">Cancel</button>
+                                <button onClick={saveProjectChanges} className="px-4 py-1 bg-primary-600 text-white rounded-lg text-xs font-bold">Save</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-4 flex-1">
+                                {editedMilestones.length > 0 ? editedMilestones.map((m, i) => (
+                                    <div key={i} className="flex items-center justify-between bg-white/30 dark:bg-black/10 p-4 rounded-2xl border border-black/5 hover:border-emerald-200 transition-all">
+                                        <div className="flex flex-col">
+                                          <span className="text-sm font-bold leading-tight">{m.label}</span>
+                                          <span className="text-[10px] opacity-50 font-mono mt-1">{m.date}</span>
+                                        </div>
+                                        <div className={`text-[10px] font-black px-3 py-1 rounded-full shadow-sm ${m.status === 'completed' ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}>
+                                            {m.status.toUpperCase()}
+                                        </div>
+                                    </div>
+                                )) : <p className="text-xs text-slate-400 italic text-center py-10">No milestones defined yet.</p>}
+                            </div>
+                          )}
                       </div>
                   </div>
                   
                   {/* Box 3: Timeline */}
-                  <div className="bg-white/50 dark:bg-black/30 p-8 rounded-3xl border border-black/5 shadow-xl">
+                  <div className="bg-white/50 dark:bg-black/30 p-8 rounded-3xl border border-black/5 shadow-xl relative group">
                       <div className="flex justify-between items-center mb-8">
                         <div className="flex items-center gap-3">
                             <span className="text-2xl">🗓️</span>
                             <h4 className="text-sm font-black uppercase tracking-widest opacity-60">Timeline</h4>
                         </div>
-                        <span className="text-[10px] font-bold opacity-40 uppercase tracking-tighter">Roadmap Visualization</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-[10px] font-bold opacity-40 uppercase tracking-tighter">Roadmap Visualization</span>
+                          <button 
+                              onClick={() => setEditSection(editSection === 'timeline' ? null : 'timeline')}
+                              className="opacity-0 group-hover:opacity-100 p-2 bg-white/80 dark:bg-slate-800 rounded-full shadow-sm hover:text-primary-600 transition-all"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </button>
+                        </div>
                       </div>
-                      {projectData.timeline && projectData.timeline.length > 0 ? (
-                        <div className="bg-white/20 p-4 rounded-2xl border border-white/10">
-                            <GanttChart data={projectData} width={containerWidth} />
+
+                      {editSection === 'timeline' ? (
+                        <div className="flex flex-col gap-4">
+                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                             {editedTimeline.map((p, i) => (
+                               <div key={i} className="p-4 bg-white/40 dark:bg-black/20 rounded-xl border border-slate-200 space-y-3">
+                                  <input 
+                                    value={p.name}
+                                    onChange={(e) => {
+                                      const newList = [...editedTimeline];
+                                      newList[i].name = e.target.value;
+                                      setEditedTimeline(newList);
+                                    }}
+                                    className="w-full bg-transparent border-0 text-sm font-bold outline-none"
+                                    placeholder="Phase Name"
+                                  />
+                                  <div className="flex items-center gap-2">
+                                     <input 
+                                        type="date"
+                                        value={p.startDate}
+                                        onChange={(e) => {
+                                          const newList = [...editedTimeline];
+                                          newList[i].startDate = e.target.value;
+                                          setEditedTimeline(newList);
+                                        }}
+                                        className="flex-1 bg-transparent border-0 text-[10px] font-mono outline-none"
+                                     />
+                                     <span className="text-slate-400">→</span>
+                                     <input 
+                                        type="date"
+                                        value={p.endDate}
+                                        onChange={(e) => {
+                                          const newList = [...editedTimeline];
+                                          newList[i].endDate = e.target.value;
+                                          setEditedTimeline(newList);
+                                        }}
+                                        className="flex-1 bg-transparent border-0 text-[10px] font-mono outline-none"
+                                     />
+                                     <button onClick={() => setEditedTimeline(editedTimeline.filter((_, idx) => idx !== i))} className="text-red-500">✕</button>
+                                  </div>
+                               </div>
+                             ))}
+                             <button 
+                                onClick={() => setEditedTimeline([...editedTimeline, { name: 'New Phase', startDate: new Date().toISOString().split('T')[0], endDate: new Date().toISOString().split('T')[0] }])}
+                                className="flex items-center justify-center p-4 border-2 border-dashed border-slate-200 text-slate-400 text-xs rounded-xl h-24"
+                              >+ Add Phase</button>
+                           </div>
+                           <div className="flex justify-end gap-2 mt-4">
+                              <button onClick={() => setEditSection(null)} className="px-4 py-1 text-xs font-bold text-slate-500">Cancel</button>
+                              <button onClick={saveProjectChanges} className="px-4 py-1 bg-primary-600 text-white rounded-lg text-xs font-bold">Save</button>
+                           </div>
                         </div>
                       ) : (
-                        <div className="text-center py-16 text-xs text-slate-400 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl">
-                          Timelines are automatically generated by AI during note organization.
-                        </div>
+                        editedTimeline.length > 0 ? (
+                          <div className="bg-white/20 p-4 rounded-2xl border border-white/10">
+                              <GanttChart data={{...projectData, timeline: editedTimeline}} width={containerWidth} />
+                          </div>
+                        ) : (
+                          <div className="text-center py-16 text-xs text-slate-400 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl">
+                            Timelines are automatically generated by AI or can be added manually.
+                          </div>
+                        )
                       )}
                   </div>
 

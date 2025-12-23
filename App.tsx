@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Note, NoteColor, NoteType, ViewMode, Theme, Folder, User } from './types';
+import { Note, NoteColor, NoteType, ViewMode, Theme, Folder, User, ProjectData } from './types';
 import { processNoteWithAI, getDailyUsage } from './services/geminiService';
 import { 
     loadNotes, saveNote, deleteNote, 
@@ -164,10 +164,12 @@ const App: React.FC = () => {
             };
         }
 
-        if (type === 'project' && extraProjectData) {
-            if (!processed.projectData) processed.projectData = { deliverables: [], milestones: [], timeline: [] };
-            processed.projectData.manualProgress = extraProjectData.manualProgress;
-            processed.projectData.isCompleted = extraProjectData.isCompleted;
+        if (type === 'project') {
+            if (!processed.projectData) processed.projectData = { deliverables: [], milestones: [], timeline: [], objectives: [] };
+            if (extraProjectData) {
+              processed.projectData.manualProgress = extraProjectData.manualProgress;
+              processed.projectData.isCompleted = extraProjectData.isCompleted;
+            }
         }
 
         const newNote: Note = {
@@ -217,6 +219,17 @@ const App: React.FC = () => {
       };
       
       setNotes(prev => prev.map(n => n.id === id ? updated : n));
+      await saveNote(updated, storageOwner);
+  };
+
+  const handleUpdateProjectData = async (id: string, data: ProjectData) => {
+      if (!canEdit) return;
+      const target = notes.find(n => n.id === id);
+      if (!target) return;
+      
+      const updated = { ...target, projectData: data };
+      setNotes(prev => prev.map(n => n.id === id ? updated : n));
+      if (expandedNote?.id === id) setExpandedNote(updated);
       await saveNote(updated, storageOwner);
   };
 
@@ -326,7 +339,7 @@ const App: React.FC = () => {
       if (!canEdit) return;
       const target = notes.find(n => n.id === noteId);
       if (!target || target.type !== 'project') return;
-      const projectData = target.projectData || { deliverables: [], milestones: [], timeline: [] };
+      const projectData = target.projectData || { deliverables: [], milestones: [], timeline: [], objectives: [] };
       const isFinishing = !projectData.isCompleted;
       const newManualProgress = isFinishing ? 100 : (projectData.manualProgress === 100 ? 99 : projectData.manualProgress || 0);
       const updated = { ...target, projectData: { ...projectData, isCompleted: isFinishing, manualProgress: newManualProgress } };
@@ -571,6 +584,7 @@ const App: React.FC = () => {
             onToggleCheckbox={handleToggleCheckbox} 
             onSaveExpanded={(id, content) => handleUpdateNote(id, expandedNote?.title || '', content)} 
             onToggleComplete={handleToggleProjectCompletion}
+            onUpdateProjectData={handleUpdateProjectData}
         />
         <TrashModal 
           isOpen={showTrash} 
