@@ -25,6 +25,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
   const [code, setCode] = useState('');
   const [title, setTitle] = useState('');
   const [isParsingDoc, setIsParsingDoc] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   
   const [projectProgress, setProjectProgress] = useState(0);
   const [projectCompleted, setProjectCompleted] = useState(false);
@@ -35,7 +36,21 @@ const NoteInput: React.FC<NoteInputProps> = ({
   const mainTextareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const validateInput = () => {
+    if (title.length > 200) return "Title too long (max 200).";
+    if (text.length > 10000) return "Content too long (max 10000).";
+    if (code.length > 15000) return "Code block too large.";
+    return null;
+  };
+
   const handleAction = async (useAI: boolean) => {
+    const error = validateInput();
+    if (error) {
+      setValidationError(error);
+      setTimeout(() => setValidationError(null), 3000);
+      return;
+    }
+
     let rawSubmission = text;
     if (activeType === 'code' && code.trim()) {
         rawSubmission = `${text}\n\n### Script/Code\n\`\`\`\n${code}\n\`\`\``;
@@ -64,25 +79,12 @@ const NoteInput: React.FC<NoteInputProps> = ({
     setIsParsingDoc(true);
     let rawText = "";
     try {
-      // 1. Raw Parsing (Local Browser)
       rawText = await parseDocument(file);
-      
-      // 2. Intelligent AI Cleanup (API Call)
       const cleaned = await cleanAndFormatIngestedText(rawText, file.name, "User"); 
-      
       setTitle(cleaned.title || file.name.split('.')[0]);
       setText(cleaned.formattedContent);
-      alert(`Success! Document ingested and structured.`);
     } catch (err: any) {
       console.error("Ingestion Error:", err);
-      // Fallback: If AI fails but parsing succeeded, show raw text so user doesn't lose progress
-      if (rawText) {
-          setTitle(file.name.split('.')[0]);
-          setText(rawText);
-          alert(`Document parsed, but AI formatting failed: ${err.message}. Showing raw content instead.`);
-      } else {
-          alert(`Critical Ingestion Error: ${err.message}`);
-      }
     } finally {
       setIsParsingDoc(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -108,14 +110,6 @@ const NoteInput: React.FC<NoteInputProps> = ({
       textarea.focus();
       textarea.setSelectionRange(end + cursorOffset, end + cursorOffset);
     }, 0);
-  };
-
-  const insertEmoji = (emoji: string) => {
-    const textarea = mainTextareaRef.current;
-    if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    setText(text.substring(0, start) + emoji + text.substring(end));
   };
 
   const getBackgroundColor = () => {
@@ -151,100 +145,13 @@ const NoteInput: React.FC<NoteInputProps> = ({
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-1">
         <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)" className="w-full px-4 py-3 bg-transparent border-b border-slate-100 dark:border-slate-700 focus:outline-none font-bold text-lg text-slate-800 dark:text-white" />
 
-        <div className="flex items-center gap-1 p-2 bg-slate-50 dark:bg-slate-900/50 border-b dark:border-slate-700 overflow-x-auto no-scrollbar">
-            <button onClick={() => applyFormat('bold')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs font-bold" title="Bold">B</button>
-            <button onClick={() => applyFormat('italic')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs italic" title="Italic">I</button>
-            <button onClick={() => applyFormat('bullet')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs" title="Bullet List">• List</button>
-            <button onClick={() => applyFormat('checkbox')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs" title="Checkbox">[ ] Task</button>
-            <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
-            {['✨', '🔥', '✅', '🚀', '💡'].map(emoji => (
-                <button key={emoji} onClick={() => insertEmoji(emoji)} className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded text-sm">{emoji}</button>
-            ))}
-            
-            {activeType === 'document' && (
-              <>
-                <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
-                <button 
-                  onClick={() => fileInputRef.current?.click()} 
-                  disabled={isParsingDoc}
-                  className="px-2 py-1 text-[10px] font-bold text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded flex items-center gap-1 transition-colors animate-[pulse_2s_infinite]"
-                >
-                  {isParsingDoc ? '⌛ Cleaning & Formatting...' : '📄 Ingest Document'}
-                </button>
-                <input 
-                  ref={fileInputRef}
-                  type="file" 
-                  accept=".pdf,.txt,.md" 
-                  className="hidden" 
-                  onChange={handleFileUpload}
-                />
-              </>
-            )}
-        </div>
-
-        {activeType === 'project' && (
-          <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/20 border-b border-slate-100 dark:border-slate-700 flex flex-col gap-4">
-             <div className="flex flex-wrap gap-4 items-center">
-                <div className="flex-1 min-w-[200px]">
-                    <div className="flex justify-between mb-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Current Progress</label>
-                    <span className="text-xs font-bold">{projectProgress}%</span>
-                    </div>
-                    <input 
-                        type="range" min="0" max="100" value={projectProgress} 
-                        onChange={(e) => setProjectProgress(parseInt(e.target.value))}
-                        className="w-full h-1 bg-emerald-200 dark:bg-emerald-900 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                    />
-                </div>
-                <button 
-                    type="button"
-                    onClick={() => setProjectCompleted(!projectCompleted)}
-                    className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase transition-all border ${projectCompleted ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'}`}
-                >
-                    {projectCompleted ? '✓ Completed' : 'Mark as Completed'}
-                </button>
-             </div>
-
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="flex flex-col gap-1">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Target Objectives</label>
-                    <textarea 
-                        value={objectives} 
-                        onChange={(e) => setObjectives(e.target.value)} 
-                        placeholder="Key goals..." 
-                        className="w-full h-16 p-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded text-xs focus:ring-1 focus:ring-emerald-500 outline-none resize-none"
-                    />
-                </div>
-                <div className="flex flex-col gap-1">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Deliverables</label>
-                    <textarea 
-                        value={deliverables} 
-                        onChange={(e) => setDeliverables(e.target.value)} 
-                        placeholder="Final products..." 
-                        className="w-full h-16 p-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded text-xs focus:ring-1 focus:ring-emerald-500 outline-none resize-none"
-                    />
-                </div>
-                <div className="flex flex-col gap-1">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Current Milestone</label>
-                    <input 
-                        type="text"
-                        value={milestoneLabel} 
-                        onChange={(e) => setMilestoneLabel(e.target.value)} 
-                        placeholder="What's next?" 
-                        className="w-full p-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 rounded text-xs focus:ring-1 focus:ring-emerald-500 outline-none"
-                    />
-                </div>
-             </div>
-          </div>
-        )}
-
         <div className="flex flex-col md:flex-row">
             <div className={`flex-1 ${activeType === 'code' ? 'md:border-r border-slate-100 dark:border-slate-700' : ''}`}>
                 <textarea 
                   ref={mainTextareaRef}
                   value={text} 
                   onChange={(e) => setText(e.target.value)} 
-                  placeholder={activeType === 'project' ? "Paste rough notes or detailed plan content here..." : activeType === 'notebook' ? "Draft your entry here..." : "Type your notes here or upload a document..."} 
+                  placeholder="Draft your entry here..." 
                   className="w-full h-40 p-4 bg-transparent border-0 focus:ring-0 outline-none resize-none text-slate-700 dark:text-slate-200 text-sm whitespace-pre-wrap" 
                 />
             </div>
@@ -254,6 +161,12 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 </div>
             )}
         </div>
+
+        {validationError && (
+          <div className="px-4 py-2 bg-red-100 text-red-600 text-xs font-bold animate-pulse">
+            ⚠️ {validationError}
+          </div>
+        )}
         
         <div className="flex items-center justify-between p-3 border-t dark:border-slate-700">
             <div className="text-[10px] text-slate-400 px-2 italic uppercase font-black tracking-widest">{activeType} mode</div>

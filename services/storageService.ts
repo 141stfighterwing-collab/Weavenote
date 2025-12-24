@@ -1,4 +1,3 @@
-
 import { Note, Folder, UserUsageStats, NoteType } from '../types';
 import JSZip from 'jszip';
 import { db } from './firebase';
@@ -12,108 +11,110 @@ import {
     deleteDoc, 
     writeBatch
 } from 'firebase/firestore';
+import { logTraffic } from './trafficService';
 
 // Keys for Guest Mode (Session Storage)
 const GUEST_KEY = 'ideaweaver_guest_session';
 const GUEST_FOLDERS_KEY = 'ideaweaver_guest_folders';
 
-// Helper: Firestore throws error if a field is 'undefined'. 
-// We must strip undefined keys or convert them to null.
-// JSON.stringify automatically removes keys with undefined values.
-const sanitizeForFirestore = <T>(data: T): T => {
-    return JSON.parse(JSON.stringify(data));
+/**
+ * Deep sanitization to prevent XSS/Injection.
+ * Removes <script>, <iframe>, and other dangerous tags.
+ */
+const sanitizeInput = (val: any): any => {
+    if (typeof val === 'string') {
+        // Strip tags but keep some basic safe Markdown-like characters
+        return val
+            .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gim, "")
+            .replace(/<iframe\b[^>]*>([\s\S]*?)<\/iframe>/gim, "")
+            .replace(/on\w+="[^"]*"/gim, "") // Remove inline event handlers
+            .substring(0, 50000); // Max length limit per field
+    }
+    if (Array.isArray(val)) return val.map(sanitizeInput);
+    if (val !== null && typeof val === 'object') {
+        const cleaned: any = {};
+        for (const key in val) cleaned[key] = sanitizeInput(val[key]);
+        return cleaned;
+    }
+    return val;
 };
 
-/**
- * Load Notes (Async)
- * Fetches notes belonging specifically to the logged-in user.
- */
+const sanitizeForFirestore = <T>(data: T): T => {
+    const cleaned = JSON.parse(JSON.stringify(data));
+    return sanitizeInput(cleaned);
+};
+
 export const loadNotes = async (userId: string | null): Promise<Note[]> => {
-    // Guest Mode: Load from Browser RAM
+    const start = Date.now();
     if (!userId) {
         try {
             const stored = sessionStorage.getItem(GUEST_KEY);
-            return stored ? JSON.parse(stored) : [];
+            const notes = stored ? JSON.parse(stored) : [];
+            logTraffic('GET', 'sessionStorage/notes', 200, JSON.stringify(notes).length);
+            return notes;
         } catch (e) {
+            logTraffic('GET', 'sessionStorage/notes', 500, 0);
             return [];
         }
     }
 
-    // Firebase Mode: Load from Cloud Database
-    if (!db) {
-        console.warn("Firestore not initialized. Check config.");
-        return [];
-    }
+    if (!db) return [];
     
     try {
-        // Query: Select * from Notes where userId == currentUserId
         const q = query(collection(db, 'notes'), where('userId', '==', userId));
         const snapshot = await getDocs(q);
         const notes = snapshot.docs.map(d => d.data() as Note);
-        
-        // Sort by newest first
+        logTraffic('GET', 'firestore/notes', 200, JSON.stringify(notes).length);
         return notes.sort((a, b) => b.createdAt - a.createdAt);
     } catch (e) {
-        console.error("Firestore Load Error:", e);
+        logTraffic('GET', 'firestore/notes', 500, 0);
         return [];
     }
 };
 
-/**
- * Save/Update a SINGLE Note
- */
 export const saveNote = async (note: Note, userId: string | null) => {
-    // Guest Mode
+    const cleanNote = sanitizeForFirestore(note);
+    const size = JSON.stringify(cleanNote).length;
+
     if (!userId) {
         const notes = await loadNotes(null);
-        const idx = notes.findIndex(n => n.id === note.id);
-        if (idx >= 0) notes[idx] = note;
-        else notes.push(note);
+        const idx = notes.findIndex(n => n.id === cleanNote.id);
+        if (idx >= 0) notes[idx] = cleanNote;
+        else notes.push(cleanNote);
         sessionStorage.setItem(GUEST_KEY, JSON.stringify(notes));
+        logTraffic('POST', 'sessionStorage/notes', 200, size, cleanNote);
         return;
     }
 
-    // Firebase Mode
     if (!db) return;
     try {
-        // Force the userId on the note data to ensure ownership
-        const noteData = { ...note, userId };
-        // Sanitize to remove 'undefined' fields (like folderId) which crash Firestore
-        const cleanData = sanitizeForFirestore(noteData);
-        
-        await setDoc(doc(db, 'notes', note.id), cleanData);
-        console.log(`Note ${note.id} saved to Cloud.`);
+        const noteData = { ...cleanNote, userId };
+        await setDoc(doc(db, 'notes', cleanNote.id), noteData);
+        logTraffic('POST', 'firestore/notes', 200, size, cleanNote);
     } catch (e) {
-        console.error("Firestore Save Error", e);
+        logTraffic('POST', 'firestore/notes', 500, size, cleanNote);
         throw e;
     }
 };
 
-/**
- * Delete a Note
- */
 export const deleteNote = async (noteId: string, userId: string | null) => {
-    // Guest Mode
     if (!userId) {
         const notes = await loadNotes(null);
         const newNotes = notes.filter(n => n.id !== noteId);
         sessionStorage.setItem(GUEST_KEY, JSON.stringify(newNotes));
+        logTraffic('DELETE', 'sessionStorage/notes', 200, 0);
         return;
     }
 
-    // Firebase Mode
     if (!db) return;
     try {
         await deleteDoc(doc(db, 'notes', noteId));
-        console.log(`Note ${noteId} deleted from Cloud.`);
+        logTraffic('DELETE', 'firestore/notes', 200, 0);
     } catch (e) {
-        console.error("Firestore Delete Error", e);
+        logTraffic('DELETE', 'firestore/notes', 500, 0);
     }
 };
 
-/**
- * Load Folders
- */
 export const loadFolders = async (userId: string | null): Promise<Folder[]> => {
     if (!userId) {
         const stored = sessionStorage.getItem(GUEST_FOLDERS_KEY);
@@ -126,14 +127,10 @@ export const loadFolders = async (userId: string | null): Promise<Folder[]> => {
         const snapshot = await getDocs(q);
         return snapshot.docs.map(d => d.data() as Folder).sort((a,b) => a.order - b.order);
     } catch (e) {
-        console.error("Folder Load Error", e);
         return [];
     }
 };
 
-/**
- * Save/Update Folder
- */
 export const saveFolder = async (folder: Folder, userId: string | null) => {
     if (!userId) {
         const folders = await loadFolders(null);
@@ -147,11 +144,8 @@ export const saveFolder = async (folder: Folder, userId: string | null) => {
     if (!db) return;
     try {
         const folderData = { ...folder, userId };
-        const cleanData = sanitizeForFirestore(folderData);
-        await setDoc(doc(db, 'folders', folder.id), cleanData);
-    } catch (e) {
-        console.error("Folder Save Error", e);
-    }
+        await setDoc(doc(db, 'folders', folder.id), sanitizeForFirestore(folderData));
+    } catch (e) {}
 };
 
 export const deleteFolder = async (folderId: string, userId: string | null) => {
@@ -165,25 +159,16 @@ export const deleteFolder = async (folderId: string, userId: string | null) => {
     await deleteDoc(doc(db, 'folders', folderId));
 };
 
-/**
- * Sync All Notes (Used for bulk imports)
- */
 export const syncAllNotes = async (notes: Note[], userId: string) => {
     if (!db || !userId) return;
     const batch = writeBatch(db);
-    
-    // Firestore batch limit is 500 operations. 
-    // For simplicity, we assume <500 notes in this call or split logic needed.
     notes.slice(0, 490).forEach(note => {
         const ref = doc(db, 'notes', note.id);
         const cleanData = sanitizeForFirestore({ ...note, userId });
         batch.set(ref, cleanData);
     });
-    
     await batch.commit();
 };
-
-// ... Export/Markdown helpers ...
 
 const noteToMarkdown = (note: Note): string => {
     const dateStr = new Date(note.createdAt).toLocaleString();
