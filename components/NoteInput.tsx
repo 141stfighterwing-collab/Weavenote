@@ -15,11 +15,12 @@ interface NoteInputProps {
   isProcessing: boolean;
   activeType: NoteType;
   readOnly?: boolean;
+  isGuest?: boolean;
   enableImages?: boolean;
 }
 
 const NoteInput: React.FC<NoteInputProps> = ({ 
-    onAddNote, onTypeChange, isProcessing, activeType, readOnly = false 
+    onAddNote, onTypeChange, isProcessing, activeType, readOnly = false, isGuest = true 
 }) => {
   const [text, setText] = useState('');
   const [code, setCode] = useState('');
@@ -44,6 +45,8 @@ const NoteInput: React.FC<NoteInputProps> = ({
   };
 
   const handleAction = async (useAI: boolean) => {
+    if (useAI && isGuest) return; // Guard for guest AI usage
+
     const error = validateInput();
     if (error) {
       setValidationError(error);
@@ -80,9 +83,15 @@ const NoteInput: React.FC<NoteInputProps> = ({
     let rawText = "";
     try {
       rawText = await parseDocument(file);
-      const cleaned = await cleanAndFormatIngestedText(rawText, file.name, "User"); 
-      setTitle(cleaned.title || file.name.split('.')[0]);
-      setText(cleaned.formattedContent);
+      // Document ingestion with AI is also restricted to logged-in users
+      if (!isGuest) {
+        const cleaned = await cleanAndFormatIngestedText(rawText, file.name, "User"); 
+        setTitle(cleaned.title || file.name.split('.')[0]);
+        setText(cleaned.formattedContent);
+      } else {
+        setTitle(file.name.split('.')[0]);
+        setText(rawText);
+      }
     } catch (err: any) {
       console.error("Ingestion Error:", err);
     } finally {
@@ -172,8 +181,14 @@ const NoteInput: React.FC<NoteInputProps> = ({
             <div className="text-[10px] text-slate-400 px-2 italic uppercase font-black tracking-widest">{activeType} mode</div>
             <div className="flex gap-2">
                 <button type="button" onClick={() => handleAction(false)} disabled={isDisabled} className="px-4 py-1.5 rounded-full font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 transition-colors">Add</button>
-                <button type="button" onClick={() => handleAction(true)} disabled={isDisabled || isProcessing} className="px-4 py-1.5 rounded-full font-bold text-sm bg-gradient-to-r from-primary-600 to-indigo-600 text-white shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 disabled:opacity-50">
-                  {isProcessing ? '✨ Organizing...' : '✨ AI Organize'}
+                <button 
+                  type="button" 
+                  onClick={() => handleAction(true)} 
+                  disabled={isDisabled || isProcessing || isGuest} 
+                  className={`px-4 py-1.5 rounded-full font-bold text-sm transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 shadow-md hover:shadow-lg ${isGuest ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-primary-600 to-indigo-600 text-white'}`}
+                  title={isGuest ? "Login required for AI features" : "AI Organize"}
+                >
+                  {isProcessing ? '✨ Organizing...' : isGuest ? '✨ AI (Login)' : '✨ AI Organize'}
                 </button>
             </div>
         </div>

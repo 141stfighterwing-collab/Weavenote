@@ -20,6 +20,7 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
   const [aiResult, setAiResult] = useState<{category: string, tags: string[]} | null>(null);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isGuest = currentUser === 'Guest';
 
   useEffect(() => {
     if (note) {
@@ -39,6 +40,7 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
   };
 
   const handleAIOrganize = async () => {
+      if (isGuest) return;
       setIsProcessing(true);
       setError(null);
       try {
@@ -155,8 +157,14 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
             />
           </div>
           <div className="flex justify-between items-center pt-6 mt-6 border-t dark:border-slate-700">
-            <button type="button" onClick={handleAIOrganize} disabled={isProcessing} className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold rounded-xl shadow hover:shadow-lg transition-all transform hover:-translate-y-0.5">
-              {isProcessing ? '✨ Organizing...' : '✨ AI Organize'}
+            <button 
+              type="button" 
+              onClick={handleAIOrganize} 
+              disabled={isProcessing || isGuest} 
+              className={`px-6 py-3 font-bold rounded-xl shadow transition-all transform hover:-translate-y-0.5 ${isGuest ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:shadow-lg'}`}
+              title={isGuest ? "Login required for AI features" : "AI Organize"}
+            >
+              {isProcessing ? '✨ Organizing...' : isGuest ? '✨ AI (Login)' : '✨ AI Organize'}
             </button>
             <div className="flex gap-3">
                 <button type="button" onClick={onClose} className="px-6 py-3 font-bold text-slate-600 dark:text-slate-300">Cancel</button>

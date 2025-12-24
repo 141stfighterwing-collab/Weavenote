@@ -51,6 +51,7 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
 
   const checkboxCounter = useRef(0);
   checkboxCounter.current = 0;
+  const isGuest = currentUser === 'Guest';
 
   useEffect(() => {
     if (isOpen && containerRef.current) {
@@ -68,7 +69,7 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
   }, [isOpen, note]);
 
   const handleDeepDive = async () => {
-    if (!note || !onSaveExpanded) return;
+    if (!note || !onSaveExpanded || isGuest) return;
     setIsExpanding(true);
     try {
         const expansion = await expandNoteContent(note.content, currentUser);
@@ -198,8 +199,13 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
                     {isCompleted ? '✓ Completed' : 'Mark as Done'}
                   </button>
                 )}
-                <button onClick={handleDeepDive} disabled={isExpanding} className="px-3 py-1.5 rounded-full text-xs font-bold font-sans transition-all shadow-sm bg-indigo-600 text-white hover:bg-indigo-700 flex items-center gap-1 disabled:opacity-50">
-                  {isExpanding ? '✨ Diving...' : '✨ Deep Dive'}
+                <button 
+                  onClick={handleDeepDive} 
+                  disabled={isExpanding || isGuest} 
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold font-sans transition-all shadow-sm flex items-center gap-1 disabled:opacity-50 ${isGuest ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+                  title={isGuest ? "Login required for AI features" : "Deep Dive"}
+                >
+                  {isExpanding ? '✨ Diving...' : isGuest ? '✨ AI (Login)' : '✨ Deep Dive'}
                 </button>
                 <button onClick={onClose} className="p-2 rounded-full hover:bg-black/10 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>

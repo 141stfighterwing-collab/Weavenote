@@ -145,6 +145,12 @@ const App: React.FC = () => {
     manualMilestones?: ProjectMilestone[]
   }): Promise<Note | undefined> => {
     if (!canEdit) return;
+    
+    // Explicit Guard: Guests cannot use AI
+    if (useAI && !currentUser) {
+      useAI = false;
+    }
+
     setIsProcessing(true);
     try {
         let processed;
@@ -421,6 +427,7 @@ const App: React.FC = () => {
                         isProcessing={isProcessing} 
                         activeType={activeTab} 
                         readOnly={!canEdit} 
+                        isGuest={!currentUser}
                         enableImages={enableImages} 
                     />
                 )}
