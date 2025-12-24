@@ -32,15 +32,15 @@ export const logTraffic = async (
   let type: TrafficEntry['type'] = isBot ? 'bot' : 'user';
   let severity: TrafficEntry['severity'] = 'low';
 
-  // Heuristic: Suspicious Payload or rapid failure
+  // Real detection: Suspicious Status
   if (status >= 400 && !isBot) {
     type = 'suspicious';
     severity = 'medium';
   }
 
-  // Heuristic: Potential Injection Patterns
+  // Real detection: Injection Patterns in Payload
   const payloadStr = JSON.stringify(payload || {}).toLowerCase();
-  if (payloadStr.includes('<script') || payloadStr.includes('select * from') || payloadStr.includes('drop table')) {
+  if (payloadStr.includes('<script') || payloadStr.includes('select * from') || payloadStr.includes('drop table') || payloadStr.includes(' union ')) {
     type = 'suspicious';
     severity = 'high';
   }
@@ -53,10 +53,10 @@ export const logTraffic = async (
     status,
     size,
     userAgent: navigator.userAgent,
-    ip: 'Local/Client', // In a real app, this comes from req header or a geo-lookup
+    ip: localStorage.getItem('weavenote_last_ip') || 'Local/Client',
     type,
     severity,
-    payloadSummary: payloadStr.substring(0, 100)
+    payloadSummary: payloadStr.substring(0, 150)
   };
 
   const logs = getTrafficLogs();

@@ -37,11 +37,14 @@ const fetchClientInfo = async (): Promise<{ ip: string; country: string; flag: s
     try {
         const res = await fetch('https://ipapi.co/json/');
         const data = await res.json();
-        return {
+        const info = {
             ip: data.ip || 'Unknown',
             country: data.country_name || 'Unknown',
-            flag: '🌐'
+            flag: data.country_code ? `https://flagcdn.com/16x12/${data.country_code.toLowerCase()}.png` : '🌐'
         };
+        // Persist for trafficService
+        localStorage.setItem('weavenote_last_ip', info.ip);
+        return info;
     } catch (e) {
         return { ip: 'Unknown', country: 'Unknown', flag: '🌐' };
     }
@@ -312,9 +315,6 @@ export const toggleUserStatus = async (uid: string, currentStatus: UserStatus) =
 export const deleteUserAccount = async (uid: string) => {
     if (!db) return;
     try {
-        // Delete Firestore user profile.
-        // NOTE: We cannot delete the actual Firebase Auth record from client SDK without being the user.
-        // We handle this by setting a status 'suspended' or deleting the doc so onAuthStateChanged kicks them.
         await deleteDoc(doc(db, 'users', uid));
         await logAudit('DELETE_USER', 'Admin', uid);
     } catch (e) { console.error(e) }

@@ -617,6 +617,7 @@ const App: React.FC = () => {
             toggleEnableImages={() => setEnableImages(!enableImages)} 
             showLinkPreviews={showLinkPreviews} 
             toggleShowLinkPreviews={() => setShowLinkPreviews(!showLinkPreviews)} 
+            notes={activeNotes}
         />
         <AnalyticsModal isOpen={showAnalytics} onClose={() => setShowAnalytics(false)} notes={activeNotes} />
     </div>
