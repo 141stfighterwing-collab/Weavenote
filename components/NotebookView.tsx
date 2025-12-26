@@ -23,21 +23,21 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
   const [isNaming, setIsNaming] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [highlighterColor, setHighlighterColor] = useState<string>('#fef08a'); // yellow-200
+  
+  // Highlighting states
+  const [activePenColor, setActivePenColor] = useState<string | null>(null);
   const [showHighlighterToolbar, setShowHighlighterToolbar] = useState(false);
   const [selectionPos, setSelectionPos] = useState({ x: 0, y: 0 });
   
   const namingInputRef = useRef<HTMLInputElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
 
-  // Filtered and sorted notes for the sidebar
   const sortedNotes = useMemo(() => {
     return [...notes]
       .filter(n => n.title.toLowerCase().includes(searchQuery.toLowerCase()))
       .sort((a, b) => a.title.localeCompare(b.title));
   }, [notes, searchQuery]);
 
-  // Handle selection stability
   useEffect(() => {
     if (notes.length > 0) {
       const selectionExists = notes.some(n => n.id === selectedNoteId);
@@ -51,18 +51,17 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
     }
   }, [notes, sortedNotes, selectedNoteId, isCreating, isNaming]);
 
-  // Handle Escape key to exit fullscreen
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isFullscreen) {
-        setIsFullscreen(false);
+      if (e.key === 'Escape') {
+        if (isFullscreen) setIsFullscreen(false);
+        if (activePenColor) setActivePenColor(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFullscreen]);
+  }, [isFullscreen, activePenColor]);
 
-  // Focus the naming input when it appears
   useEffect(() => {
     if (isNaming && namingInputRef.current) {
       namingInputRef.current.focus();
@@ -73,24 +72,30 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
     notes.find(n => n.id === selectedNoteId)
   , [notes, selectedNoteId]);
 
-  // Detection of mouse selection for highlighter
-  useEffect(() => {
-    const handleMouseUp = () => {
-      if (!isFullscreen) return;
-      const selection = window.getSelection();
-      if (selection && selection.toString().trim().length > 0) {
+  const handleMouseUp = () => {
+    if (!isFullscreen || !selectedNote) return;
+    
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim().length > 0) {
+      // If a pen is active, apply it immediately for a fluid "pick and choose" experience
+      if (activePenColor) {
+        applyHighlightToSelection(activePenColor);
+      } else {
+        // Otherwise show the hover toolbar
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
-        setSelectionPos({ x: rect.left + rect.width / 2, y: rect.top - 40 });
+        setSelectionPos({ x: rect.left + rect.width / 2, y: rect.top - 45 });
         setShowHighlighterToolbar(true);
-      } else {
-        setShowHighlighterToolbar(false);
       }
-    };
+    } else {
+      setShowHighlighterToolbar(false);
+    }
+  };
 
+  useEffect(() => {
     document.addEventListener('mouseup', handleMouseUp);
     return () => document.removeEventListener('mouseup', handleMouseUp);
-  }, [isFullscreen]);
+  }, [isFullscreen, selectedNote, activePenColor]);
 
   const startNaming = () => {
     setIsNaming(true);
@@ -122,32 +127,46 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
     }
   };
 
-  const handleApplyHighlight = async (color: string) => {
+  const applyHighlightToSelection = async (color: string) => {
     if (!selectedNote || !onUpdateNote) return;
     const selection = window.getSelection();
     if (!selection) return;
     
     const selectedText = selection.toString();
-    if (!selectedText) return;
+    if (!selectedText || selectedText.trim().length === 0) return;
 
-    // We use a simple wrap with <mark> tags
-    const highlightTag = `<mark style="background-color: ${color}; color: black; border-radius: 2px; padding: 0 2px;">${selectedText}</mark>`;
+    // Create a robust replacement regex. 
+    // We escape special characters and allow for variable whitespace to handle multi-line selections better.
+    const escaped = selectedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regexFriendly = escaped.replace(/\s+/g, '\\s+');
     
-    // Note: This is a basic replacement and might be brittle if same text exists multiple times.
-    // In a production app, we would use an offset-based replacement on the raw Markdown.
-    const newContent = selectedNote.content.replace(selectedText, highlightTag);
+    let newContent;
+    if (color === 'transparent') {
+      // Eraser logic: find the mark tag containing this text
+      // This is a simplified eraser that targets specific mark tags.
+      const eraserRegex = new RegExp(`<mark[^>]*>(${regexFriendly})</mark>`, 'g');
+      newContent = selectedNote.content.replace(eraserRegex, '$1');
+    } else {
+      const highlightTag = `<mark style="background-color: ${color}; color: black; border-radius: 2px; padding: 0 2px;">${selectedText}</mark>`;
+      // Use standard replace if text is simple, or regex if complex
+      newContent = selectedNote.content.replace(selectedText, highlightTag);
+    }
     
-    await onUpdateNote(selectedNote.id, selectedNote.title, newContent);
+    if (newContent !== selectedNote.content) {
+      await onUpdateNote(selectedNote.id, selectedNote.title, newContent);
+    }
+    
     setShowHighlighterToolbar(false);
-    selection.removeAllRanges();
+    // Keep selection if in armed mode for visual confirmation, or clear if desired
+    // selection.removeAllRanges(); 
   };
 
   const highlighterColors = [
-    { name: 'Yellow', value: '#fef08a' }, // yellow-200
-    { name: 'Pink', value: '#fbcfe8' },   // pink-200
-    { name: 'Blue', value: '#bfdbfe' },   // blue-200
-    { name: 'Green', value: '#bbf7d0' },  // green-200
-    { name: 'Orange', value: '#fed7aa' }  // orange-200
+    { name: 'Yellow', value: '#fef08a' },
+    { name: 'Pink', value: '#fbcfe8' },
+    { name: 'Blue', value: '#bfdbfe' },
+    { name: 'Green', value: '#bbf7d0' },
+    { name: 'Orange', value: '#fed7aa' }
   ];
 
   const markdownComponents = {
@@ -175,33 +194,32 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
   return (
     <div className={`flex bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-2xl transition-all duration-300 ${isFullscreen ? 'fixed inset-0 z-[110] h-screen' : 'h-[calc(100vh-180px)]'}`}>
       
-      {/* Selection Highlighter Toolbar */}
-      {showHighlighterToolbar && isFullscreen && (
+      {/* Floating Quick Action Toolbar (Appears on Selection) */}
+      {showHighlighterToolbar && isFullscreen && !activePenColor && (
         <div 
-          className="fixed z-[120] bg-white dark:bg-slate-800 border dark:border-slate-700 shadow-2xl rounded-full p-1.5 flex gap-1 animate-[fadeIn_0.1s_ease-out]"
+          className="fixed z-[125] bg-white dark:bg-slate-800 border dark:border-slate-700 shadow-2xl rounded-full p-1.5 flex gap-1 animate-[fadeIn_0.1s_ease-out] ring-4 ring-black/5"
           style={{ left: selectionPos.x, top: selectionPos.y, transform: 'translateX(-50%)' }}
         >
           {highlighterColors.map(c => (
             <button 
               key={c.value}
-              onClick={() => handleApplyHighlight(c.value)}
-              className="w-6 h-6 rounded-full border border-black/5 hover:scale-110 transition-transform shadow-inner"
+              onClick={() => applyHighlightToSelection(c.value)}
+              className="w-7 h-7 rounded-full border border-black/5 hover:scale-125 transition-transform shadow-inner"
               style={{ backgroundColor: c.value }}
-              title={`Highlight ${c.name}`}
             />
           ))}
           <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
           <button 
-            onClick={() => handleApplyHighlight('transparent')}
-            className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center hover:scale-110 transition-transform"
-            title="Remove Highlight"
+            onClick={() => applyHighlightToSelection('transparent')}
+            className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center hover:scale-110 transition-transform text-slate-400"
+            title="Erase Highlight"
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
           </button>
         </div>
       )}
 
-      {/* Page Navigator */}
+      {/* Page Navigator Sidebar */}
       {!isFullscreen && (
         <div className="w-72 border-r border-slate-200 dark:border-slate-700 flex flex-col bg-slate-50 dark:bg-slate-900/50 animate-[fadeIn_0.2s_ease-out]">
           <div className="p-4 border-b border-slate-200 dark:border-slate-700 space-y-3">
@@ -276,47 +294,56 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
         </div>
       )}
 
-      {/* Main Canvas */}
-      <div className={`flex-1 ${isFullscreen ? 'bg-slate-200/50 dark:bg-slate-950 p-4 sm:p-12' : 'bg-slate-100 dark:bg-slate-950 p-6'} overflow-y-auto custom-scrollbar flex justify-center transition-all`}>
+      {/* Main Content Area */}
+      <div className={`flex-1 ${isFullscreen ? 'bg-slate-200/50 dark:bg-slate-950 p-4 sm:p-12' : 'bg-slate-100 dark:bg-slate-950 p-6'} overflow-y-auto custom-scrollbar flex justify-center transition-all ${activePenColor ? 'cursor-crosshair' : ''}`}>
         {selectedNote ? (
           <div className={`w-full relative group animate-[fadeIn_0.2s_ease-out] mb-20 ${isFullscreen ? 'max-w-5xl' : 'max-w-none'}`}>
              
-             {/* Highlighter Palette (Persistent in Fullscreen) */}
+             {/* Pen Palette (Persistent Sidebar in Fullscreen) */}
              {isFullscreen && (
-               <div className="absolute -left-12 top-0 flex flex-col gap-2 p-2 bg-white dark:bg-slate-800 border rounded-2xl shadow-xl animate-[fadeIn_0.3s_ease-out]">
-                  <div className="text-[8px] font-black uppercase text-slate-400 text-center mb-1">Pens</div>
+               <div className="absolute -left-14 top-0 flex flex-col gap-3 p-2.5 bg-white dark:bg-slate-800 border rounded-2xl shadow-xl animate-[fadeIn_0.3s_ease-out] z-30">
+                  <div className="text-[8px] font-black uppercase text-slate-400 text-center mb-1 leading-none">Tool<br/>Belt</div>
                   {highlighterColors.map(c => (
                     <button 
                       key={c.value}
-                      onClick={() => setHighlighterColor(c.value)}
-                      className={`w-6 h-10 rounded-full border-2 transition-all ${highlighterColor === c.value ? 'scale-110 border-primary-500 shadow-lg' : 'border-black/5'}`}
-                      style={{ backgroundColor: c.value }}
-                      title={`Select ${c.name} Pen`}
+                      onClick={() => setActivePenColor(activePenColor === c.value ? null : c.value)}
+                      className={`w-8 h-12 rounded-xl border-2 transition-all group flex flex-col items-center justify-between py-1.5 ${activePenColor === c.value ? 'scale-110 border-primary-500 shadow-lg -translate-x-1 bg-slate-50 dark:bg-slate-700' : 'border-black/5 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+                      style={{ backgroundColor: activePenColor === c.value ? c.value + '20' : 'transparent' }}
+                      title={`Toggle ${c.name} Pen (armed mode)`}
                     >
-                      <div className="w-full h-2 bg-black/10 mt-1 rounded-t-full" />
+                      <div className="w-4 h-4 rounded-full shadow-inner border border-black/5" style={{ backgroundColor: c.value }} />
+                      <div className={`w-5 h-2 bg-black/10 rounded-full transition-all ${activePenColor === c.value ? 'bg-primary-400 scale-110' : ''}`} />
                     </button>
                   ))}
+                  <div className="h-px bg-slate-100 dark:bg-slate-700 mx-1" />
+                  <button 
+                    onClick={() => setActivePenColor(activePenColor === 'transparent' ? null : 'transparent')}
+                    className={`w-8 h-12 rounded-xl border-2 flex flex-col items-center justify-center transition-all ${activePenColor === 'transparent' ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-black/5 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+                    title="Eraser Tool"
+                  >
+                    <svg className={activePenColor === 'transparent' ? 'text-red-500' : 'text-slate-400'} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/></svg>
+                  </button>
                </div>
              )}
 
-             {/* Spiral Rings */}
+             {/* Spiral Rings Visual */}
              <div className="absolute left-0 top-10 bottom-10 w-10 flex flex-col justify-around items-center z-20 pointer-events-none pr-4">
                 {[...Array(isFullscreen ? 20 : 12)].map((_, i) => (
                    <div key={i} className="w-8 h-4 bg-gradient-to-r from-slate-400 to-slate-200 rounded-full shadow-md border border-slate-500 transform -rotate-12" />
                 ))}
              </div>
 
-             {/* The Paper */}
+             {/* The Paper Sheet */}
              <div 
                 ref={paperRef}
-                className={`bg-white dark:bg-slate-50 min-h-[1400px] shadow-2xl rounded-sm border border-slate-300 dark:border-slate-200 relative pl-16 pr-12 py-12 w-full transition-all selection:bg-primary-200`}
+                className={`bg-white dark:bg-slate-50 min-h-[1400px] shadow-2xl rounded-sm border border-slate-300 dark:border-slate-200 relative pl-16 pr-12 py-12 w-full transition-all selection:bg-primary-200/50`}
                 style={{
                   backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, #e2e8f0 31px, #e2e8f0 32px)',
                   backgroundAttachment: 'local',
                   lineHeight: '32px'
                 }}
              >
-                {/* Red Margin Line */}
+                {/* Red Left Margin Line */}
                 <div className="absolute left-16 top-0 bottom-0 w-px bg-rose-300 shadow-[1px_0_0_white]" />
                 
                 <div className="relative z-10 font-hand text-slate-800 w-full">
@@ -325,7 +352,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
                     <div className="flex gap-1">
                        <button 
                         onClick={() => setIsFullscreen(!isFullscreen)} 
-                        className={`p-2 rounded-full transition-colors ${isFullscreen ? 'bg-primary-100 text-primary-600' : 'hover:bg-slate-100 text-slate-400'}`}
+                        className={`p-2 rounded-full transition-colors ${isFullscreen ? 'bg-primary-100 text-primary-600 shadow-inner' : 'hover:bg-slate-100 text-slate-400'}`}
                         title={isFullscreen ? "Exit Fullscreen (Esc)" : "Expand to Fullscreen"}
                        >
                           {isFullscreen ? (
@@ -348,9 +375,13 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
                   </div>
 
                   {isFullscreen && (
-                    <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-4 bg-slate-100 w-fit px-2 rounded">
-                      Highlighter Enabled: Select text with mouse to apply color
-                    </p>
+                    <div className="flex items-center gap-3 mb-6">
+                       <p className={`text-[10px] uppercase font-black tracking-widest px-3 py-1 rounded-full border shadow-sm transition-all ${activePenColor ? 'bg-primary-600 text-white border-primary-500 scale-105' : 'bg-slate-100 text-slate-400 border-slate-200 opacity-60'}`}>
+                         {activePenColor === 'transparent' ? 'Eraser Active' : activePenColor ? 'Armed Pen Active' : 'Pen Holstered'}
+                       </p>
+                       {!activePenColor && <span className="text-[9px] text-slate-400 italic">Select a pen from the left for rapid multi-line highlighting</span>}
+                       {activePenColor && <button onClick={() => setActivePenColor(null)} className="text-[9px] font-black text-primary-600 hover:underline uppercase tracking-widest">Put Pen Away</button>}
+                    </div>
                   )}
 
                   <div className={`prose prose-lg max-w-none prose-slate w-full ${isFullscreen ? 'prose-xl' : ''}`}>
@@ -363,7 +394,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
                     </ReactMarkdown>
                   </div>
 
-                  <div className="mt-20 flex flex-wrap gap-2 pt-4 border-t border-slate-100">
+                  <div className="mt-24 flex flex-wrap gap-2 pt-4 border-t border-slate-100 opacity-40">
                     {selectedNote.tags.map(t => (
                       <span key={t} className="text-sm font-bold text-primary-400">#{t}</span>
                     ))}
