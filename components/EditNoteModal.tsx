@@ -18,7 +18,6 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<{category: string, tags: string[]} | null>(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isGuest = currentUser === 'Guest';
@@ -91,7 +90,7 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
       }, 0);
   };
 
-  const emojis = ['💡', '📌', '✅', '🚀', '🔥', '📚', '🛠️', '✨', '🧠', '💼'];
+  const emojis = ['💡', '📌', '✅', '🚀', '🔥', '📚', '✨', '🧠', '📅', '💼'];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -135,7 +134,7 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
           <div className="flex-grow flex flex-col min-h-0">
             <div className="flex justify-between items-center mb-3">
                 <label className="block text-xs font-black uppercase tracking-[0.2em] text-slate-400">Content Canvas</label>
-                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div className="flex flex-wrap items-center gap-1 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto no-scrollbar">
                     <button type="button" onClick={() => applyFormat('**', '**')} className="px-3 py-1 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-xs font-bold transition-all shadow-sm">B</button>
                     <button type="button" onClick={() => applyFormat('*', '*')} className="px-3 py-1 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-xs italic transition-all shadow-sm">I</button>
                     <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 mx-1" />
@@ -146,16 +145,9 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
                     <button type="button" onClick={() => applyFormat('- [ ] ')} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-xs transition-all shadow-sm">☑️</button>
                     <button type="button" onClick={() => applyFormat('- ')} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-xs transition-all shadow-sm">•</button>
                     <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 mx-1" />
-                    <div className="relative">
-                        <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-sm transition-all">😊</button>
-                        {showEmojiPicker && (
-                            <div className="absolute bottom-full right-0 z-[60] mb-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xl rounded-2xl p-3 grid grid-cols-5 gap-2 w-48 animate-[fadeIn_0.1s_ease-out]">
-                                {emojis.map(e => (
-                                    <button key={e} type="button" onClick={() => { applyFormat(e); setShowEmojiPicker(false); }} className="hover:bg-slate-100 dark:hover:bg-slate-700 p-2 rounded-xl text-xl transition-transform hover:scale-110">{e}</button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                    {emojis.map(e => (
+                        <button key={e} type="button" onClick={() => applyFormat(e)} className="hover:bg-white dark:hover:bg-slate-800 p-1.5 rounded-lg text-lg transition-transform hover:scale-110" title="Emoji">{e}</button>
+                    ))}
                 </div>
             </div>
             <textarea

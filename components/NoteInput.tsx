@@ -27,7 +27,6 @@ const NoteInput: React.FC<NoteInputProps> = ({
   const [title, setTitle] = useState('');
   const [isParsingDoc, setIsParsingDoc] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
   const [projectProgress, setProjectProgress] = useState(0);
   const [projectCompleted, setProjectCompleted] = useState(false);
@@ -114,7 +113,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
     }, 0);
   };
 
-  const emojis = ['💡', '📌', '✅', '🚀', '🔥', '📚', '🛠️', '⚖️', '🧠', '✨', '📅', '📝'];
+  const emojis = ['💡', '📌', '✅', '🚀', '🔥', '📚', '✨', '🧠', '📅', '📝'];
 
   const getBackgroundColor = () => {
       switch (activeType) {
@@ -171,16 +170,9 @@ const NoteInput: React.FC<NoteInputProps> = ({
             <button type="button" onClick={() => insertText('- [ ] ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs" title="Checkbox">☑️</button>
             <button type="button" onClick={() => insertText('- ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs" title="List">•</button>
             <div className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1" />
-            <div className="relative">
-                <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs" title="Emojis">😊</button>
-                {showEmojiPicker && (
-                    <div className="absolute top-full left-0 z-[60] mt-1 bg-white dark:bg-slate-800 border dark:border-slate-700 shadow-xl rounded-xl p-2 grid grid-cols-4 gap-1 w-32">
-                        {emojis.map(e => (
-                            <button key={e} type="button" onClick={() => { insertText(e); setShowEmojiPicker(false); }} className="hover:bg-slate-100 dark:hover:bg-slate-700 p-1 rounded text-lg">{e}</button>
-                        ))}
-                    </div>
-                )}
-            </div>
+            {emojis.map(e => (
+                <button key={e} type="button" onClick={() => insertText(e)} className="hover:bg-white dark:hover:bg-slate-700 p-1.5 rounded text-sm transition-transform hover:scale-110" title="Emoji">{e}</button>
+            ))}
         </div>
 
         <div className="flex flex-col md:flex-row">
