@@ -26,7 +26,9 @@ const NoteInput: React.FC<NoteInputProps> = ({
   const [code, setCode] = useState('');
   const [title, setTitle] = useState('');
   const [isParsingDoc, setIsParsingDoc] = useState(false);
+  const [ingestProgress, setIngestProgress] = useState({ current: 0, total: 0, percent: 0 });
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
   const [projectProgress, setProjectProgress] = useState(0);
   const [projectCompleted, setProjectCompleted] = useState(false);
@@ -62,7 +64,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
     
     const extraData = activeType === 'project' ? { 
         manualProgress: projectProgress, 
-        isCompleted: projectCompleted,
+        isCompleted: projectProgress === 100 || projectCompleted,
         manualObjectives: objectives.split('\n').filter(l => l.trim()),
         manualDeliverables: deliverables.split('\n').filter(l => l.trim()),
         manualMilestones: milestoneLabel ? [{ label: milestoneLabel, date: new Date().toISOString().split('T')[0], status: 'pending' as const }] : []
@@ -76,23 +78,32 @@ const NoteInput: React.FC<NoteInputProps> = ({
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
+    const totalFiles = files.length;
     setIsParsingDoc(true);
+    setIngestProgress({ current: 0, total: totalFiles, percent: 0 });
+
     try {
-      const rawText = await parseDocument(file);
-      if (!isGuest) {
-        const cleaned = await cleanAndFormatIngestedText(rawText, file.name, "User"); 
-        setTitle(cleaned.title || file.name.split('.')[0]);
-        setText(cleaned.formattedContent);
-      } else {
-        setTitle(file.name.split('.')[0]);
-        setText(rawText);
+      for (let i = 0; i < totalFiles; i++) {
+        const file = files[i];
+        setIngestProgress(prev => ({ ...prev, current: i + 1, percent: Math.round((i / totalFiles) * 100) }));
+        
+        const rawText = await parseDocument(file);
+        
+        if (!isGuest) {
+          const cleaned = await cleanAndFormatIngestedText(rawText, file.name, "User"); 
+          await onAddNote(cleaned.formattedContent, 'document', [], [], false, cleaned.title || file.name.split('.')[0]);
+        } else {
+          await onAddNote(rawText, 'document', [], [], false, file.name.split('.')[0]);
+        }
       }
+      setIngestProgress(prev => ({ ...prev, percent: 100 }));
+      setTimeout(() => setIngestProgress({ current: 0, total: 0, percent: 0 }), 1000);
     } catch (err: any) {
       console.error("Ingestion Error:", err);
-      setValidationError(err.message || "Failed to parse document.");
+      setValidationError(err.message || "Failed to process one or more documents.");
     } finally {
       setIsParsingDoc(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -151,13 +162,76 @@ const NoteInput: React.FC<NoteInputProps> = ({
             {activeType === 'document' && (
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95"
+                disabled={isParsingDoc}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 disabled:bg-slate-400 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95"
               >
-                {isParsingDoc ? '⌛ Reading...' : '📎 Upload Doc'}
+                {isParsingDoc ? '⌛ Ingesting...' : '📎 Upload Docs'}
               </button>
             )}
-            <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.txt,.md" onChange={handleFileUpload} />
+            <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.txt,.md" multiple onChange={handleFileUpload} />
         </div>
+
+        {/* Multi-Doc Progress Bar */}
+        {isParsingDoc && ingestProgress.total > 1 && (
+            <div className="px-4 py-3 bg-primary-50 dark:bg-slate-900 border-b dark:border-slate-700">
+                <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-[10px] font-black uppercase text-primary-600 tracking-widest">Ingesting Documents ({ingestProgress.current}/{ingestProgress.total})</span>
+                    <span className="text-[10px] font-mono font-bold text-primary-600">{ingestProgress.percent}%</span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-full bg-primary-500 transition-all duration-300 ease-out" style={{ width: `${ingestProgress.percent}%` }} />
+                </div>
+            </div>
+        )}
+
+        {/* Project Specific Fields */}
+        {activeType === 'project' && (
+            <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50/50 dark:bg-slate-900/50 border-b dark:border-slate-700 animate-[fadeIn_0.3s_ease-out]">
+                <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">🎯 Objectives</label>
+                    <textarea 
+                        value={objectives} 
+                        onChange={(e) => setObjectives(e.target.value)} 
+                        placeholder="Key project goals..." 
+                        className="w-full h-20 p-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:ring-1 focus:ring-emerald-500 transition-all resize-none"
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">🎁 Deliverables</label>
+                    <textarea 
+                        value={deliverables} 
+                        onChange={(e) => setDeliverables(e.target.value)} 
+                        placeholder="Final output items..." 
+                        className="w-full h-20 p-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:ring-1 focus:ring-emerald-500 transition-all resize-none"
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">🚩 Next Milestone</label>
+                    <input 
+                        type="text"
+                        value={milestoneLabel} 
+                        onChange={(e) => setMilestoneLabel(e.target.value)} 
+                        placeholder="Upcoming milestone..." 
+                        className="w-full p-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:ring-1 focus:ring-emerald-500 transition-all"
+                    />
+                    <div className="pt-2">
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">📊 Status</label>
+                            <span className="text-[10px] font-black text-emerald-600">{projectProgress}%</span>
+                        </div>
+                        <input 
+                            type="range" 
+                            min="0" 
+                            max="100" 
+                            step="5"
+                            value={projectProgress} 
+                            onChange={(e) => setProjectProgress(parseInt(e.target.value))} 
+                            className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                        />
+                    </div>
+                </div>
+            </div>
+        )}
 
         {/* Formatting Toolbar */}
         <div className="flex flex-wrap items-center gap-1 p-2 bg-slate-50/50 dark:bg-slate-900/50 border-b dark:border-slate-700 overflow-x-auto no-scrollbar">
@@ -181,7 +255,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
                   ref={mainTextareaRef}
                   value={text} 
                   onChange={(e) => setText(e.target.value)} 
-                  placeholder={activeType === 'document' ? "Upload a document or paste content to organize..." : "Draft your entry here..."} 
+                  placeholder={activeType === 'document' ? "Upload documents or paste content to organize..." : (activeType === 'project' ? "Project description and notes..." : "Draft your entry here...")} 
                   className="w-full h-48 p-4 bg-transparent border-0 focus:ring-0 outline-none resize-none text-slate-700 dark:text-slate-200 text-sm whitespace-pre-wrap font-sans" 
                 />
             </div>
@@ -200,7 +274,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
         
         <div className="flex items-center justify-between p-3 border-t dark:border-slate-700">
             <div className="flex items-center gap-3">
-                <div className="text-[10px] text-slate-400 italic uppercase font-black tracking-widest">{activeType} mode</div>
+                <div className="text-[10px] text-slate-400 italic uppercase font-black tracking-widest">{activeType} mode {isParsingDoc ? '(Ingesting...)' : ''}</div>
                 {text.length > 0 && <div className="text-[10px] text-slate-400 font-bold">{text.length} chars</div>}
             </div>
             <div className="flex gap-2">
@@ -208,7 +282,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 <button 
                   type="button" 
                   onClick={() => handleAction(true)} 
-                  disabled={isDisabled || isProcessing || isGuest} 
+                  disabled={isDisabled || isProcessing || isGuest || isParsingDoc} 
                   className={`px-4 py-1.5 rounded-full font-bold text-sm transition-all transform hover:-translate-y-0.5 shadow-md hover:shadow-lg ${isGuest ? 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60' : 'bg-gradient-to-r from-primary-600 to-indigo-600 text-white'}`}
                   title={isGuest ? "Login required for AI features" : "AI Organize"}
                 >
