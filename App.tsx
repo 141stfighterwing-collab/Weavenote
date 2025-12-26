@@ -437,6 +437,7 @@ const App: React.FC = () => {
                     notes={activeNotes.filter(n => n.type === 'notebook')} 
                     folders={folders}
                     onAddNote={handleAddNote}
+                    onUpdateNote={handleUpdateNote}
                     onEdit={setEditingNote}
                     onDelete={handleDeleteNote}
                     onToggleCheckbox={handleToggleCheckbox}
