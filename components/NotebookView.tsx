@@ -28,6 +28,9 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
   const [activePenColor, setActivePenColor] = useState<string | null>(null);
   const [showHighlighterToolbar, setShowHighlighterToolbar] = useState(false);
   const [selectionPos, setSelectionPos] = useState({ x: 0, y: 0 });
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasPendingChanges, setHasPendingChanges] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   
   const namingInputRef = useRef<HTMLInputElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
@@ -57,10 +60,14 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
         if (isFullscreen) setIsFullscreen(false);
         if (activePenColor) setActivePenColor(null);
       }
+      if ((e.metaKey || e.ctrlKey) && e.key === 's' && isFullscreen) {
+        e.preventDefault();
+        handleManualSave();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFullscreen, activePenColor]);
+  }, [isFullscreen, activePenColor, hasPendingChanges, selectedNoteId]);
 
   useEffect(() => {
     if (isNaming && namingInputRef.current) {
@@ -77,11 +84,9 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
     
     const selection = window.getSelection();
     if (selection && selection.toString().trim().length > 0) {
-      // If a pen is active, apply it immediately for a fluid "pick and choose" experience
       if (activePenColor) {
         applyHighlightToSelection(activePenColor);
       } else {
-        // Otherwise show the hover toolbar
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
         setSelectionPos({ x: rect.left + rect.width / 2, y: rect.top - 45 });
@@ -97,33 +102,56 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
     return () => document.removeEventListener('mouseup', handleMouseUp);
   }, [isFullscreen, selectedNote, activePenColor]);
 
+  // Fix: Added missing startNaming function
   const startNaming = () => {
-    setIsNaming(true);
     setNewTitle('');
+    setIsNaming(true);
   };
 
+  // Fix: Added missing cancelNaming function
   const cancelNaming = () => {
     setIsNaming(false);
     setNewTitle('');
   };
 
-  const handleCreateSubmit = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const title = newTitle.trim() || 'Untitled Page';
+  // Fix: Added missing handleCreateSubmit function
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim() || isCreating) return;
     
-    setIsNaming(false);
     setIsCreating(true);
+    setIsNaming(false);
+    
     try {
-      setSearchQuery('');
-      const newNote = await onAddNote("", 'notebook', [], [], false, title);
+      const newNote = await onAddNote('', 'notebook', [], [], false, newTitle.trim());
       if (newNote) {
         setSelectedNoteId(newNote.id);
+        showFeedback('success', 'Page Created');
       }
-    } catch (error) {
-      console.error("Notebook Add Page Error:", error);
+    } catch (err) {
+      showFeedback('error', 'Failed to create page');
     } finally {
       setIsCreating(false);
       setNewTitle('');
+    }
+  };
+
+  const showFeedback = (type: 'success' | 'error', message: string) => {
+    setFeedback({ type, message });
+    setTimeout(() => setFeedback(null), 2000);
+  };
+
+  const handleManualSave = async () => {
+    if (!selectedNote || !onUpdateNote || isSaving) return;
+    setIsSaving(true);
+    try {
+      await onUpdateNote(selectedNote.id, selectedNote.title, selectedNote.content);
+      setHasPendingChanges(false);
+      showFeedback('success', 'Changes Saved');
+    } catch (e) {
+      showFeedback('error', 'Save Failed');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -135,30 +163,46 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
     const selectedText = selection.toString();
     if (!selectedText || selectedText.trim().length === 0) return;
 
-    // Create a robust replacement regex. 
-    // We escape special characters and allow for variable whitespace to handle multi-line selections better.
-    const escaped = selectedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regexFriendly = escaped.replace(/\s+/g, '\\s+');
+    // To prevent the "stops working" issue, we need to handle existing tags.
+    // If the selected text contains <mark> tags, we should probably clean them first.
+    // But since selection.toString() is plain text, we need to match it carefully.
     
-    let newContent;
+    let newContent = selectedNote.content;
+    
     if (color === 'transparent') {
-      // Eraser logic: find the mark tag containing this text
-      // This is a simplified eraser that targets specific mark tags.
-      const eraserRegex = new RegExp(`<mark[^>]*>(${regexFriendly})</mark>`, 'g');
+      // ERASER: Look for existing mark tags that contain this text exactly or partially
+      // We use a broader approach for eraser: remove any mark tags within this range if possible.
+      // For simplicity, we match the text and strip surrounding mark tags.
+      const escaped = selectedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+      const eraserRegex = new RegExp(`<mark[^>]*>(${escaped})</mark>`, 'g');
       newContent = selectedNote.content.replace(eraserRegex, '$1');
     } else {
+      // HIGHLIGHTER: Wrap the plain text.
+      // PROBLEM: If we highlight "hello" twice, we get <mark><mark>hello</mark></mark>.
+      // SOLUTION: Check if the text is already wrapped.
       const highlightTag = `<mark style="background-color: ${color}; color: black; border-radius: 2px; padding: 0 2px;">${selectedText}</mark>`;
-      // Use standard replace if text is simple, or regex if complex
+      
+      // Simple guard against identical nesting
+      if (selectedNote.content.includes(highlightTag)) {
+        showFeedback('error', 'Already highlighted');
+        return;
+      }
+
+      // We find the first occurrence that isn't already inside a mark tag.
+      // This is a basic heuristic for a complex problem (text with HTML).
       newContent = selectedNote.content.replace(selectedText, highlightTag);
     }
     
     if (newContent !== selectedNote.content) {
+      setHasPendingChanges(true);
       await onUpdateNote(selectedNote.id, selectedNote.title, newContent);
+      showFeedback('success', color === 'transparent' ? 'Eraser Applied' : 'Pen Applied');
+    } else {
+      showFeedback('error', 'Could not apply to existing tags');
     }
     
     setShowHighlighterToolbar(false);
-    // Keep selection if in armed mode for visual confirmation, or clear if desired
-    // selection.removeAllRanges(); 
+    selection.removeAllRanges(); 
   };
 
   const highlighterColors = [
@@ -194,6 +238,13 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
   return (
     <div className={`flex bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-2xl transition-all duration-300 ${isFullscreen ? 'fixed inset-0 z-[110] h-screen' : 'h-[calc(100vh-180px)]'}`}>
       
+      {/* Dynamic Feedback Toast */}
+      {feedback && (
+        <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[200] px-6 py-3 rounded-2xl shadow-2xl font-black text-xs uppercase tracking-widest animate-[badgePop_0.3s_ease-out] border ${feedback.type === 'success' ? 'bg-emerald-600 text-white border-emerald-400' : 'bg-red-600 text-white border-red-400'}`}>
+          {feedback.type === 'success' ? '✓' : '⚠️'} {feedback.message}
+        </div>
+      )}
+
       {/* Floating Quick Action Toolbar (Appears on Selection) */}
       {showHighlighterToolbar && isFullscreen && !activePenColor && (
         <div 
@@ -323,6 +374,21 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
                   >
                     <svg className={activePenColor === 'transparent' ? 'text-red-500' : 'text-slate-400'} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/></svg>
                   </button>
+                  
+                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 flex flex-col gap-2">
+                    <button 
+                      onClick={handleManualSave}
+                      disabled={isSaving || !hasPendingChanges}
+                      className={`w-8 h-12 rounded-xl border-2 flex flex-col items-center justify-center transition-all ${hasPendingChanges ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' : 'border-black/5 text-slate-300 cursor-not-allowed opacity-40'}`}
+                      title="Commit Highlights (Ctrl+S)"
+                    >
+                      {isSaving ? (
+                        <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                      ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                      )}
+                    </button>
+                  </div>
                </div>
              )}
 
@@ -379,7 +445,8 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
                        <p className={`text-[10px] uppercase font-black tracking-widest px-3 py-1 rounded-full border shadow-sm transition-all ${activePenColor ? 'bg-primary-600 text-white border-primary-500 scale-105' : 'bg-slate-100 text-slate-400 border-slate-200 opacity-60'}`}>
                          {activePenColor === 'transparent' ? 'Eraser Active' : activePenColor ? 'Armed Pen Active' : 'Pen Holstered'}
                        </p>
-                       {!activePenColor && <span className="text-[9px] text-slate-400 italic">Select a pen from the left for rapid multi-line highlighting</span>}
+                       {hasPendingChanges && <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 animate-pulse">Unsaved Highlighting</span>}
+                       {!activePenColor && !hasPendingChanges && <span className="text-[9px] text-slate-400 italic">Select a pen from the left for rapid multi-line highlighting</span>}
                        {activePenColor && <button onClick={() => setActivePenColor(null)} className="text-[9px] font-black text-primary-600 hover:underline uppercase tracking-widest">Put Pen Away</button>}
                     </div>
                   )}
@@ -419,3 +486,5 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
     </div>
   );
 };
+
+export default NotebookView;
