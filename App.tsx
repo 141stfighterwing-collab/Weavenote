@@ -590,6 +590,11 @@ const App: React.FC = () => {
                   {trashedNotes.length > 0 && <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full min-w-[16px] text-center">{trashedNotes.length}</span>}
                 </button>
             </div>
+            
+            <div className="flex-1 text-center font-black uppercase tracking-widest text-[10px] opacity-40">
+                Created by Nathan Carrasco ™
+            </div>
+
             <div className="font-medium">Daily AI Usage: {dailyUsage}/800</div>
         </footer>
 
