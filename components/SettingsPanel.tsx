@@ -73,16 +73,17 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     
     const storageSize = new Blob(Object.values(localStorage)).size / 1024;
     const rawKey = process.env.API_KEY || "";
-    const keyHint = rawKey.length > 8 ? `${rawKey.substring(0, 4)}...${rawKey.substring(rawKey.length - 4)}` : "None Found";
+    const keyHint = rawKey.length > 8 ? `${rawKey.substring(0, 4)}...${rawKey.substring(rawKey.length - 4)}` : "Not Set";
     
-    // DNS / Connectivity Check
+    // DNS / Connectivity Check (Using a real file from Google to test reachability)
     let dnsStatus = "Checking...";
     try {
         const start = Date.now();
-        await fetch('https://generativelanguage.googleapis.com/generate_a_pixel_for_cors_test', { mode: 'no-cors' });
+        // Testing root domain reachability
+        await fetch('https://generativelanguage.googleapis.com/', { mode: 'no-cors' });
         dnsStatus = `Reachable (${Date.now() - start}ms)`;
-    } catch {
-        dnsStatus = "Blocked / Unreachable";
+    } catch (e: any) {
+        dnsStatus = "Blocked / Adblock Active";
     }
     
     setHealthStatus({
@@ -183,6 +184,20 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     </div>
                  </div>
                  
+                 {(healthStatus?.dns.includes('Blocked') || healthStatus?.ai.includes('Network Block')) && (
+                   <div className="p-6 bg-rose-500/10 border border-rose-500/20 rounded-2xl animate-pulse">
+                      <h4 className="text-sm font-black text-rose-500 uppercase mb-2 flex items-center gap-2">⚠️ Network Interference Detected</h4>
+                      <p className="text-xs text-rose-200/80 leading-relaxed">
+                        The browser failed to reach <strong>googleapis.com</strong>. This is usually caused by:
+                        <ul className="list-disc ml-5 mt-2 space-y-1">
+                          <li><strong>Adblockers:</strong> uBlock Origin or similar extensions may block the Gemini API. Try disabling them for this site.</li>
+                          <li><strong>VPN/Firewall:</strong> Corporate or school networks often block AI endpoints.</li>
+                          <li><strong>Region Lock:</strong> Ensure Gemini is supported in your current region.</li>
+                        </ul>
+                      </p>
+                   </div>
+                 )}
+
                  <div className="p-8 border-2 border-dashed border-slate-700 rounded-3xl bg-slate-900/40">
                     <div className="flex flex-col md:flex-row items-center gap-6">
                         <div className="flex-1">
@@ -248,7 +263,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                                         </div>
                                     </td>
                                     <td className="px-4 py-4">
-                                      {/* Enhanced Role Dropdown for Admins */}
                                       {userIsAdmin && u.uid !== currentUser?.uid ? (
                                         <div className="relative inline-block group">
                                           <select 
@@ -259,7 +273,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                                           >
                                             <option value="user">User</option>
                                             <option value="admin">Admin</option>
-                                            {/* Only Super Admins can promote to Super Admin */}
                                             {userIsSuperAdmin && <option value="super-admin">Super Admin</option>}
                                           </select>
                                           {isUpdatingRole === u.uid && (
