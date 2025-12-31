@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { ProcessedNoteData, NoteType } from "../types";
 import { incrementUserAIUsage } from "./authService";
 import { logTraffic } from "./trafficService";
@@ -11,48 +11,55 @@ export const getDailyUsage = (): number => parseInt(localStorage.getItem(getUsag
 
 const incrementUsage = (userId?: string) => {
     localStorage.setItem(getUsageKey(), (getDailyUsage() + 1).toString());
-    if (userId) {
-        incrementUserAIUsage(userId).catch(console.error);
-    }
+    if (userId) incrementUserAIUsage(userId).catch(console.error);
+};
+
+// Internal error logger for system health
+const logError = (context: string, error: any) => {
+    const logs = JSON.parse(localStorage.getItem('ideaweaver_error_logs') || '[]');
+    logs.unshift({ id: crypto.randomUUID(), timestamp: Date.now(), context, message: error.message || String(error) });
+    localStorage.setItem('ideaweaver_error_logs', JSON.stringify(logs.slice(0, 50)));
+};
+
+// Safeguard: AI Action Logging
+const logAIUsage = (username: string, action: string, details: string) => {
+    const logs = JSON.parse(localStorage.getItem('ideaweaver_ai_logs') || '[]');
+    logs.unshift({ id: crypto.randomUUID(), timestamp: Date.now(), username, action, details });
+    localStorage.setItem('ideaweaver_ai_logs', JSON.stringify(logs.slice(0, 100)));
 };
 
 export const cleanAndFormatIngestedText = async (rawText: string, filename: string, username: string, userId?: string): Promise<ProcessedNoteData> => {
-  if (!rawText || rawText.trim().length === 0) {
-      throw new Error("The document appears to be empty or unreadable.");
-  }
-
   const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API Key is missing.");
+  if (!apiKey) throw new Error("Infrastructure missing API Key.");
 
   const ai = new GoogleGenAI({ apiKey });
-  const prompt = `System: You are an expert Document Reconstruction Engine. Please clean up the following text extracted from a document. Format it nicely in Markdown. Identify a suitable title, category, and tags. Return strictly valid JSON with keys: "title", "formattedContent", "category", "tags".\n\nText:\n`;
+  const prompt = `Format this document extracted text into structured Markdown. Identify title, category, tags. Return JSON with keys: "title", "formattedContent", "category", "tags".\n\nText:\n${rawText.substring(0, 10000)}`;
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview', 
-      contents: prompt + rawText.substring(0, 10000),
+      contents: prompt,
       config: { responseMimeType: 'application/json' }
     });
 
-    logTraffic('POST', 'gemini-3-flash-preview/document', 200, rawText.length, { filename });
-    
-    const resultText = response.text;
-    if (!resultText) throw new Error("Empty response from AI engine.");
-    let parsed = JSON.parse(resultText) as ProcessedNoteData;
+    const parsed = JSON.parse(response.text) as ProcessedNoteData;
     incrementUsage(userId);
+    logAIUsage(username, 'DOCUMENT_INGEST', `Processed ${filename}`);
+    logTraffic('POST', 'gemini-3-flash/ingest', 200, rawText.length);
     return parsed;
   } catch (error: any) {
-    logTraffic('POST', 'gemini-3-flash-preview/document', 500, rawText.length, { error: error.message });
+    logError('CLEAN_TEXT', error);
+    logTraffic('POST', 'gemini-3-flash/ingest', 500, rawText.length);
     throw error;
   }
 };
 
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string, userId?: string): Promise<ProcessedNoteData> => {
   const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API Key missing.");
+  if (!apiKey) throw new Error("Infrastructure missing API Key.");
   
   const ai = new GoogleGenAI({ apiKey });
-  const prompt = `System: You are an expert note organizer. Analyze the following user input and organize it into a structured note. Return strictly valid JSON with keys: "title", "formattedContent", "category", "tags".\n\nInput: ${text}`;
+  const prompt = `Organize this user input into a structured note. Return strictly JSON with keys: "title", "formattedContent", "category", "tags".\n\nInput: ${text}`;
 
   try {
     const response = await ai.models.generateContent({
@@ -61,31 +68,32 @@ export const processNoteWithAI = async (text: string, existingCategories: string
       config: { responseMimeType: 'application/json' }
     });
 
-    logTraffic('POST', `gemini-3-flash-preview/organize/${noteType}`, 200, text.length);
-
-    const resultText = response.text;
-    if (!resultText) throw new Error("AI failed to return text.");
-    let parsed = JSON.parse(resultText) as ProcessedNoteData;
+    const parsed = JSON.parse(response.text) as ProcessedNoteData;
     incrementUsage(userId);
+    logAIUsage(username, 'NOTE_ORGANIZE', `Organized ${noteType} entry`);
+    logTraffic('POST', 'gemini-3-flash/organize', 200, text.length);
     return parsed;
   } catch (error: any) {
-    logTraffic('POST', `gemini-3-flash-preview/organize/${noteType}`, 500, text.length, { error: error.message });
-    throw new Error(error.message || "AI was unable to process this note.");
+    logError('PROCESS_NOTE', error);
+    logTraffic('POST', 'gemini-3-flash/organize', 500, text.length);
+    throw error;
   }
 };
 
 export const expandNoteContent = async (content: string, username: string, userId?: string) => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) return null;
+    const ai = new GoogleGenAI({ apiKey });
     try {
       const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
-          contents: `Expand on this note: ${content}`,
+          contents: `Deep dive expand on this: ${content}`,
       });
-      logTraffic('POST', 'gemini-3-flash-preview/expand', 200, content.length);
       incrementUsage(userId);
+      logAIUsage(username, 'DEEP_DIVE', `Expanded content block`);
       return response.text || null;
     } catch (error) {
-      logTraffic('POST', 'gemini-3-flash-preview/expand', 500, content.length);
+      logError('EXPAND_NOTE', error);
       return null;
     }
 };
@@ -93,47 +101,28 @@ export const expandNoteContent = async (content: string, username: string, userI
 export const runConnectivityTest = async () => {
   try {
     const apiKey = process.env.API_KEY;
-    if (!apiKey) throw new Error("API Key is missing.");
+    if (!apiKey || apiKey === "") return { success: false, message: "Missing API Key: Verify process.env.API_KEY" };
+    
     const ai = new GoogleGenAI({ apiKey });
-    await ai.models.generateContent({ model: 'gemini-3-flash-preview', contents: 'Ready' });
-    logTraffic('POST', 'gemini-3-flash-preview/test', 200, 5);
-    return { success: true, steps: [] };
+    // Use a lightweight call for testing
+    const response = await ai.models.generateContent({ 
+        model: 'gemini-3-flash-preview', 
+        contents: 'Ping',
+        config: { maxOutputTokens: 10 }
+    });
+    
+    if (response && response.text) {
+        return { success: true, steps: ["Handshake complete", "Token verified"] };
+    }
+    return { success: false, message: "Empty response from Google endpoint" };
   } catch (e: any) {
-    logTraffic('POST', 'gemini-3-flash-preview/test', 500, 0);
-    return { success: false, message: e.message };
+    let msg = e.message || "Unknown error";
+    if (msg.includes("Failed to fetch")) msg = "Network block or invalid API Key (CORS/Preflight failure)";
+    if (msg.includes("API_KEY_INVALID")) msg = "Invalid API Key format";
+    return { success: false, message: msg };
   }
 };
 
-// Fix: Implemented logError to properly store error events in local storage
-export const logError = (c: string, e: any) => {
-  const logs = getErrorLogs();
-  logs.unshift({ id: crypto.randomUUID(), timestamp: Date.now(), context: c, message: e.message || String(e) });
-  localStorage.setItem('ideaweaver_error_logs', JSON.stringify(logs.slice(0, 50)));
-};
-
-// Fix: Implemented logAIUsage to record AI processing history
-export const logAIUsage = (u: string, a: string, d: string) => {
-  const logs = getAIUsageLogs();
-  logs.unshift({ id: crypto.randomUUID(), timestamp: Date.now(), username: u, action: a, details: d });
-  localStorage.setItem('ideaweaver_ai_logs', JSON.stringify(logs.slice(0, 100)));
-};
-
-// Fix: Added return statement to getAIUsageLogs to resolve TS error at line 108
-export const getAIUsageLogs = (): any[] => {
-  try {
-    return JSON.parse(localStorage.getItem('ideaweaver_ai_logs') || '[]');
-  } catch {
-    return [];
-  }
-};
-
-// Fix: Added return statement to getErrorLogs to resolve TS error at line 109
-export const getErrorLogs = (): any[] => {
-  try {
-    return JSON.parse(localStorage.getItem('ideaweaver_error_logs') || '[]');
-  } catch {
-    return [];
-  }
-};
-
+export const getAIUsageLogs = () => JSON.parse(localStorage.getItem('ideaweaver_ai_logs') || '[]');
+export const getErrorLogs = () => JSON.parse(localStorage.getItem('ideaweaver_error_logs') || '[]');
 export const clearErrorLogs = () => localStorage.removeItem('ideaweaver_error_logs');

@@ -1,10 +1,12 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Note, NoteColor, NoteType, ViewMode, Theme, Folder, User, ProjectData, ProjectMilestone } from './types';
 import { processNoteWithAI, getDailyUsage } from './services/geminiService';
+// Removed non-existent parseImportFile from imports
 import { 
     loadNotes, saveNote, deleteNote, 
     loadFolders, saveFolder, deleteFolder, 
-    parseImportFile, syncAllNotes 
+    syncAllNotes 
 } from './services/storageService';
 import { subscribeToAuthChanges } from './services/authService';
 import NoteCard from './components/NoteCard';
@@ -126,6 +128,7 @@ const App: React.FC = () => {
   const handleTabChange = (type: NoteType) => {
       setActiveTab(type);
       setActiveTagFilter(null);
+      setActiveFolderId(null);
       setActiveDateFilter(null);
       setSearchQuery('');
   };
