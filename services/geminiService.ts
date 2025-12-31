@@ -6,25 +6,34 @@ import { logTraffic } from "./trafficService";
 
 export const DAILY_REQUEST_LIMIT = 800;
 
-// Internal sanitization: Detects valid key structure vs common mistakes
-const getKeyStatus = (key: string) => {
-    const clean = (key || "").trim().replace(/^["']|["']$/g, "");
-    if (!clean) return { valid: false, key: "", error: "EMPTY" };
-    if (clean.startsWith("AIza")) return { valid: true, key: clean, error: null };
-    if (clean.toUpperCase().startsWith("GEMI")) return { valid: false, key: clean, error: "MODEL_NAME_PASTED" };
-    return { valid: false, key: clean, error: "INVALID_PREFIX" };
-};
+/**
+ * Key Discovery Engine
+ * Scans all possible environment variable names to find a valid Gemini Key.
+ */
+const getBestApiKey = () => {
+    const candidates = [
+        { name: 'API_KEY', val: process.env.API_KEY },
+        { name: 'VITE_API_KEY', val: process.env.VITE_API_KEY },
+        { name: 'VITE_KEY', val: (process.env as any).VITE_KEY }
+    ];
 
-const getCleanApiKey = () => {
-    const primary = getKeyStatus(process.env.API_KEY || "");
-    const backup = getKeyStatus(process.env.VITE_API_KEY || "");
+    // 1. Clean and filter candidates
+    const processed = candidates.map(c => {
+        const raw = (c.val || "").trim().replace(/^["']|["']$/g, "");
+        return {
+            name: c.name,
+            value: raw,
+            isPlaceholder: raw.toUpperCase().includes("GEMI") || raw.length < 10,
+            isValid: raw.startsWith("AIza")
+        };
+    });
 
-    // Logic: Use whichever one is actually a valid AIza key
-    if (primary.valid) return primary.key;
-    if (backup.valid) return backup.key;
-    
-    // If both are broken, return primary for the error reporter to catch
-    return primary.key || backup.key;
+    // 2. Return the first valid 'AIza' key found
+    const winner = processed.find(p => p.isValid);
+    if (winner) return winner.value;
+
+    // 3. Fallback: if no valid key, return the best looking one for error reporting
+    return (processed.find(p => p.value !== "") || { value: "" }).value;
 };
 
 const getUsageKey = () => `ideaweaver_usage_${new Date().toISOString().split('T')[0]}`;
@@ -36,14 +45,14 @@ const incrementUsage = (userId?: string) => {
     if (userId) incrementUserAIUsage(userId).catch(console.error);
 };
 
-// Internal error logger for system health
+// Internal error logger
 const logError = (context: string, error: any) => {
     const logs = JSON.parse(localStorage.getItem('ideaweaver_error_logs') || '[]');
     logs.unshift({ id: crypto.randomUUID(), timestamp: Date.now(), context, message: error.message || String(error) });
     localStorage.setItem('ideaweaver_error_logs', JSON.stringify(logs.slice(0, 50)));
 };
 
-// Safeguard: AI Action Logging
+// AI usage log
 const logAIUsage = (username: string, action: string, details: string) => {
     const logs = JSON.parse(localStorage.getItem('ideaweaver_ai_logs') || '[]');
     logs.unshift({ id: crypto.randomUUID(), timestamp: Date.now(), username, action, details });
@@ -51,8 +60,8 @@ const logAIUsage = (username: string, action: string, details: string) => {
 };
 
 export const cleanAndFormatIngestedText = async (rawText: string, filename: string, username: string, userId?: string): Promise<ProcessedNoteData> => {
-  const apiKey = getCleanApiKey();
-  if (!apiKey) throw new Error("Infrastructure missing API Key.");
+  const apiKey = getBestApiKey();
+  if (!apiKey || !apiKey.startsWith("AIza")) throw new Error("Infrastructure missing valid Gemini API Key.");
 
   const ai = new GoogleGenAI({ apiKey });
   const prompt = `Format this document extracted text into structured Markdown. Identify title, category, tags. Return JSON with keys: "title", "formattedContent", "category", "tags".\n\nText:\n${rawText.substring(0, 10000)}`;
@@ -77,8 +86,8 @@ export const cleanAndFormatIngestedText = async (rawText: string, filename: stri
 };
 
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string, userId?: string): Promise<ProcessedNoteData> => {
-  const apiKey = getCleanApiKey();
-  if (!apiKey) throw new Error("Infrastructure missing API Key.");
+  const apiKey = getBestApiKey();
+  if (!apiKey || !apiKey.startsWith("AIza")) throw new Error("Infrastructure missing valid Gemini API Key.");
   
   const ai = new GoogleGenAI({ apiKey });
   const prompt = `Organize this user input into a structured note. Return strictly JSON with keys: "title", "formattedContent", "category", "tags".\n\nInput: ${text}`;
@@ -103,8 +112,8 @@ export const processNoteWithAI = async (text: string, existingCategories: string
 };
 
 export const expandNoteContent = async (content: string, username: string, userId?: string) => {
-    const apiKey = getCleanApiKey();
-    if (!apiKey) return null;
+    const apiKey = getBestApiKey();
+    if (!apiKey || !apiKey.startsWith("AIza")) return null;
     const ai = new GoogleGenAI({ apiKey });
     try {
       const response = await ai.models.generateContent({
@@ -121,43 +130,34 @@ export const expandNoteContent = async (content: string, username: string, userI
 };
 
 export const runConnectivityTest = async () => {
-  const primary = getKeyStatus(process.env.API_KEY || "");
-  const backup = getKeyStatus(process.env.VITE_API_KEY || "");
+  const apiKey = getBestApiKey();
   
-  let targetKey = "";
-  let sourceName = "";
-
-  if (primary.valid) {
-      targetKey = primary.key;
-      sourceName = "Primary (API_KEY)";
-  } else if (backup.valid) {
-      targetKey = backup.key;
-      sourceName = "Backup (VITE_API_KEY)";
-  } else {
-      // Both invalid - generate specific error logs
-      if (primary.error === "MODEL_NAME_PASTED" || backup.error === "MODEL_NAME_PASTED") {
-          return { success: false, message: "Critical Error: It looks like you pasted the Model Name (e.g. 'gemini-1.5-flash') into your API Key field. Please paste the actual 39-character alphanumeric key from Google AI Studio." };
+  if (!apiKey) return { success: false, message: "Error: No API keys found in environment variables (Checked: API_KEY, VITE_API_KEY, VITE_KEY)." };
+  
+  if (!apiKey.startsWith("AIza")) {
+      if (apiKey.toUpperCase().includes("GEMI")) {
+          return { success: false, message: "Critical: You have a placeholder string like 'GEMINI_API_KEY' in your environment variables. Replace it with the actual alphanumeric key from Google AI Studio." };
       }
-      return { success: false, message: `Key Format Error: Keys must start with 'AIza'. Current primary starts with '${primary.key.substring(0,4)}' and backup starts with '${backup.key.substring(0,4)}'.` };
+      return { success: false, message: `Invalid Key Format: Key starts with '${apiKey.substring(0,4)}' but must start with 'AIza'. Check for leading spaces or quotes.` };
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey: targetKey });
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({ 
         model: 'gemini-3-flash-preview', 
-        contents: 'Ping',
+        contents: 'ping',
         config: { maxOutputTokens: 5 }
     });
     
     if (response && response.text) {
-        return { success: true, message: `Active using ${sourceName}`, steps: ["Handshake complete", "Token verified"] };
+        return { success: true, message: "Handshake Successful", steps: ["Validated AIza prefix", "Connection established", "Tokens verified"] };
     }
-    return { success: false, message: "Empty response from Google endpoint" };
+    return { success: false, message: "Handshake Failed: Received empty response from Google." };
   } catch (e: any) {
     console.error("AI CONNECTION DEBUG:", e);
     let msg = e.message || "Unknown connectivity error";
-    if (msg.includes("Failed to fetch")) msg = "Network Block: API unreachable. Check Adblockers/VPN.";
-    return { success: false, message: `[${sourceName}] ${msg}` };
+    if (msg.includes("Failed to fetch")) msg = "Network Block: The request was blocked. Check browser extensions (AdBlock/uBlock) or VPN.";
+    return { success: false, message: `Service Error: ${msg}` };
   }
 };
 

@@ -15,8 +15,10 @@ export default defineConfig(({ mode }) => {
       include: ['pdfjs-dist']
     },
     define: {
+      // Mapping all common variations to ensure build-time capture
       'process.env.API_KEY': JSON.stringify(env.API_KEY || ""),
-      'process.env.VITE_API_KEY': JSON.stringify(env.VITE_API_KEY || ""),
+      'process.env.VITE_API_KEY': JSON.stringify(env.VITE_API_KEY || env.VITE_KEY || ""),
+      'process.env.VITE_KEY': JSON.stringify(env.VITE_KEY || ""),
       'process.env.ADMIN_SETUP_PASS': JSON.stringify(env.ADMIN_SETUP_PASS || "")
     }
   };
