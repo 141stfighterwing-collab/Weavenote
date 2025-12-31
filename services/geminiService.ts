@@ -101,24 +101,32 @@ export const expandNoteContent = async (content: string, username: string, userI
 export const runConnectivityTest = async () => {
   try {
     const apiKey = process.env.API_KEY;
-    if (!apiKey || apiKey === "") return { success: false, message: "Missing API Key: Verify process.env.API_KEY" };
+    if (!apiKey || apiKey === "") return { success: false, message: "Missing process.env.API_KEY" };
     
+    // Quick sanity check on format
+    if (!apiKey.startsWith("AIza")) return { success: false, message: "Invalid API Key Format (Missing AIza prefix)" };
+
     const ai = new GoogleGenAI({ apiKey });
-    // Use a lightweight call for testing
     const response = await ai.models.generateContent({ 
         model: 'gemini-3-flash-preview', 
-        contents: 'Ping',
-        config: { maxOutputTokens: 10 }
+        contents: 'Connection test. Respond with "ok".',
+        config: { maxOutputTokens: 5 }
     });
     
     if (response && response.text) {
         return { success: true, steps: ["Handshake complete", "Token verified"] };
     }
-    return { success: false, message: "Empty response from Google endpoint" };
+    return { success: false, message: "Handshake failed: Empty response" };
   } catch (e: any) {
-    let msg = e.message || "Unknown error";
-    if (msg.includes("Failed to fetch")) msg = "Network block or invalid API Key (CORS/Preflight failure)";
-    if (msg.includes("API_KEY_INVALID")) msg = "Invalid API Key format";
+    let msg = e.message || "Unknown connectivity error";
+    // Heuristic error translation
+    if (msg.includes("Failed to fetch")) {
+        msg = "Network Block: API endpoint unreachable. Check Adblockers/Firewalls.";
+    } else if (msg.includes("403") || msg.includes("permission")) {
+        msg = "Access Denied: Check project billing or API restrictions.";
+    } else if (msg.includes("400")) {
+        msg = "Bad Request: API Key might be invalid for this project.";
+    }
     return { success: false, message: msg };
   }
 };
