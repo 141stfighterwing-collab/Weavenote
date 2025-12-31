@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+
+import React, { useState, useRef } from 'react';
 import { login, requestAccount, logout } from '../services/authService';
 import { User } from '../types';
 
@@ -30,7 +31,6 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
   const toggleMode = () => {
     setIsRegistering(!isRegistering);
     setMsg(null);
-    // Reset form when switching modes to prevent "admin" username from being sent as email
     setEmailOrUsername('');
     setUsername('');
     setPassword('');
@@ -43,16 +43,14 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
 
     try {
         if (isRegistering) {
-            // Registration requires a valid email format
             if (!emailOrUsername.includes('@')) {
-                setMsg({ type: 'error', text: "Please provide a valid email address." });
+                setMsg({ type: 'error', text: "Invalid email format." });
                 setIsLoading(false);
                 return;
             }
             const res = await requestAccount(username, password, emailOrUsername);
             if (res.success) {
                 setMsg({ type: 'success', text: res.message });
-                // Reset form on success
                 setEmailOrUsername('');
                 setUsername('');
                 setPassword('');
@@ -60,17 +58,16 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
                 setMsg({ type: 'error', text: res.message });
             }
         } else {
-            // Login
             const res = await login(emailOrUsername, password);
             if (res.success && res.user) {
                 onLoginSuccess(res.user);
                 setIsOpen(false);
             } else {
-                setMsg({ type: 'error', text: res.error || 'Login failed' });
+                setMsg({ type: 'error', text: res.error || 'Identity verification failed.' });
             }
         }
     } catch (e: any) {
-        setMsg({ type: 'error', text: e.message });
+        setMsg({ type: 'error', text: "System error during authentication." });
     } finally {
         setIsLoading(false);
     }
@@ -85,7 +82,7 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
       return (
           <div className="flex flex-col items-end">
               <span className="text-xs text-slate-500 font-bold">{currentUser}</span>
-              <button onClick={handleLogoutClick} className="text-xs text-red-500 hover:underline">Logout</button>
+              <button onClick={handleLogoutClick} className="text-xs text-rose-500 hover:underline">Sign Out</button>
           </div>
       );
   }
@@ -99,13 +96,13 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
         {isOpen && (
             <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 p-5">
                 <h3 className="font-bold text-slate-800 dark:text-white mb-4 border-b pb-2">
-                    {isRegistering ? 'Create Account' : 'Sign In'}
+                    {isRegistering ? 'Identity Setup' : 'Verify Identity'}
                 </h3>
                 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-3">
                     <input 
                         type={isRegistering ? "email" : "text"} 
-                        placeholder={isRegistering ? "Email Address" : "Email or 'admin'"} 
+                        placeholder={isRegistering ? "Email Address" : "Email or Handle"} 
                         value={emailOrUsername}
                         onChange={e => setEmailOrUsername(e.target.value)}
                         className="px-3 py-2 border rounded-lg text-sm dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-primary-500"
@@ -114,7 +111,7 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
                     {isRegistering && (
                         <input 
                             type="text" 
-                            placeholder="Desired Username" 
+                            placeholder="Public Handle" 
                             value={username}
                             onChange={e => setUsername(e.target.value)}
                             className="px-3 py-2 border rounded-lg text-sm dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-primary-500"
@@ -123,7 +120,7 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
                     )}
                     <input 
                         type="password" 
-                        placeholder="Password" 
+                        placeholder="Security Token" 
                         value={password}
                         onChange={e => setPassword(e.target.value)}
                         className="px-3 py-2 border rounded-lg text-sm dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-primary-500"
@@ -131,7 +128,7 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
                     />
                     
                     {msg && (
-                        <div className={`text-xs p-2 rounded leading-relaxed ${msg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-green-50 text-green-700 border border-green-100'}`}>
+                        <div className={`text-[10px] p-2 rounded leading-tight font-bold ${msg.type === 'error' ? 'bg-rose-50 text-rose-700 border border-rose-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
                             {msg.text}
                         </div>
                     )}
@@ -139,15 +136,15 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
                     <button 
                         type="submit" 
                         disabled={isLoading}
-                        className="bg-primary-600 text-white font-bold py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors shadow-sm"
+                        className="bg-primary-600 text-white font-bold py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors shadow-sm text-xs uppercase tracking-widest"
                     >
-                        {isLoading ? 'Processing...' : (isRegistering ? 'Request Access' : 'Login')}
+                        {isLoading ? 'Verifying...' : (isRegistering ? 'Submit Request' : 'Proceed')}
                     </button>
                 </form>
 
-                <div className="mt-4 text-center text-xs">
-                    <button onClick={toggleMode} className="text-slate-500 hover:text-primary-600 underline">
-                        {isRegistering ? 'Already have an account? Sign in' : 'Need an account? Request access'}
+                <div className="mt-4 text-center">
+                    <button onClick={toggleMode} className="text-[10px] text-slate-500 hover:text-primary-600 underline uppercase tracking-tighter">
+                        {isRegistering ? 'Existing Identity? Sign In' : 'New User? Request Credentials'}
                     </button>
                 </div>
             </div>

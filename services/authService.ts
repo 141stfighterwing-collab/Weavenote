@@ -1,10 +1,10 @@
+
 import { auth, db, isFirebaseReady } from './firebase';
 import { 
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword, 
     signOut, 
-    onAuthStateChanged,
-    User as FirebaseUser 
+    onAuthStateChanged
 } from 'firebase/auth';
 import { 
     doc, 
@@ -20,7 +20,7 @@ import {
     orderBy,
     increment
 } from 'firebase/firestore';
-import { User, Permission, UserStatus } from '../types';
+import { User, Permission, UserStatus, UserRole } from '../types';
 
 export interface AuditLogEntry {
     id: string;
@@ -42,7 +42,6 @@ const fetchClientInfo = async (): Promise<{ ip: string; country: string; flag: s
             country: data.country_name || 'Unknown',
             flag: data.country_code ? `https://flagcdn.com/16x12/${data.country_code.toLowerCase()}.png` : '🌐'
         };
-        // Persist for trafficService
         localStorage.setItem('weavenote_last_ip', info.ip);
         return info;
     } catch (e) {
@@ -51,20 +50,15 @@ const fetchClientInfo = async (): Promise<{ ip: string; country: string; flag: s
 };
 
 /**
- * Returns true if the user is a Global Admin (God Control).
+ * AUTHORIZATION HELPERS (NIST PR.AC-3)
+ * Decoupled from hardcoded usernames. Relies on DB roles.
  */
-export const isGlobalAdmin = (user: User | null) => {
-    if (!user) return false;
-    const gods = ['admin', 'Shootre'];
-    return gods.includes(user.username);
+export const isGlobalAdmin = (user: User | null): boolean => {
+    return user?.role === 'super-admin';
 };
 
-/**
- * Returns true if the user has Admin privileges.
- */
-export const isAdmin = (user: User | null) => {
-    if (!user) return false;
-    return user.role === 'admin' || isGlobalAdmin(user);
+export const isAdmin = (user: User | null): boolean => {
+    return user?.role === 'admin' || user?.role === 'super-admin';
 };
 
 export const logAudit = async (action: string, actor: string, target?: string, details?: string) => {
@@ -109,7 +103,6 @@ export const subscribeToAuthChanges = (callback: (user: User | null) => void) =>
                         await signOut(auth);
                         callback(null);
                     } else {
-                        // Silent update of last login and potentially client info
                         updateDoc(userDocRef, { lastLogin: Date.now() }).catch(() => {});
                         callback(userData);
                     }
@@ -140,85 +133,88 @@ export const checkDatabaseConnection = async (): Promise<{ success: boolean; lat
     }
 };
 
+/**
+ * SECURE LOGIN (NIST/SOC2)
+ * All hardcoded plaintext passwords removed.
+ */
 export const login = async (usernameOrEmail: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> => {
     if (!isFirebaseReady || !auth || !db) {
-        return { success: false, error: "Firebase not configured. Check config.ts" };
+        return { success: false, error: "System initialization failure." };
     }
 
     try {
         let email = usernameOrEmail;
 
-        if (usernameOrEmail === 'admin' && password === 'Zaqxsw12!gobeavers') {
-            email = 'admin@weavenote.com'; 
+        // Secure Bootstrap: Handle initial super-admin setup via Environment Variable only
+        const adminSetupPass = process.env.ADMIN_SETUP_PASS;
+        if (usernameOrEmail === 'admin' && adminSetupPass && password === adminSetupPass) {
+            email = 'system-bootstrap@weavenote.com'; 
             try {
-                await signInWithEmailAndPassword(auth, email, password);
+                const cred = await signInWithEmailAndPassword(auth, email, password);
+                const docSnap = await getDoc(doc(db, 'users', cred.user.uid));
+                if (docSnap.exists()) return { success: true, user: docSnap.data() as User };
             } catch (authError: any) {
                 if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential') {
-                    try {
-                        const newCred = await createUserWithEmailAndPassword(auth, email, password);
-                        const clientInfo = await fetchClientInfo();
-                        const adminUser: User = {
-                            uid: newCred.user.uid,
-                            username: 'admin',
-                            email: email,
-                            permission: 'edit',
-                            status: 'active',
-                            role: 'admin',
-                            lastLogin: Date.now(),
-                            ipAddress: clientInfo.ip,
-                            country: clientInfo.country,
-                            countryFlag: clientInfo.flag,
-                            aiUsageCount: 0
-                        };
-                        await setDoc(doc(db, 'users', newCred.user.uid), adminUser);
-                        return { success: true, user: adminUser };
-                    } catch (createError: any) {
-                        throw createError;
-                    }
+                    // Create primary super-admin on first successful env-pass attempt
+                    const newCred = await createUserWithEmailAndPassword(auth, email, password);
+                    const clientInfo = await fetchClientInfo();
+                    const adminUser: User = {
+                        uid: newCred.user.uid,
+                        username: 'SystemAdmin',
+                        email: email,
+                        permission: 'edit',
+                        status: 'active',
+                        role: 'super-admin',
+                        lastLogin: Date.now(),
+                        ipAddress: clientInfo.ip,
+                        country: clientInfo.country,
+                        countryFlag: clientInfo.flag,
+                        aiUsageCount: 0
+                    };
+                    await setDoc(doc(db, 'users', newCred.user.uid), adminUser);
+                    await logAudit('SYSTEM_BOOTSTRAP', 'BOOTSTRAP', adminUser.uid, 'First Super-Admin created');
+                    return { success: true, user: adminUser };
                 }
                 throw authError;
             }
         }
 
+        // Standard user lookup
         if (!email.includes('@')) {
             const q = query(collection(db, 'users'), where('username', '==', usernameOrEmail));
             const snapshot = await getDocs(q);
             if (!snapshot.empty) {
                 email = snapshot.docs[0].data().email;
             } else {
-                return { success: false, error: "Username not found. Please use Email." };
+                return { success: false, error: "Identity not recognized." };
             }
         }
 
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const fbUser = userCredential.user;
-
-        const userDocRef = doc(db, 'users', fbUser.uid);
-        const userDoc = await getDoc(userDocRef);
+        const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
 
         if (!userDoc.exists()) {
             await signOut(auth);
-            return { success: false, error: "User profile missing in database." };
+            return { success: false, error: "Profile missing in vault." };
         }
 
         const userData = userDoc.data() as User;
 
         if (userData.status === 'suspended') {
             await signOut(auth);
-            await logAudit('LOGIN_BLOCK', userData.username, 'System', 'Suspended user tried to login');
-            return { success: false, error: "Account Suspended." };
+            await logAudit('LOGIN_BLOCK', userData.username, 'System', 'Suspended identity attempt');
+            return { success: false, error: "Access suspended by moderation." };
         }
         if (userData.status === 'pending') {
             await signOut(auth);
-            return { success: false, error: "Account Pending Approval." };
+            return { success: false, error: "Awaiting administrative approval." };
         }
 
         const clientInfo = await fetchClientInfo();
-        await updateDoc(userDocRef, { 
+        await updateDoc(doc(db, 'users', fbUser.uid), { 
             lastLogin: Date.now(),
-            ipAddress: clientInfo.ip,
-            country: clientInfo.country,
-            countryFlag: clientInfo.flag
+            ...clientInfo
         });
         
         await logAudit('LOGIN_SUCCESS', userData.username);
@@ -226,8 +222,7 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
         return { success: true, user: { ...userData, ...clientInfo, lastLogin: Date.now() } };
 
     } catch (e: any) {
-        console.error("Login Error", e);
-        return { success: false, error: "Login failed. Check credentials." };
+        return { success: false, error: "Invalid credentials provided." };
     }
 };
 
@@ -236,14 +231,12 @@ export const logout = async () => {
 };
 
 export const requestAccount = async (username: string, password: string, email: string): Promise<{ success: boolean; message: string }> => {
-    if (!isFirebaseReady || !auth || !db) return { success: false, message: "DB Connection Error" };
+    if (!isFirebaseReady || !auth || !db) return { success: false, message: "Connection Error" };
 
     try {
         const q = query(collection(db, 'users'), where('username', '==', username));
         const snapshot = await getDocs(q);
-        if (!snapshot.empty) {
-            return { success: false, message: "Username already taken" };
-        }
+        if (!snapshot.empty) return { success: false, message: "Handle already taken." };
 
         const clientInfo = await fetchClientInfo();
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -264,12 +257,12 @@ export const requestAccount = async (username: string, password: string, email: 
         };
 
         await setDoc(doc(db, 'users', uid), newUser);
-        await logAudit('REGISTER_REQUEST', username, 'System', `New account request from ${clientInfo.ip}`);
+        await logAudit('REGISTER_REQUEST', username, 'System', `New join request from ${clientInfo.ip}`);
         await signOut(auth);
-        return { success: true, message: "Account requested. Please wait for Admin approval." };
+        return { success: true, message: "Request received. An administrator will review your account." };
 
     } catch (e: any) {
-        return { success: false, message: e.message || "Registration failed" };
+        return { success: false, message: e.message || "Request failed." };
     }
 };
 
@@ -326,7 +319,7 @@ export const updateUserPermission = async (uid: string, permission: Permission) 
     await logAudit('UPDATE_PERM', 'Admin', uid, permission);
 };
 
-export const updateUserRole = async (uid: string, role: 'admin' | 'user') => {
+export const updateUserRole = async (uid: string, role: UserRole) => {
     if (!db) return;
     await updateDoc(doc(db, 'users', uid), { role });
     await logAudit('UPDATE_ROLE', 'Admin', uid, role);
@@ -350,5 +343,5 @@ export const getAuditLogs = async (): Promise<AuditLogEntry[]> => {
 };
 
 export const clearAuditLogs = async () => {
-    console.log("Log clearing restricted.");
+    console.log("Log deletion is prohibited for compliance.");
 };

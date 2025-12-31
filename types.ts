@@ -1,3 +1,4 @@
+
 export type NoteType = 'quick' | 'notebook' | 'deep' | 'code' | 'project' | 'contact' | 'document';
 
 export type Theme = 'default' | 'ocean' | 'forest' | 'sunset' | 'rose' | 'midnight' | 'coffee' | 'neon' | 'cyberpunk' | 'nord' | 'dracula' | 'lavender' | 'earth' | 'yellow' | 'hyperblue';
@@ -113,9 +114,10 @@ export interface ProcessedNoteData {
   projectData?: ProjectData;
 }
 
-// Added missing exports used in the application
+// Hierarchical roles for NIST/SOC2 compliance
 export type Permission = 'read' | 'edit';
 export type UserStatus = 'active' | 'suspended' | 'pending';
+export type UserRole = 'super-admin' | 'admin' | 'user';
 
 export interface User {
   uid: string;
@@ -123,7 +125,7 @@ export interface User {
   email: string;
   permission: Permission;
   status: UserStatus;
-  role: 'admin' | 'user';
+  role: UserRole;
   lastLogin: number;
   ipAddress?: string;
   country?: string;
