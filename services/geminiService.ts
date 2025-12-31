@@ -5,6 +5,28 @@ import { incrementUserAIUsage } from "./authService";
 import { logTraffic } from "./trafficService";
 
 export const DAILY_REQUEST_LIMIT = 800;
+
+// Internal sanitization: Detects valid key structure vs common mistakes
+const getKeyStatus = (key: string) => {
+    const clean = (key || "").trim().replace(/^["']|["']$/g, "");
+    if (!clean) return { valid: false, key: "", error: "EMPTY" };
+    if (clean.startsWith("AIza")) return { valid: true, key: clean, error: null };
+    if (clean.toUpperCase().startsWith("GEMI")) return { valid: false, key: clean, error: "MODEL_NAME_PASTED" };
+    return { valid: false, key: clean, error: "INVALID_PREFIX" };
+};
+
+const getCleanApiKey = () => {
+    const primary = getKeyStatus(process.env.API_KEY || "");
+    const backup = getKeyStatus(process.env.VITE_API_KEY || "");
+
+    // Logic: Use whichever one is actually a valid AIza key
+    if (primary.valid) return primary.key;
+    if (backup.valid) return backup.key;
+    
+    // If both are broken, return primary for the error reporter to catch
+    return primary.key || backup.key;
+};
+
 const getUsageKey = () => `ideaweaver_usage_${new Date().toISOString().split('T')[0]}`;
 
 export const getDailyUsage = (): number => parseInt(localStorage.getItem(getUsageKey()) || '0', 10);
@@ -29,7 +51,7 @@ const logAIUsage = (username: string, action: string, details: string) => {
 };
 
 export const cleanAndFormatIngestedText = async (rawText: string, filename: string, username: string, userId?: string): Promise<ProcessedNoteData> => {
-  const apiKey = process.env.API_KEY;
+  const apiKey = getCleanApiKey();
   if (!apiKey) throw new Error("Infrastructure missing API Key.");
 
   const ai = new GoogleGenAI({ apiKey });
@@ -55,7 +77,7 @@ export const cleanAndFormatIngestedText = async (rawText: string, filename: stri
 };
 
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string, userId?: string): Promise<ProcessedNoteData> => {
-  const apiKey = process.env.API_KEY;
+  const apiKey = getCleanApiKey();
   if (!apiKey) throw new Error("Infrastructure missing API Key.");
   
   const ai = new GoogleGenAI({ apiKey });
@@ -81,7 +103,7 @@ export const processNoteWithAI = async (text: string, existingCategories: string
 };
 
 export const expandNoteContent = async (content: string, username: string, userId?: string) => {
-    const apiKey = process.env.API_KEY;
+    const apiKey = getCleanApiKey();
     if (!apiKey) return null;
     const ai = new GoogleGenAI({ apiKey });
     try {
@@ -99,35 +121,43 @@ export const expandNoteContent = async (content: string, username: string, userI
 };
 
 export const runConnectivityTest = async () => {
-  try {
-    const apiKey = process.env.API_KEY;
-    if (!apiKey || apiKey === "") return { success: false, message: "Missing process.env.API_KEY" };
-    
-    // Quick sanity check on format
-    if (!apiKey.startsWith("AIza")) return { success: false, message: "Invalid API Key Format (Missing AIza prefix)" };
+  const primary = getKeyStatus(process.env.API_KEY || "");
+  const backup = getKeyStatus(process.env.VITE_API_KEY || "");
+  
+  let targetKey = "";
+  let sourceName = "";
 
-    const ai = new GoogleGenAI({ apiKey });
+  if (primary.valid) {
+      targetKey = primary.key;
+      sourceName = "Primary (API_KEY)";
+  } else if (backup.valid) {
+      targetKey = backup.key;
+      sourceName = "Backup (VITE_API_KEY)";
+  } else {
+      // Both invalid - generate specific error logs
+      if (primary.error === "MODEL_NAME_PASTED" || backup.error === "MODEL_NAME_PASTED") {
+          return { success: false, message: "Critical Error: It looks like you pasted the Model Name (e.g. 'gemini-1.5-flash') into your API Key field. Please paste the actual 39-character alphanumeric key from Google AI Studio." };
+      }
+      return { success: false, message: `Key Format Error: Keys must start with 'AIza'. Current primary starts with '${primary.key.substring(0,4)}' and backup starts with '${backup.key.substring(0,4)}'.` };
+  }
+
+  try {
+    const ai = new GoogleGenAI({ apiKey: targetKey });
     const response = await ai.models.generateContent({ 
         model: 'gemini-3-flash-preview', 
-        contents: 'Connection test. Respond with "ok".',
+        contents: 'Ping',
         config: { maxOutputTokens: 5 }
     });
     
     if (response && response.text) {
-        return { success: true, steps: ["Handshake complete", "Token verified"] };
+        return { success: true, message: `Active using ${sourceName}`, steps: ["Handshake complete", "Token verified"] };
     }
-    return { success: false, message: "Handshake failed: Empty response" };
+    return { success: false, message: "Empty response from Google endpoint" };
   } catch (e: any) {
+    console.error("AI CONNECTION DEBUG:", e);
     let msg = e.message || "Unknown connectivity error";
-    // Heuristic error translation
-    if (msg.includes("Failed to fetch")) {
-        msg = "Network Block: API endpoint unreachable. Check Adblockers/Firewalls.";
-    } else if (msg.includes("403") || msg.includes("permission")) {
-        msg = "Access Denied: Check project billing or API restrictions.";
-    } else if (msg.includes("400")) {
-        msg = "Bad Request: API Key might be invalid for this project.";
-    }
-    return { success: false, message: msg };
+    if (msg.includes("Failed to fetch")) msg = "Network Block: API unreachable. Check Adblockers/VPN.";
+    return { success: false, message: `[${sourceName}] ${msg}` };
   }
 };
 

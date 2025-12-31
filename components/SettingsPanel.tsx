@@ -5,7 +5,7 @@ import {
     getUsers, toggleUserStatus, isAdmin, isGlobalAdmin, checkDatabaseConnection,
     getAuditLogs, AuditLogEntry, deleteUserAccount, updateUserRole 
 } from '../services/authService';
-import { runConnectivityTest, getAIUsageLogs } from '../services/geminiService';
+import { runConnectivityTest, getAIUsageLogs, DAILY_REQUEST_LIMIT } from '../services/geminiService';
 import { exportDataToFile, syncAllNotes } from '../services/storageService';
 import { getTrafficLogs, clearTrafficLogs, TrafficEntry } from '../services/trafficService';
 import { Theme, User, Note } from '../types';
@@ -72,18 +72,17 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     const [dbCheck, aiCheck] = await Promise.all([checkDatabaseConnection(), runConnectivityTest()]);
     
     const storageSize = new Blob(Object.values(localStorage)).size / 1024;
-    const rawKey = process.env.API_KEY || "";
+    const rawKey = (process.env.API_KEY || "").trim();
     const keyHint = rawKey.length > 8 ? `${rawKey.substring(0, 4)}...${rawKey.substring(rawKey.length - 4)}` : "Not Set";
     
-    // DNS / Connectivity Check (Using a real file from Google to test reachability)
+    // DNS Reachability Check
     let dnsStatus = "Checking...";
     try {
         const start = Date.now();
-        // Testing root domain reachability
         await fetch('https://generativelanguage.googleapis.com/', { mode: 'no-cors' });
         dnsStatus = `Reachable (${Date.now() - start}ms)`;
-    } catch (e: any) {
-        dnsStatus = "Blocked / Adblock Active";
+    } catch {
+        dnsStatus = "Blocked / Unreachable";
     }
     
     setHealthStatus({
@@ -187,14 +186,14 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                  {(healthStatus?.dns.includes('Blocked') || healthStatus?.ai.includes('Network Block')) && (
                    <div className="p-6 bg-rose-500/10 border border-rose-500/20 rounded-2xl animate-pulse">
                       <h4 className="text-sm font-black text-rose-500 uppercase mb-2 flex items-center gap-2">⚠️ Network Interference Detected</h4>
-                      <p className="text-xs text-rose-200/80 leading-relaxed">
+                      <div className="text-xs text-rose-200/80 leading-relaxed">
                         The browser failed to reach <strong>googleapis.com</strong>. This is usually caused by:
                         <ul className="list-disc ml-5 mt-2 space-y-1">
-                          <li><strong>Adblockers:</strong> uBlock Origin or similar extensions may block the Gemini API. Try disabling them for this site.</li>
-                          <li><strong>VPN/Firewall:</strong> Corporate or school networks often block AI endpoints.</li>
-                          <li><strong>Region Lock:</strong> Ensure Gemini is supported in your current region.</li>
+                          <li><strong>Adblockers:</strong> Extensions like uBlock Origin block Gemini's domain by default. Disable them for this site.</li>
+                          <li><strong>Corporate VPN/Firewall:</strong> Work networks often block unknown AI endpoints.</li>
+                          <li><strong>Region Restrictions:</strong> Ensure the Gemini API is available in your current country.</li>
                         </ul>
-                      </p>
+                      </div>
                    </div>
                  )}
 
@@ -202,7 +201,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     <div className="flex flex-col md:flex-row items-center gap-6">
                         <div className="flex-1">
                             <h4 className="font-black text-white uppercase tracking-tight mb-2">Detailed Infrastructure Sweep</h4>
-                            <p className="text-xs text-slate-400 leading-relaxed">Runs a packet handshake with Gemini 3, verifies Firestore permission headers, and checks for common browser-level adblockers or corporate firewall interference.</p>
+                            <p className="text-xs text-slate-400 leading-relaxed">This runs a diagnostic handshake with Gemini 3 Pro. Note: If you see "Failed to Fetch", check your browser's Developer Tools (F12) Console for specific CORS errors.</p>
                         </div>
                         <button onClick={runDiagnostics} className="whitespace-nowrap px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-xl active:scale-95">Re-run Diagnostics</button>
                     </div>
@@ -214,7 +213,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <div className="space-y-8 animate-[fadeIn_0.2s_ease-out]">
                 {requests.length > 0 && (
                    <div className="space-y-3">
-                      <h4 className="font-black text-amber-500 uppercase tracking-widest text-xs">Pending Identity Approvals</h4>
+                      <h4 className="font-black text-amber-500 uppercase tracking-widest text-xs">Pending Approvals</h4>
                       {requests.map(r => (
                         <div key={r.uid} className="flex items-center justify-between p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
                             <span className="text-sm font-bold text-amber-200">{r.username} ({r.email})</span>
@@ -226,21 +225,21 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       ))}
                    </div>
                 )}
-                <div className="overflow-x-auto rounded-2xl border border-slate-700 bg-black/20 shadow-2xl">
+                <div className="overflow-x-auto rounded-2xl border border-slate-700 bg-black/20 shadow-xl">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-800/50 border-b border-slate-700 text-[10px] uppercase font-black text-slate-500">
-                                <th className="px-4 py-4">Identity Handle</th>
-                                <th className="px-4 py-4">Geolocation & IP</th>
-                                <th className="px-4 py-4">AI Usage</th>
-                                <th className="px-4 py-4">Current Role</th>
-                                <th className="px-4 py-4">State</th>
-                                <th className="px-4 py-4 text-right">System Actions</th>
+                                <th className="px-4 py-4">Identity</th>
+                                <th className="px-4 py-4">Network Info</th>
+                                <th className="px-4 py-4">AI Utilization</th>
+                                <th className="px-4 py-4">Authority Role</th>
+                                <th className="px-4 py-4">Status</th>
+                                <th className="px-4 py-4 text-right">Manage</th>
                             </tr>
                         </thead>
                         <tbody className="text-xs">
                             {users.map(u => (
-                                <tr key={u.uid} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
+                                <tr key={u.uid} className="border-b border-slate-800/50 hover:bg-slate-800/20">
                                     <td className="px-4 py-4 font-black text-white">
                                       <div className="flex items-center gap-2">
                                         {u.username}
@@ -250,21 +249,22 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                                     </td>
                                     <td className="px-4 py-4">
                                         <div className="flex flex-col gap-0.5">
-                                            <span className="text-slate-200 flex items-center gap-1">{u.countryFlag || '🌐'} {u.country || 'Unknown'}</span>
+                                            <span className="text-white flex items-center gap-1">{u.countryFlag || '🌐'} {u.country || 'Unknown'}</span>
                                             <span className="text-[9px] font-mono text-slate-500 bg-slate-900/50 px-1.5 py-0.5 rounded w-fit">{u.ipAddress || '0.0.0.0'}</span>
                                         </div>
                                     </td>
                                     <td className="px-4 py-4">
                                         <div className="flex items-center gap-2">
                                             <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                                <div className="h-full bg-indigo-500" style={{ width: `${Math.min(100, (u.aiUsageCount || 0) / 2)}%` }} />
+                                                <div className="h-full bg-indigo-500" style={{ width: `${Math.min(100, ((u.aiUsageCount || 0) / DAILY_REQUEST_LIMIT) * 100)}%` }} />
                                             </div>
                                             <span className="font-mono text-[10px] text-slate-400 font-bold">{u.aiUsageCount || 0}</span>
                                         </div>
                                     </td>
                                     <td className="px-4 py-4">
+                                      {/* Role selector dropdown for Admins */}
                                       {userIsAdmin && u.uid !== currentUser?.uid ? (
-                                        <div className="relative inline-block group">
+                                        <div className="relative inline-block">
                                           <select 
                                             disabled={isUpdatingRole === u.uid}
                                             value={u.role} 
@@ -288,11 +288,11 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                                     <td className="px-4 py-4"><span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${u.status === 'active' ? 'text-emerald-500 bg-emerald-500/10' : 'text-rose-500 bg-rose-500/10'}`}>{u.status}</span></td>
                                     <td className="px-4 py-4 text-right">
                                         <div className="flex justify-end gap-1.5">
-                                          <button onClick={() => toggleUserStatus(u.uid, u.status).then(loadAdminData)} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all shadow-sm" title="Lock/Unlock Access">
+                                          <button onClick={() => toggleUserStatus(u.uid, u.status).then(loadAdminData)} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all shadow-sm" title="Toggle Access">
                                             {u.status === 'active' ? '🔒' : '🔓'}
                                           </button>
                                           {u.uid !== currentUser?.uid && (
-                                            <button onClick={() => { if(confirm("Permanently purge this user and all associated vault data?")) deleteUserAccount(u.uid).then(loadAdminData); }} className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white transition-all shadow-sm">
+                                            <button onClick={() => { if(confirm("Permanently purge this user and all associated data?")) deleteUserAccount(u.uid).then(loadAdminData); }} className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white transition-all shadow-sm">
                                               🗑️
                                             </button>
                                           )}
@@ -310,8 +310,8 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <div className="space-y-8 animate-[fadeIn_0.2s_ease-out]">
                 <div className="flex items-center justify-between p-6 bg-[#0f172a] rounded-2xl border border-slate-700/50">
                   <div>
-                    <h4 className="font-black text-white uppercase tracking-tight">System Visual Palette</h4>
-                    <p className="text-xs text-slate-500">Toggle between high-contrast light and dark kernels.</p>
+                    <h4 className="font-black text-white uppercase tracking-tight">Dark Mode Engine</h4>
+                    <p className="text-xs text-slate-500">Toggle between high-contrast day and night palettes.</p>
                   </div>
                   <button onClick={toggleDarkMode} className={`w-14 h-7 rounded-full transition-all relative ${darkMode ? 'bg-primary-500' : 'bg-slate-600'}`}>
                     <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${darkMode ? 'right-1' : 'left-1'}`} />
@@ -330,8 +330,8 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             {activeTab === 'traffic' && userIsAdmin && (
               <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
                 <div className="flex justify-between items-center">
-                    <h4 className="font-black text-indigo-400 uppercase tracking-widest text-xs">Infrastructure Traffic Logs</h4>
-                    <button onClick={() => { if(confirm("Purge traffic cache?")) { clearTrafficLogs(); setTrafficLogs([]); } }} className="text-[10px] font-bold text-rose-500 underline uppercase tracking-widest">Purge Logs</button>
+                    <h4 className="font-black text-indigo-400 uppercase tracking-widest text-xs">Live Traffic Monitor</h4>
+                    <button onClick={() => { if(confirm("Purge?")) { clearTrafficLogs(); setTrafficLogs([]); } }} className="text-[10px] font-bold text-rose-500 underline uppercase tracking-widest">Purge Logs</button>
                 </div>
                 <div className="bg-black/40 rounded-2xl border border-slate-800 overflow-hidden font-mono shadow-inner">
                    <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
@@ -355,7 +355,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
             {activeTab === 'security' && userIsSuperAdmin && (
               <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
-                <h4 className="font-black text-rose-500 uppercase tracking-widest text-xs">Immutable Audit Vault</h4>
+                <h4 className="font-black text-rose-500 uppercase tracking-widest text-xs">Audit Vault</h4>
                 <div className="bg-black/40 rounded-2xl border border-slate-800 overflow-hidden shadow-inner">
                    <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
                        {auditLogs.map(log => (
@@ -378,7 +378,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
             {activeTab === 'logs' && userIsAdmin && (
               <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
-                <h4 className="font-black text-indigo-400 uppercase tracking-widest text-xs">Neural Interface Intelligence</h4>
+                <h4 className="font-black text-indigo-400 uppercase tracking-widest text-xs">AI Interaction Intel</h4>
                 <div className="space-y-3">
                    {aiLogs.map(log => (
                        <div key={log.id} className="p-4 bg-[#0f172a] rounded-2xl border border-slate-700/50 flex flex-col gap-2">
