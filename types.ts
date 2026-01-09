@@ -1,4 +1,3 @@
-
 export type NoteType = 'quick' | 'notebook' | 'deep' | 'code' | 'project' | 'contact' | 'document';
 
 export type Theme = 'default' | 'ocean' | 'forest' | 'sunset' | 'rose' | 'midnight' | 'coffee' | 'neon' | 'cyberpunk' | 'nord' | 'dracula' | 'lavender' | 'earth' | 'yellow' | 'hyperblue';
@@ -82,7 +81,8 @@ export enum NoteColor {
   Slate = 'slate',
   Red = 'red',
   Cyan = 'cyan',
-  Violet = 'violet'
+  Violet = 'violet',
+  Matrix = 'matrix'
 }
 
 export const NOTE_COLORS: Record<NoteColor, string> = {
@@ -102,6 +102,7 @@ export const NOTE_COLORS: Record<NoteColor, string> = {
   [NoteColor.Red]: 'bg-red-100 border-red-200 text-red-900',
   [NoteColor.Cyan]: 'bg-cyan-100 border-cyan-200 text-cyan-900',
   [NoteColor.Violet]: 'bg-violet-100 border-violet-200 text-violet-900',
+  [NoteColor.Matrix]: 'bg-black border-[#39ff14]/50 text-[#39ff14] selection:bg-[#39ff14]/30'
 };
 
 export type ViewMode = 'grid' | 'mindmap';
@@ -116,7 +117,7 @@ export interface ProcessedNoteData {
 
 // Hierarchical roles for NIST/SOC2 compliance
 export type Permission = 'read' | 'edit';
-export type UserStatus = 'active' | 'suspended' | 'pending';
+export type UserStatus = 'active' | 'suspended' | 'pending' | 'banned';
 export type UserRole = 'super-admin' | 'admin' | 'user';
 
 export interface User {
@@ -125,6 +126,7 @@ export interface User {
   email: string;
   permission: Permission;
   status: UserStatus;
+  statusUntil?: number; // timestamp for temporary suspensions
   role: UserRole;
   lastLogin: number;
   ipAddress?: string;

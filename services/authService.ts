@@ -33,7 +33,32 @@ export interface AuditLogEntry {
     details?: string | null;
 }
 
+export interface SystemLogEntry {
+    id: string;
+    timestamp: number;
+    message: string;
+    level: 'info' | 'warn' | 'error' | 'security';
+}
+
 const LOCAL_AUDIT_KEY = 'ideaweaver_audit_logs';
+const SYSTEM_LOG_KEY = 'ideaweaver_system_checkpoints';
+
+export const logSystemCheckpoint = (message: string, level: SystemLogEntry['level'] = 'info') => {
+    try {
+        const logsStr = localStorage.getItem(SYSTEM_LOG_KEY);
+        const logs: SystemLogEntry[] = logsStr ? JSON.parse(logsStr) : [];
+        logs.unshift({ id: crypto.randomUUID(), timestamp: Date.now(), message, level });
+        localStorage.setItem(SYSTEM_LOG_KEY, JSON.stringify(logs.slice(0, 100)));
+        // Dispatch event for real-time UI updates in Settings Panel
+        window.dispatchEvent(new CustomEvent('weavenote_system_log', { detail: message }));
+    } catch (e) {}
+};
+
+export const getSystemLogs = (): SystemLogEntry[] => {
+    try {
+        return JSON.parse(localStorage.getItem(SYSTEM_LOG_KEY) || '[]');
+    } catch { return []; }
+};
 
 const fetchClientInfo = async (): Promise<{ ip: string; country: string; flag: string }> => {
     try {
@@ -85,19 +110,35 @@ export const subscribeToAuthChanges = (callback: (user: User | null) => void) =>
     }
     return onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
         if (firebaseUser) {
-            console.log(`[AUTH_CHECKPOINT_FIREBASE_UID] Currently Authenticated UID: ${firebaseUser.uid}`);
+            logSystemCheckpoint(`[AUTH_CHECKPOINT_FIREBASE_UID] Currently Authenticated UID: ${firebaseUser.uid}`, 'security');
             try {
                 const userDocRef = doc(db!, 'users', firebaseUser.uid);
                 const userDoc = await getDoc(userDocRef);
                 if (userDoc.exists()) {
                     const userData = userDoc.data() as User;
-                    if (userData.status === 'suspended') {
+                    const now = Date.now();
+
+                    // Check for permanent ban
+                    if (userData.status === 'banned') {
                         await signOut(auth!);
                         callback(null);
-                    } else {
-                        updateDoc(userDocRef, { lastLogin: Date.now() }).catch(() => {});
-                        callback(userData);
+                        return;
                     }
+
+                    // Check for timed suspension
+                    if (userData.status === 'suspended' && userData.statusUntil && now < userData.statusUntil) {
+                        await signOut(auth!);
+                        callback(null);
+                        return;
+                    } else if (userData.status === 'suspended' && userData.statusUntil && now >= userData.statusUntil) {
+                        // Auto-reactivate if suspension expired
+                        await updateDoc(userDocRef, { status: 'active', statusUntil: null });
+                        userData.status = 'active';
+                        userData.statusUntil = undefined;
+                    }
+
+                    updateDoc(userDocRef, { lastLogin: now }).catch(() => {});
+                    callback(userData);
                 } else {
                     callback({
                         uid: firebaseUser.uid,
@@ -111,7 +152,7 @@ export const subscribeToAuthChanges = (callback: (user: User | null) => void) =>
                     });
                 }
             } catch (e) {
-                console.warn("[AUTH_CHECKPOINT_RESTORE] Firestore blocked profile sync. Using Auth fallback.");
+                logSystemCheckpoint("[AUTH_CHECKPOINT_RESTORE] Firestore blocked profile sync. Using Auth fallback.", "warn");
                 callback({
                     uid: firebaseUser.uid,
                     username: firebaseUser.email?.split('@')[0] || 'Unknown',
@@ -129,22 +170,8 @@ export const subscribeToAuthChanges = (callback: (user: User | null) => void) =>
     });
 };
 
-export const testWriteCapability = async (): Promise<{ success: boolean; message: string }> => {
-    if (!auth?.currentUser || !db) return { success: false, message: "Not Authenticated" };
-    const uid = auth.currentUser.uid;
-    const testDocRef = doc(db, 'users', uid, 'diagnostics', 'write_test');
-    try {
-        await setDoc(testDocRef, { timestamp: Date.now(), status: 'testing' });
-        await deleteDoc(testDocRef);
-        return { success: true, message: "Cloud Write Access Verified" };
-    } catch (e: any) {
-        console.error("Write Test Failure:", e.code, e.message);
-        return { success: false, message: `Access Blocked: ${e.code}` };
-    }
-};
-
 export const login = async (usernameOrEmail: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> => {
-    console.log("[AUTH_CHECKPOINT_1] Initializing Login Sequence...");
+    logSystemCheckpoint("[AUTH_CHECKPOINT_1] Initializing Login Sequence...", "security");
     if (!isFirebaseReady || !auth || !db) return { success: false, error: "Database infrastructure unreachable." };
 
     try {
@@ -183,7 +210,6 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
         // Username to Email lookup
         if (!email.includes('@')) {
             try {
-                // Ensure query uses correct capitalization and trims
                 const q = query(collection(db, 'users'), where('username', '==', email), limit(1));
                 const snapshot = await getDocs(q);
                 
@@ -192,9 +218,8 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
                 }
                 email = snapshot.docs[0].data().email;
             } catch (e: any) {
-                console.error("Lookup error:", e);
                 if (e.code === 'permission-denied') return { success: false, error: "Username lookup blocked. Update Cloud Rules." };
-                return { success: false, error: "Identity resolution failed. Check connection." };
+                return { success: false, error: "Identity resolution failed." };
             }
         }
 
@@ -206,7 +231,7 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
                 userData = userDoc.data() as User;
             }
         } catch (pError: any) {
-            console.warn("[AUTH_CHECKPOINT_READ_FAIL] Firestore blocked profile read.");
+            logSystemCheckpoint("[AUTH_CHECKPOINT_READ_FAIL] Firestore blocked profile read.", "error");
         }
         
         const info = await fetchClientInfo();
@@ -218,12 +243,19 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
                 aiUsageCount: 0, ...info
             };
             await setDoc(doc(db, 'users', userCredential.user.uid), userData).catch(e => {
-                console.error("[AUTH_FAIL_PROFILE_CREATE] Write rejected by rules:", e.code);
+                logSystemCheckpoint(`[AUTH_FAIL_PROFILE_CREATE] Write rejected by rules: ${e.code}`, "error");
             });
         } else {
-            if (userData.status === 'suspended') {
+            // Check ban/suspension status at login
+            const now = Date.now();
+            if (userData.status === 'banned') {
                 await signOut(auth);
-                return { success: false, error: "Access suspended by administrator." };
+                return { success: false, error: "Access revoked by system administrator." };
+            }
+            if (userData.status === 'suspended' && userData.statusUntil && now < userData.statusUntil) {
+                await signOut(auth);
+                const hoursLeft = Math.ceil((userData.statusUntil - now) / 3600000);
+                return { success: false, error: `Account suspended. Access returns in approx ${hoursLeft}h.` };
             }
             updateDoc(doc(db, 'users', userCredential.user.uid), { lastLogin: Date.now(), ...info }).catch(() => {});
         }
@@ -280,29 +312,15 @@ export const getUsers = async (): Promise<User[]> => {
     } catch { return []; }
 };
 
-export const getRequests = async (): Promise<User[]> => {
-    if (!db) return [];
-    try {
-        const q = query(collection(db, 'users'), where('status', '==', 'pending'));
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(d => d.data() as User);
-    } catch { return []; }
-};
-
-export const approveRequest = async (uid: string) => {
+export const setAccountStatus = async (uid: string, status: UserStatus, durationHours: number = 0) => {
     if (!db) return;
-    await updateDoc(doc(db, 'users', uid), { status: 'active' as UserStatus });
-};
-
-export const denyRequest = async (uid: string) => {
-    if (!db) return;
-    await deleteDoc(doc(db, 'users', uid));
-};
-
-export const toggleUserStatus = async (uid: string, currentStatus: UserStatus) => {
-    if (!db) return;
-    const newStatus: UserStatus = currentStatus === 'active' ? 'suspended' : 'active';
-    await updateDoc(doc(db, 'users', uid), { status: newStatus });
+    const update: any = { status };
+    if (status === 'suspended' && durationHours > 0) {
+        update.statusUntil = Date.now() + (durationHours * 60 * 60 * 1000);
+    } else {
+        update.statusUntil = null;
+    }
+    await updateDoc(doc(db, 'users', uid), update);
 };
 
 export const deleteUserAccount = async (uid: string) => {
@@ -310,7 +328,7 @@ export const deleteUserAccount = async (uid: string) => {
     await deleteDoc(doc(db, 'users', uid));
 };
 
-export const updateUserRole = async (uid: string, role: UserRole, actor: string) => {
+export const updateUserRole = async (uid: string, role: UserRole) => {
     if (!db) return;
     await updateDoc(doc(db, 'users', uid), { role });
 };
@@ -326,7 +344,7 @@ export const updateUserPassword = async (newPassword: string): Promise<{ success
     }
 };
 
-export const adminTriggerReset = async (email: string, actor: string): Promise<{ success: boolean; message: string }> => {
+export const adminTriggerReset = async (email: string): Promise<{ success: boolean; message: string }> => {
     if (!auth) return { success: false, message: "Auth service offline." };
     try {
         await sendPasswordResetEmail(auth, email);
@@ -351,6 +369,25 @@ export const incrementUserAIUsage = async (uid: string) => {
         await updateDoc(userDocRef, { aiUsageCount: increment(1) });
     } catch (e) {
         console.error("AI usage count update failed", e);
+    }
+};
+
+// Fix: Added missing testWriteCapability function
+export const testWriteCapability = async (): Promise<{ success: boolean; message: string }> => {
+    if (!db || !auth?.currentUser) {
+        return { success: false, message: "Cloud Unconfigured or Not Authenticated" };
+    }
+    try {
+        const testDoc = doc(db, 'system_test', auth.currentUser.uid);
+        await setDoc(testDoc, { 
+            timestamp: Date.now(), 
+            uid: auth.currentUser.uid,
+            test: "Security Rule Validation" 
+        });
+        return { success: true, message: "Write operation successful. Permissions are correctly configured." };
+    } catch (e: any) {
+        console.error("PERMISSION_TEST_FAIL:", e);
+        return { success: false, message: `Write operation failed: ${e.message}` };
     }
 };
 
