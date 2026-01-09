@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { ProcessedNoteData, NoteType } from "../types";
 import { incrementUserAIUsage } from "./authService";
@@ -15,14 +14,12 @@ const incrementUsage = (userId?: string) => {
     if (userId) incrementUserAIUsage(userId).catch(console.error);
 };
 
-// Internal error logger
 const logError = (context: string, error: any) => {
     const logs = JSON.parse(localStorage.getItem('ideaweaver_error_logs') || '[]');
     logs.unshift({ id: crypto.randomUUID(), timestamp: Date.now(), context, message: error.message || String(error) });
     localStorage.setItem('ideaweaver_error_logs', JSON.stringify(logs.slice(0, 50)));
 };
 
-// AI usage log
 const logAIUsage = (username: string, action: string, details: string) => {
     const logs = JSON.parse(localStorage.getItem('ideaweaver_ai_logs') || '[]');
     logs.unshift({ id: crypto.randomUUID(), timestamp: Date.now(), username, action, details });
@@ -30,7 +27,6 @@ const logAIUsage = (username: string, action: string, details: string) => {
 };
 
 export const cleanAndFormatIngestedText = async (rawText: string, filename: string, username: string, userId?: string): Promise<ProcessedNoteData> => {
-  // Always use process.env.API_KEY exclusively as per guidelines
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
   const prompt = `Format this document extracted text into structured Markdown. Identify title, category, tags. Return JSON with keys: "title", "formattedContent", "category", "tags".\n\nText:\n${rawText.substring(0, 10000)}`;
 
@@ -54,7 +50,6 @@ export const cleanAndFormatIngestedText = async (rawText: string, filename: stri
 };
 
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string, userId?: string): Promise<ProcessedNoteData> => {
-  // Always use process.env.API_KEY exclusively as per guidelines
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
   const prompt = `Organize this user input into a structured note. Return strictly JSON with keys: "title", "formattedContent", "category", "tags".\n\nInput: ${text}`;
 
@@ -78,11 +73,9 @@ export const processNoteWithAI = async (text: string, existingCategories: string
 };
 
 export const expandNoteContent = async (content: string, username: string, userId?: string) => {
-    // Always use process.env.API_KEY exclusively as per guidelines
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
     try {
       const response = await ai.models.generateContent({
-          // Use pro model for complex task like expanding content
           model: 'gemini-3-pro-preview',
           contents: `Deep dive expand on this: ${content}`,
       });
@@ -97,29 +90,29 @@ export const expandNoteContent = async (content: string, username: string, userI
 
 export const runConnectivityTest = async () => {
   const apiKey = process.env.API_KEY;
-  
-  if (!apiKey) return { success: false, message: "Error: No API_KEY found in process.env." };
+  if (!apiKey) return { success: false, message: "Error: No API_KEY configured." };
 
   try {
-    // Always use process.env.API_KEY exclusively as per guidelines
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+    const ai = new GoogleGenAI({ apiKey });
+    // Using a valid model call is the only way to test connectivity reliably.
     const response = await ai.models.generateContent({ 
         model: 'gemini-3-flash-preview', 
         contents: 'ping',
         config: { 
-          maxOutputTokens: 50,
-          thinkingConfig: { thinkingBudget: 25 } // Set thinking budget when maxOutputTokens is set
+          maxOutputTokens: 10,
+          thinkingConfig: { thinkingBudget: 0 }
         }
     });
     
     if (response && response.text) {
-        return { success: true, message: "Handshake Successful", steps: ["Validated API connection", "Connection established", "Tokens verified"] };
+        return { success: true, message: "Handshake Successful", steps: ["SDK Initialized", "API Keys Validated", "Model Response Verified"] };
     }
-    return { success: false, message: "Handshake Failed: Received empty response from Google." };
+    return { success: false, message: "Handshake Failed: Empty response." };
   } catch (e: any) {
     console.error("AI CONNECTION DEBUG:", e);
     let msg = e.message || "Unknown connectivity error";
-    if (msg.includes("Failed to fetch")) msg = "Network Block: The request was blocked. Check browser extensions (AdBlock/uBlock) or VPN.";
+    if (msg.includes("403")) msg = "API Key Invalid or Restricted.";
+    if (msg.includes("429")) msg = "Quota Exceeded.";
     return { success: false, message: `Service Error: ${msg}` };
   }
 };

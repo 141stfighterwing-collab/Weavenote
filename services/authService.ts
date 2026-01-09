@@ -1,4 +1,3 @@
-
 import { auth, db, isFirebaseReady } from './firebase';
 import { 
     signInWithEmailAndPassword, 
@@ -117,13 +116,15 @@ export const subscribeToAuthChanges = (callback: (user: User | null) => void) =>
 export const sendResetLink = async (email: string): Promise<{ success: boolean; message: string }> => {
     if (!isFirebaseReady || !auth) return { success: false, message: "System initializing. Please wait." };
     try {
+        // CRITICAL: Directly call Firebase Auth reset. 
+        // Do NOT query Firestore here, as it triggers 'Missing permissions' for unauthenticated users.
         await sendPasswordResetEmail(auth, email);
         logAudit('RECOVERY_LINK_SENT', 'Guest', email).catch(() => {});
         return { success: true, message: "Recovery link dispatched. Check your inbox and spam folder." };
     } catch (e: any) {
         if (e.code === 'auth/user-not-found') return { success: false, message: "No account recognized for this email." };
         if (e.code === 'auth/too-many-requests') return { success: false, message: "Too many attempts. Please try again later." };
-        return { success: false, message: "Dispatch failed. Verify your internet connection." };
+        return { success: false, message: "Reset failed. Verify email format or try again later." };
     }
 };
 
@@ -132,28 +133,43 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
 
     try {
         let email = usernameOrEmail;
-        // Securely check for admin bootstrap password from environment
         const bootstrapPass = process.env.ADMIN_SETUP_PASS;
 
+        // Admin Bootstrap Override
         if (usernameOrEmail === 'admin' && bootstrapPass && password === bootstrapPass) {
             email = 'system-bootstrap@weavenote.com'; 
             try {
                 const cred = await signInWithEmailAndPassword(auth, email, password);
                 const docSnap = await getDoc(doc(db, 'users', cred.user.uid));
                 if (docSnap.exists()) return { success: true, user: docSnap.data() as User };
+                
+                // If Auth exists but Doc doesn't (rare sync issue), recreate Doc
+                const info = await fetchClientInfo();
+                const adminUser: User = {
+                    uid: cred.user.uid, username: 'SystemAdmin', email, permission: 'edit',
+                    status: 'active', role: 'super-admin', lastLogin: Date.now(),
+                    ipAddress: info.ip, country: info.country, countryFlag: info.flag, aiUsageCount: 0
+                };
+                await setDoc(doc(db, 'users', cred.user.uid), adminUser);
+                return { success: true, user: adminUser };
             } catch (authError: any) {
-                // If the bootstrap account doesn't exist yet, create it
-                if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential') {
-                    const newCred = await createUserWithEmailAndPassword(auth, email, password);
-                    const info = await fetchClientInfo();
-                    const adminUser: User = {
-                        uid: newCred.user.uid, username: 'SystemAdmin', email, permission: 'edit',
-                        status: 'active', role: 'super-admin', lastLogin: Date.now(),
-                        ipAddress: info.ip, country: info.country, countryFlag: info.flag, aiUsageCount: 0
-                    };
-                    await setDoc(doc(db, 'users', newCred.user.uid), adminUser);
-                    await logAudit('SYSTEM_BOOTSTRAP', 'BOOTSTRAP', adminUser.uid);
-                    return { success: true, user: adminUser };
+                if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential' || authError.code === 'auth/wrong-password') {
+                    // Try to create if not exists
+                    try {
+                        const newCred = await createUserWithEmailAndPassword(auth, email, password);
+                        const info = await fetchClientInfo();
+                        const adminUser: User = {
+                            uid: newCred.user.uid, username: 'SystemAdmin', email, permission: 'edit',
+                            status: 'active', role: 'super-admin', lastLogin: Date.now(),
+                            ipAddress: info.ip, country: info.country, countryFlag: info.flag, aiUsageCount: 0
+                        };
+                        await setDoc(doc(db, 'users', newCred.user.uid), adminUser);
+                        await logAudit('SYSTEM_BOOTSTRAP', 'BOOTSTRAP', adminUser.uid);
+                        return { success: true, user: adminUser };
+                    } catch (createErr) {
+                        // If create fails, it might exist but with different pass. Just return error.
+                        return { success: false, error: "Bootstrap Identity mismatch." };
+                    }
                 }
                 throw authError;
             }
@@ -167,21 +183,41 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
 
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+        
         if (!userDoc.exists()) {
             await signOut(auth);
             return { success: false, error: "Profile record missing." };
         }
+        
         const userData = userDoc.data() as User;
         if (userData.status === 'suspended') {
             await signOut(auth);
             return { success: false, error: "Access suspended." };
         }
+        
         const info = await fetchClientInfo();
         await updateDoc(doc(db, 'users', userCredential.user.uid), { lastLogin: Date.now(), ...info });
         await logAudit('LOGIN_SUCCESS', userData.username);
         return { success: true, user: { ...userData, ...info, lastLogin: Date.now() } };
     } catch (e: any) {
-        return { success: false, error: "Identity verification failed." };
+        console.error("Login Error:", e.code, e.message);
+        return { success: false, error: "Verification failed. Check your security token." };
+    }
+};
+
+export const checkDatabaseConnection = async (): Promise<{ success: boolean; latency: number; message: string }> => {
+    if (!isFirebaseReady || !db) return { success: false, latency: 0, message: "Unconfigured" };
+    const start = Date.now();
+    try {
+        // Try a metadata read or a query that is allowed by rules
+        // If we are a guest, listing 'users' will fail. We handle this as a 'Secure' status.
+        await getDocs(query(collection(db, 'users'), limit(1)));
+        return { success: true, latency: Date.now() - start, message: "Connected" };
+    } catch (e: any) {
+        if (e.code === 'permission-denied') {
+            return { success: true, latency: Date.now() - start, message: "Operational (Secured)" };
+        }
+        return { success: false, latency: 0, message: e.message || "Offline" };
     }
 };
 
@@ -279,17 +315,6 @@ export const adminTriggerReset = async (email: string, adminUsername: string): P
     }
 };
 
-export const checkDatabaseConnection = async (): Promise<{ success: boolean; latency: number; message: string }> => {
-    if (!isFirebaseReady || !db) return { success: false, latency: 0, message: "Unconfigured" };
-    const start = Date.now();
-    try {
-        await getDocs(query(collection(db, 'users'), limit(1)));
-        return { success: true, latency: Date.now() - start, message: "Connected" };
-    } catch (e: any) {
-        return { success: false, latency: 0, message: e.message || "Failed" };
-    }
-};
-
 export const getAuditLogs = async (): Promise<AuditLogEntry[]> => {
     if (!db) return [];
     try {
@@ -298,7 +323,6 @@ export const getAuditLogs = async (): Promise<AuditLogEntry[]> => {
     } catch { return []; }
 };
 
-// Fix for services/geminiService.ts: Add missing export incrementUserAIUsage
 export const incrementUserAIUsage = async (uid: string) => {
     if (!db) return;
     try {
