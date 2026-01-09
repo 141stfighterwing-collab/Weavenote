@@ -1,8 +1,6 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Note, NoteColor, NoteType, ViewMode, Theme, Folder, User, ProjectData, ProjectMilestone } from './types';
 import { processNoteWithAI, getDailyUsage } from './services/geminiService';
-// Removed non-existent parseImportFile from imports
 import { 
     loadNotes, saveNote, deleteNote, 
     loadFolders, saveFolder, deleteFolder, 
@@ -30,6 +28,7 @@ const App: React.FC = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [cloudError, setCloudError] = useState<string | null>(null);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -59,25 +58,15 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const body = document.body;
-    const themeClasses = [
-      'theme-ocean', 'theme-forest', 'theme-sunset', 'theme-rose', 
-      'theme-midnight', 'theme-coffee', 'theme-neon', 'theme-cyberpunk', 
-      'theme-nord', 'theme-dracula', 'theme-lavender', 'theme-earth',
-      'theme-yellow', 'theme-hyperblue'
-    ];
+    const themeClasses = ['theme-ocean', 'theme-forest', 'theme-sunset', 'theme-rose', 'theme-midnight', 'theme-coffee', 'theme-neon', 'theme-cyberpunk', 'theme-nord', 'theme-dracula', 'theme-lavender', 'theme-earth', 'theme-yellow', 'theme-hyperblue'];
     body.classList.remove(...themeClasses);
-    if (theme !== 'default') {
-        body.classList.add(`theme-${theme}`);
-    }
+    if (theme !== 'default') body.classList.add(`theme-${theme}`);
     localStorage.setItem('ideaweaver_theme', theme);
   }, [theme]);
 
   useEffect(() => {
-    if (darkMode) {
-        document.documentElement.classList.add('dark');
-    } else {
-        document.documentElement.classList.remove('dark');
-    }
+    if (darkMode) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
     localStorage.setItem('ideaweaver_darkmode', darkMode.toString());
   }, [darkMode]);
 
@@ -96,6 +85,7 @@ const App: React.FC = () => {
     if (isAuthChecking) return;
     const fetchData = async () => {
         setIsLoadingData(true);
+        setCloudError(null);
         try {
             const fetchedNotes = await loadNotes(storageOwner);
             const fetchedFolders = await loadFolders(storageOwner);
@@ -112,8 +102,11 @@ const App: React.FC = () => {
             
             setNotes(validNotes);
             setFolders(fetchedFolders);
-        } catch (e) {
+        } catch (e: any) {
             console.error("Failed to load data", e);
+            if (e.code === 'permission-denied') {
+                setCloudError("Access Blocked: Your database is likely in 'Locked Mode'. Go to Settings (gear icon) -> Cloud Setup to copy the required rules.");
+            }
         } finally {
             setIsLoadingData(false);
         }
@@ -123,7 +116,7 @@ const App: React.FC = () => {
   }, [storageOwner, isAuthChecking]);
 
   const handleLoginSuccess = (user: User) => setCurrentUser(user);
-  const handleLogout = () => { setCurrentUser(null); setNotes([]); setFolders([]); };
+  const handleLogout = () => { setCurrentUser(null); setNotes([]); setFolders([]); setCloudError(null); };
 
   const handleTabChange = (type: NoteType) => {
       setActiveTab(type);
@@ -148,17 +141,12 @@ const App: React.FC = () => {
     manualMilestones?: ProjectMilestone[]
   }): Promise<Note | undefined> => {
     if (!canEdit) return;
-    
-    // Explicit Guard: Guests cannot use AI
-    if (useAI && !currentUser) {
-      useAI = false;
-    }
+    if (useAI && !currentUser) useAI = false;
 
     setIsProcessing(true);
     try {
         let processed;
         let tags = [...forcedTags, ...extractHashtags(rawText), ...extractHashtags(manualTitle)];
-        
         if (type === 'quick') {
             const today = new Date().toISOString().split('T')[0]; 
             if (!tags.includes(today)) tags.push(today);
@@ -190,21 +178,11 @@ const App: React.FC = () => {
         }
 
         const newNote: Note = {
-            id: crypto.randomUUID(),
-            title: processed.title,
-            content: processed.formattedContent,
-            rawContent: rawText,
-            category: processed.category,
-            tags: Array.from(new Set(tags.filter(t => t.trim().length > 0))), 
-            color: type === 'notebook' ? NoteColor.Slate : NoteColor.Yellow, 
-            createdAt: Date.now(),
-            type: type,
-            attachments: attachments || [],
-            accessCount: 0,
-            folderId: activeFolderId || undefined,
-            projectData: processed.projectData,
-            userId: storageOwner || undefined,
-            isDeleted: false
+            id: crypto.randomUUID(), title: processed.title, content: processed.formattedContent, rawContent: rawText,
+            category: processed.category, tags: Array.from(new Set(tags.filter(t => t.trim().length > 0))), 
+            color: type === 'notebook' ? NoteColor.Slate : NoteColor.Yellow, createdAt: Date.now(), type: type,
+            attachments: attachments || [], accessCount: 0, folderId: activeFolderId || undefined,
+            projectData: processed.projectData, userId: storageOwner || undefined, isDeleted: false
         };
 
         setNotes(prev => [newNote, ...prev]);
@@ -222,19 +200,8 @@ const App: React.FC = () => {
       if (!canEdit) return;
       const target = notes.find(n => n.id === id);
       if (!target) return;
-      
-      const contentTags = extractHashtags(content);
-      const titleTags = extractHashtags(title);
-      const mergedTags = Array.from(new Set([...(tags || target.tags), ...contentTags, ...titleTags]));
-
-      const updated = { 
-        ...target, 
-        title, 
-        content, 
-        ...(category ? { category } : {}), 
-        tags: mergedTags 
-      };
-      
+      const mergedTags = Array.from(new Set([...(tags || target.tags), ...extractHashtags(content), ...extractHashtags(title)]));
+      const updated = { ...target, title, content, ...(category ? { category } : {}), tags: mergedTags };
       setNotes(prev => prev.map(n => n.id === id ? updated : n));
       await saveNote(updated, storageOwner);
   };
@@ -243,7 +210,6 @@ const App: React.FC = () => {
       if (!canEdit) return;
       const target = notes.find(n => n.id === id);
       if (!target) return;
-      
       const updated = { ...target, projectData: data };
       setNotes(prev => prev.map(n => n.id === id ? updated : n));
       if (expandedNote?.id === id) setExpandedNote(updated);
@@ -257,18 +223,17 @@ const App: React.FC = () => {
       const regex = /\[([ xX]?)\]/g;
       let currentIdx = 0;
       let newContent = targetNote.content;
-      let found = false;
       let match;
       while ((match = regex.exec(targetNote.content)) !== null) {
           if (currentIdx === checkboxIndex) {
               const isChecked = match[1].trim().length > 0;
               const newStatus = isChecked ? '[ ]' : '[x]';
               newContent = targetNote.content.substring(0, match.index) + newStatus + targetNote.content.substring(match.index + match[0].length);
-              found = true; break;
+              break;
           }
           currentIdx++;
       }
-      if (found && newContent !== targetNote.content) {
+      if (newContent !== targetNote.content) {
           const updatedNote = { ...targetNote, content: newContent };
           setNotes(prev => prev.map(n => n.id === noteId ? updatedNote : n));
           if (expandedNote?.id === noteId) setExpandedNote(updatedNote);
@@ -332,9 +297,7 @@ const App: React.FC = () => {
       if (!canEdit) return;
       const trashedIds = notes.filter(n => n.isDeleted).map(n => n.id);
       setNotes(prev => prev.filter(n => !n.isDeleted));
-      for (const id of trashedIds) {
-          await deleteNote(id, storageOwner);
-      }
+      for (const id of trashedIds) await deleteNote(id, storageOwner);
   };
 
   const handleCreateFolder = async (name: string) => {
@@ -347,8 +310,7 @@ const App: React.FC = () => {
   const handleDeleteFolder = async (id: string) => {
       if (!canEdit) return;
       setFolders(prev => prev.filter(f => f.id !== id));
-      const updatedNotes = notes.map(n => n.folderId === id ? { ...n, folderId: undefined } : n);
-      setNotes(updatedNotes);
+      setNotes(prev => prev.map(n => n.folderId === id ? { ...n, folderId: undefined } : n));
       await deleteFolder(id, storageOwner);
   };
 
@@ -384,30 +346,20 @@ const App: React.FC = () => {
   }, [activeNotes, activeTab, activeFolderId, activeTagFilter, activeDateFilter, searchQuery]);
 
   const clearFilters = () => {
-    setActiveFolderId(null);
-    setActiveTagFilter(null);
-    setActiveDateFilter(null);
-    setSearchQuery('');
+    setActiveFolderId(null); setActiveTagFilter(null); setActiveDateFilter(null); setSearchQuery('');
   };
 
   const isFiltered = activeFolderId || activeTagFilter || activeDateFilter || searchQuery;
 
   if (isAuthChecking) {
-      return (
-          <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mb-4"></div>
-          </div>
-      );
+      return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mb-4"></div></div>;
   }
 
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors duration-300`}>
         <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50 shadow-sm">
             <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                    <Logo className="w-8 h-8 text-primary-600" />
-                    <h1 className="text-xl font-bold hidden sm:block text-slate-800 dark:text-white">WeaveNote</h1>
-                </div>
+                <div className="flex items-center gap-2"><Logo className="w-8 h-8 text-primary-600" /><h1 className="text-xl font-bold hidden sm:block text-slate-800 dark:text-white">WeaveNote</h1></div>
                 <div className="flex items-center gap-4 flex-1 justify-end">
                     <div className="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1 mr-2">
                         <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600' : 'text-slate-400'}`}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></button>
@@ -421,129 +373,53 @@ const App: React.FC = () => {
             </div>
         </header>
 
+        {cloudError && (
+            <div className="bg-amber-600 text-white px-4 py-3 flex items-center justify-between shadow-lg animate-[badgePop_0.3s_ease-out]">
+                <div className="flex items-center gap-3">
+                    <span className="text-xl">☁️</span>
+                    <div>
+                        <p className="font-black text-sm uppercase tracking-widest leading-none">Cloud Permission Required</p>
+                        <p className="text-[10px] font-bold opacity-90 mt-1">{cloudError}</p>
+                    </div>
+                </div>
+                <button onClick={() => { setShowSettings(true); setCloudError(null); }} className="px-4 py-1.5 bg-white text-amber-700 rounded-full hover:bg-amber-50 text-[10px] font-black uppercase tracking-widest shadow-sm">Fix Rules Now</button>
+            </div>
+        )}
+
         <main className="flex-grow max-w-[1600px] mx-auto px-4 py-6 w-full flex flex-col lg:flex-row gap-6">
             <div className="flex-1 min-0 order-2 lg:order-2">
                 {viewMode === 'grid' && (
                     <NoteInput 
-                        onAddNote={handleAddNote} 
-                        onTypeChange={handleTabChange}
-                        isProcessing={isProcessing} 
-                        activeType={activeTab} 
-                        readOnly={!canEdit} 
-                        isGuest={!currentUser}
-                        enableImages={enableImages} 
+                        onAddNote={handleAddNote} onTypeChange={handleTabChange} isProcessing={isProcessing} 
+                        activeType={activeTab} readOnly={!canEdit} isGuest={!currentUser} enableImages={enableImages} 
                     />
                 )}
 
                 {activeTab === 'notebook' ? (
-                  <NotebookView 
-                    notes={activeNotes.filter(n => n.type === 'notebook')} 
-                    folders={folders}
-                    onAddNote={handleAddNote}
-                    onUpdateNote={handleUpdateNote}
-                    onEdit={setEditingNote}
-                    onDelete={handleDeleteNote}
-                    onToggleCheckbox={handleToggleCheckbox}
-                  />
+                  <NotebookView notes={activeNotes.filter(n => n.type === 'notebook')} folders={folders} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onEdit={setEditingNote} onDelete={handleDeleteNote} onToggleCheckbox={handleToggleCheckbox} />
                 ) : (
                   <>
                     <div className="mb-4 overflow-x-auto no-scrollbar pb-2">
                         <div className="flex items-center gap-2 whitespace-nowrap">
-                            <button 
-                                onClick={() => setActiveFolderId(null)}
-                                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeFolderId === null ? 'bg-primary-600 text-white border-primary-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary-400'}`}
-                            >
-                                All Folders
-                            </button>
-                            {folders.map(folder => (
-                                <button 
-                                    key={folder.id}
-                                    onClick={() => setActiveFolderId(folder.id)}
-                                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeFolderId === folder.id ? 'bg-primary-600 text-white border-primary-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary-400'}`}
-                                >
-                                    📂 {folder.name}
-                                </button>
-                            ))}
+                            <button onClick={() => setActiveFolderId(null)} className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeFolderId === null ? 'bg-primary-600 text-white border-primary-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary-400'}`}>All Folders</button>
+                            {folders.map(folder => (<button key={folder.id} onClick={() => setActiveFolderId(folder.id)} className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeFolderId === folder.id ? 'bg-primary-600 text-white border-primary-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary-400'}`}>📂 {folder.name}</button>))}
                         </div>
                     </div>
 
                     {isFiltered && (
                         <div className="mb-4 p-2 bg-primary-50 dark:bg-primary-900/10 border border-primary-100 dark:border-primary-900/30 rounded-lg flex items-center justify-between text-xs animate-[fadeIn_0.2s_ease-out]">
-                            <div className="flex items-center gap-2">
-                                <span className="font-bold text-primary-700 dark:text-primary-400 uppercase tracking-tighter">Active Filters:</span>
-                                {activeFolderId && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Folder: {folders.find(f => f.id === activeFolderId)?.name} <button onClick={() => setActiveFolderId(null)}>✕</button></span>}
-                                {activeTagFilter && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Tag: #{activeTagFilter} <button onClick={() => setActiveTagFilter(null)}>✕</button></span>}
-                                {activeDateFilter && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Date: {activeDateFilter.toLocaleDateString()} <button onClick={() => setActiveDateFilter(null)}>✕</button></span>}
-                                {searchQuery && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Search: "{searchQuery}" <button onClick={() => setSearchQuery('')}>✕</button></span>}
-                            </div>
+                            <div className="flex items-center gap-2"><span className="font-bold text-primary-700 dark:text-primary-400 uppercase tracking-tighter">Active Filters:</span>{activeFolderId && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Folder: {folders.find(f => f.id === activeFolderId)?.name} <button onClick={() => setActiveFolderId(null)}>✕</button></span>}{activeTagFilter && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Tag: #{activeTagFilter} <button onClick={() => setActiveTagFilter(null)}>✕</button></span>}{activeDateFilter && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Date: {activeDateFilter.toLocaleDateString()} <button onClick={() => setActiveDateFilter(null)}>✕</button></span>}{searchQuery && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Search: "{searchQuery}" <button onClick={() => setSearchQuery('')}>✕</button></span>}</div>
                             <button onClick={clearFilters} className="text-primary-600 hover:text-primary-800 font-bold underline">Clear All</button>
                         </div>
                     )}
 
                     <div className="mt-4">
-                        {viewMode === 'mindmap' ? (
-                            <div className="h-[600px] border rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/50">
-                                <MindMap notes={activeNotes} onNoteClick={(id) => { const n = activeNotes.find(n => n.id === id); if (n) { handleExpandNote(n); setViewMode('grid'); } }} />
-                            </div>
-                        ) : (
+                        {viewMode === 'mindmap' ? (<div className="h-[600px] border rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/50"><MindMap notes={activeNotes} onNoteClick={(id) => { const n = activeNotes.find(n => n.id === id); if (n) { handleExpandNote(n); setViewMode('grid'); } }} /></div>) : (
                             <>
-                                {activeTab === 'deep' ? (
-                                    <div className="space-y-3">
-                                        {filteredNotes.map(note => (
-                                            <div 
-                                                key={note.id} 
-                                                onClick={() => handleExpandNote(note)}
-                                                className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center hover:shadow-lg hover:border-primary-400 dark:hover:border-primary-500 cursor-pointer transition-all animate-[fadeIn_0.2s_ease-out]"
-                                            >
-                                                <div className="min-w-0 pr-4">
-                                                    <h3 className="font-bold text-lg text-slate-800 dark:text-white truncate">{note.title}</h3>
-                                                    <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mt-1">{note.content.substring(0, 180)}</p>
-                                                    <div className="flex gap-2 mt-2">
-                                                        {note.tags.slice(0, 3).map(tag => (
-                                                            <span key={tag} className="text-[10px] text-primary-600 dark:text-primary-400 font-bold">#{tag}</span>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                                <div className="flex flex-col items-end gap-2 shrink-0">
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(note.createdAt).toLocaleDateString()}</span>
-                                                    <div className="p-2 rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400">
-                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
-                                        {filteredNotes.map(note => (
-                                            <NoteCard 
-                                                key={note.id} 
-                                                note={note} 
-                                                folders={folders} 
-                                                onDelete={handleDeleteNote} 
-                                                onTagClick={(t) => setActiveTagFilter(t)} 
-                                                onChangeColor={async (id, c) => { setNotes(prev => prev.map(n => n.id === id ? { ...n, color: c } : n)); if (storageOwner) await saveNote({ ...notes.find(n => n.id === id)!, color: c }, storageOwner); }}
-                                                onEdit={setEditingNote} 
-                                                onExpand={handleExpandNote} 
-                                                readOnly={!canEdit} 
-                                                onViewImage={setViewingImage} 
-                                                onToggleCheckbox={handleToggleCheckbox} 
-                                                onAddTag={handleAddTag} 
-                                                onRemoveTag={handleRemoveTag} 
-                                                onMoveToFolder={handleMoveNote} 
-                                                onToggleComplete={handleToggleProjectCompletion}
-                                            />
-                                        ))}
-                                    </div>
+                                {activeTab === 'deep' ? (<div className="space-y-3">{filteredNotes.map(note => (<div key={note.id} onClick={() => handleExpandNote(note)} className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center hover:shadow-lg hover:border-primary-400 dark:hover:border-primary-500 cursor-pointer transition-all animate-[fadeIn_0.2s_ease-out]"><div className="min-w-0 pr-4"><h3 className="font-bold text-lg text-slate-800 dark:text-white truncate">{note.title}</h3><p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mt-1">{note.content.substring(0, 180)}</p><div className="flex gap-2 mt-2">{note.tags.slice(0, 3).map(tag => (<span key={tag} className="text-[10px] text-primary-600 dark:text-primary-400 font-bold">#{tag}</span>))}</div></div><div className="flex flex-col items-end gap-2 shrink-0"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(note.createdAt).toLocaleDateString()}</span><div className="p-2 rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg></div></div></div>))}</div>) : (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">{filteredNotes.map(note => (<NoteCard key={note.id} note={note} folders={folders} onDelete={handleDeleteNote} onTagClick={(t) => setActiveTagFilter(t)} onChangeColor={async (id, c) => { setNotes(prev => prev.map(n => n.id === id ? { ...n, color: c } : n)); if (storageOwner) await saveNote({ ...notes.find(n => n.id === id)!, color: c }, storageOwner); }} onEdit={setEditingNote} onExpand={handleExpandNote} readOnly={!canEdit} onViewImage={setViewingImage} onToggleCheckbox={handleToggleCheckbox} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} onMoveToFolder={handleMoveNote} onToggleComplete={handleToggleProjectCompletion} />))}</div>
                                 )}
-                                
-                                {filteredNotes.length === 0 && (
-                                    <div className="col-span-full text-center py-20 bg-white/50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-                                        <p className="text-slate-400 text-lg font-bold">No results found.</p>
-                                        <p className="text-slate-400 text-sm mt-1">Try switching categories in the input area above.</p>
-                                        {isFiltered && <button onClick={clearFilters} className="mt-4 px-6 py-2 bg-primary-600 text-white rounded-full font-bold shadow-md">Clear all filters</button>}
-                                    </div>
-                                )}
+                                {filteredNotes.length === 0 && (<div className="col-span-full text-center py-20 bg-white/50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700"><p className="text-slate-400 text-lg font-bold">No results found.</p><p className="text-slate-400 text-sm mt-1">Try switching categories or clearing filters.</p>{isFiltered && <button onClick={clearFilters} className="mt-4 px-6 py-2 bg-primary-600 text-white rounded-full font-bold shadow-md">Clear all filters</button>}</div>)}
                             </>
                         )}
                     </div>
@@ -551,90 +427,24 @@ const App: React.FC = () => {
                 )}
             </div>
 
-            <Sidebar 
-                className="order-1 lg:order-1" 
-                notes={activeNotes} 
-                folders={folders} 
-                onTagClick={(t) => setActiveTagFilter(t === activeTagFilter ? null : t)} 
-                activeTag={activeTagFilter} 
-                onNoteClick={handleExpandNote} 
-                onFolderClick={setActiveFolderId} 
-                onCreateFolder={handleCreateFolder} 
-                onDateClick={(d) => setActiveDateFilter(d)}
-                onDeleteFolder={handleDeleteFolder} 
-                onReorderFolders={() => {}} 
-                onMoveNote={handleMoveNote} 
-                activeFolderId={activeFolderId}
-                activeDate={activeDateFilter}
-            />
-
-            <RightSidebar 
-                className="hidden xl:block order-3 lg:order-3" 
-                notes={activeNotes} 
-                onNoteClick={handleExpandNote} 
-            />
+            <Sidebar className="order-1 lg:order-1" notes={activeNotes} folders={folders} onTagClick={(t) => setActiveTagFilter(t === activeTagFilter ? null : t)} activeTag={activeTagFilter} onNoteClick={handleExpandNote} onFolderClick={setActiveFolderId} onCreateFolder={handleCreateFolder} onDateClick={(d) => setActiveDateFilter(d)} onDeleteFolder={handleDeleteFolder} onReorderFolders={() => {}} onMoveNote={handleMoveNote} activeFolderId={activeFolderId} activeDate={activeDateFilter} />
+            <RightSidebar className="hidden xl:block order-3 lg:order-3" notes={activeNotes} onNoteClick={handleExpandNote} />
         </main>
         
         <footer className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 py-3 px-6 text-xs text-slate-400 flex justify-between items-center shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
             <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${storageOwner ? 'bg-green-500 animate-pulse' : 'bg-slate-400'}`}></div>
-                    {storageOwner ? <span className="text-slate-600 dark:text-slate-300 font-bold">Cloud Sync Active</span> : <span className="text-slate-500">Guest Mode (Local Only)</span>}
-                </div>
-                <button 
-                  onClick={() => setShowTrash(true)}
-                  className="flex items-center gap-1.5 hover:text-red-500 transition-colors font-bold px-3 py-1 rounded-md bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                  <span>Trash</span>
-                  {trashedNotes.length > 0 && <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full min-w-[16px] text-center">{trashedNotes.length}</span>}
-                </button>
+                <div className="flex items-center gap-2"><div className={`w-2 h-2 rounded-full ${storageOwner ? (cloudError ? 'bg-rose-500' : 'bg-green-500 animate-pulse') : 'bg-slate-400'}`}></div>{storageOwner ? (cloudError ? <span className="text-rose-600 font-bold">Database Locked</span> : <span className="text-slate-600 dark:text-slate-300 font-bold">Cloud Sync Active</span>) : <span className="text-slate-500">Guest Mode (Local Only)</span>}</div>
+                <button onClick={() => setShowTrash(true)} className="flex items-center gap-1.5 hover:text-red-500 transition-colors font-bold px-3 py-1 rounded-md bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg><span>Trash</span>{trashedNotes.length > 0 && <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full min-w-[16px] text-center">{trashedNotes.length}</span>}</button>
             </div>
-            
-            <div className="flex-1 text-center font-black uppercase tracking-widest text-[10px] opacity-40">
-                Created by Nathan Carrasco ™
-            </div>
-
+            <div className="flex-1 text-center font-black uppercase tracking-widest text-[10px] opacity-40">Created by Nathan Carrasco ™</div>
             <div className="font-medium">Daily AI Usage: {dailyUsage}/800</div>
         </footer>
 
         <EditNoteModal note={editingNote} isOpen={!!editingNote} onClose={() => setEditingNote(null)} onSave={handleUpdateNote} currentUser={currentUser?.username || 'Guest'} />
-        <NoteDetailModal 
-            note={expandedNote} 
-            isOpen={!!expandedNote} 
-            onClose={() => setExpandedNote(null)} 
-            currentUser={currentUser?.username || 'Guest'} 
-            onViewImage={setViewingImage} 
-            onToggleCheckbox={handleToggleCheckbox} 
-            onSaveExpanded={(id, content) => handleUpdateNote(id, expandedNote?.title || '', content)} 
-            onToggleComplete={handleToggleProjectCompletion}
-            onUpdateProjectData={handleUpdateProjectData}
-        />
-        <TrashModal 
-          isOpen={showTrash} 
-          onClose={() => setShowTrash(false)} 
-          trashedNotes={trashedNotes}
-          onRestore={handleRestoreNote}
-          onPermanentlyDelete={handlePermanentDelete}
-          onEmptyTrash={handleEmptyTrash}
-        />
+        <NoteDetailModal note={expandedNote} isOpen={!!expandedNote} onClose={() => setExpandedNote(null)} currentUser={currentUser?.username || 'Guest'} onViewImage={setViewingImage} onToggleCheckbox={handleToggleCheckbox} onSaveExpanded={(id, content) => handleUpdateNote(id, expandedNote?.title || '', content)} onToggleComplete={handleToggleProjectCompletion} onUpdateProjectData={handleUpdateProjectData} />
+        <TrashModal isOpen={showTrash} onClose={() => setShowTrash(false)} trashedNotes={trashedNotes} onRestore={handleRestoreNote} onPermanentlyDelete={handlePermanentDelete} onEmptyTrash={handleEmptyTrash} />
         <ImageViewerModal src={viewingImage} isOpen={!!viewingImage} onClose={() => setViewingImage(null)} />
-        <SettingsPanel 
-            isOpen={showSettings} 
-            onClose={() => setShowSettings(false)} 
-            currentUser={currentUser} 
-            darkMode={darkMode} 
-            toggleDarkMode={() => setDarkMode(!darkMode)} 
-            theme={theme} 
-            setTheme={setTheme} 
-            reducedMotion={reducedMotion} 
-            toggleReducedMotion={() => setReducedMotion(!reducedMotion)} 
-            enableImages={enableImages} 
-            toggleEnableImages={() => setEnableImages(!enableImages)} 
-            showLinkPreviews={showLinkPreviews} 
-            toggleShowLinkPreviews={() => setShowLinkPreviews(!showLinkPreviews)} 
-            notes={activeNotes}
-        />
+        <SettingsPanel isOpen={showSettings} onClose={() => setShowSettings(false)} currentUser={currentUser} darkMode={darkMode} toggleDarkMode={() => setDarkMode(!darkMode)} theme={theme} setTheme={setTheme} notes={activeNotes} />
         <AnalyticsModal isOpen={showAnalytics} onClose={() => setShowAnalytics(false)} notes={activeNotes} />
     </div>
   );

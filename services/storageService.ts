@@ -1,4 +1,3 @@
-
 import { Note, Folder, UserUsageStats } from '../types';
 import JSZip from 'jszip';
 import { db } from './firebase';
@@ -10,9 +9,6 @@ import { logTraffic } from './trafficService';
 const GUEST_KEY = 'ideaweaver_guest_session';
 const GUEST_FOLDERS_KEY = 'ideaweaver_guest_folders';
 
-/**
- * XSS & INJECTION PROTECTION
- */
 const sanitizeInput = (val: any): any => {
     if (typeof val === 'string') {
         return val
@@ -47,24 +43,27 @@ export const loadNotes = async (userId: string | null): Promise<Note[]> => {
         const notes = snapshot.docs.map(d => d.data() as Note);
         logTraffic('GET', 'firestore/notes', 200, JSON.stringify(notes).length);
         return notes.sort((a, b) => b.createdAt - a.createdAt);
-    } catch (e) {
+    } catch (e: any) {
         logTraffic('GET', 'firestore/notes', 500, 0);
-        return [];
+        console.error("CRITICAL: Firestore Read Failed", e.code, e.message);
+        throw e;
     }
 };
 
 export const saveNote = async (note: Note, userId: string | null) => {
-    const cleanNote = sanitizeForFirestore(note);
     if (!userId) {
-        const notes = await loadNotes(null);
-        const idx = notes.findIndex(n => n.id === cleanNote.id);
-        if (idx >= 0) notes[idx] = cleanNote; else notes.push(cleanNote);
+        const notes = await loadNotes(null).catch(() => []);
+        const idx = notes.findIndex(n => n.id === note.id);
+        if (idx >= 0) notes[idx] = note; else notes.push(note);
         sessionStorage.setItem(GUEST_KEY, JSON.stringify(notes));
         return;
     }
     if (!db) return;
     try {
-        await setDoc(doc(db, 'notes', cleanNote.id), { ...cleanNote, userId });
+        // FORCE the userId to be present at top level for security rules
+        const noteWithUserId = { ...note, userId };
+        const cleanNote = sanitizeForFirestore(noteWithUserId);
+        await setDoc(doc(db, 'notes', cleanNote.id), cleanNote);
         logTraffic('POST', 'firestore/notes', 200, JSON.stringify(cleanNote).length);
     } catch (e) {
         logTraffic('POST', 'firestore/notes', 500, 0);
@@ -74,7 +73,7 @@ export const saveNote = async (note: Note, userId: string | null) => {
 
 export const deleteNote = async (noteId: string, userId: string | null) => {
     if (!userId) {
-        const notes = await loadNotes(null);
+        const notes = await loadNotes(null).catch(() => []);
         sessionStorage.setItem(GUEST_KEY, JSON.stringify(notes.filter(n => n.id !== noteId)));
         return;
     }
@@ -86,25 +85,30 @@ export const deleteNote = async (noteId: string, userId: string | null) => {
 export const loadFolders = async (userId: string | null): Promise<Folder[]> => {
     if (!userId) return JSON.parse(sessionStorage.getItem(GUEST_FOLDERS_KEY) || '[]');
     if (!db) return [];
-    const snapshot = await getDocs(query(collection(db, 'folders'), where('userId', '==', userId)));
-    return snapshot.docs.map(d => d.data() as Folder).sort((a,b) => a.order - b.order);
+    try {
+        const snapshot = await getDocs(query(collection(db, 'folders'), where('userId', '==', userId)));
+        return snapshot.docs.map(d => d.data() as Folder).sort((a,b) => a.order - b.order);
+    } catch (e) {
+        throw e;
+    }
 };
 
 export const saveFolder = async (folder: Folder, userId: string | null) => {
     if (!userId) {
-        const folders = await loadFolders(null);
+        const folders = await loadFolders(null).catch(() => []);
         const idx = folders.findIndex(f => f.id === folder.id);
         if (idx >= 0) folders[idx] = folder; else folders.push(folder);
         sessionStorage.setItem(GUEST_FOLDERS_KEY, JSON.stringify(folders));
         return;
     }
     if (!db) return;
+    // FORCE the userId for folder security
     await setDoc(doc(db, 'folders', folder.id), { ...folder, userId });
 };
 
 export const deleteFolder = async (folderId: string, userId: string | null) => {
     if (!userId) {
-        const folders = await loadFolders(null);
+        const folders = await loadFolders(null).catch(() => []);
         sessionStorage.setItem(GUEST_FOLDERS_KEY, JSON.stringify(folders.filter(f => f.id !== folderId)));
         return;
     }

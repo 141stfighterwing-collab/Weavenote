@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { login, requestAccount, logout, sendResetLink } from '../services/authService';
 import { User } from '../types';
@@ -73,9 +72,7 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
             const res = await requestAccount(username, password, emailOrUsername);
             if (res.success) {
                 setMsg({ type: 'success', text: res.message });
-                setEmailOrUsername('');
-                setUsername('');
-                setPassword('');
+                setIsRegistering(false);
             } else {
                 setMsg({ type: 'error', text: res.message });
             }
@@ -124,7 +121,7 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-3">
                     <input 
                         type={(isRegistering || isRecovering) ? "email" : "text"} 
-                        placeholder={(isRegistering || isRecovering) ? "Email Address" : "Email or Handle"} 
+                        placeholder={isRegistering ? "Email (for recovery)" : isRecovering ? "Your Email" : "Username or Email"} 
                         value={emailOrUsername}
                         onChange={e => setEmailOrUsername(e.target.value)}
                         className="px-3 py-2 border rounded-lg text-sm dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-primary-500"
@@ -136,7 +133,7 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
                             {isRegistering && (
                                 <input 
                                     type="text" 
-                                    placeholder="Public Handle" 
+                                    placeholder="Unique Handle (Username)" 
                                     value={username}
                                     onChange={e => setUsername(e.target.value)}
                                     className="px-3 py-2 border rounded-lg text-sm dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-primary-500"
@@ -165,7 +162,7 @@ const LoginWidget: React.FC<LoginWidgetProps> = ({ currentUser, onLoginSuccess, 
                         disabled={isLoading}
                         className="bg-primary-600 text-white font-bold py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors shadow-sm text-xs uppercase tracking-widest"
                     >
-                        {isLoading ? 'Processing...' : (isRecovering ? 'Send Link' : isRegistering ? 'Submit Request' : 'Proceed')}
+                        {isLoading ? 'Processing...' : (isRecovering ? 'Send Link' : isRegistering ? 'Create Identity' : 'Proceed')}
                     </button>
                 </form>
 
