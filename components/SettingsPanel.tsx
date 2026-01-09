@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
     getRequests, approveRequest, denyRequest, 
     getUsers, toggleUserStatus, isAdmin, isGlobalAdmin, checkDatabaseConnection,
-    getAuditLogs, AuditLogEntry, deleteUserAccount, updateUserRole 
+    getAuditLogs, AuditLogEntry, deleteUserAccount, updateUserRole,
+    updateUserPassword, adminTriggerReset
 } from '../services/authService';
 import { runConnectivityTest, getAIUsageLogs, DAILY_REQUEST_LIMIT } from '../services/geminiService';
 import { exportDataToFile, syncAllNotes } from '../services/storageService';
@@ -33,7 +33,11 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const [healthStatus, setHealthStatus] = useState<{db: string, ai: string, storage: string, session: string, apiKeyHint: string, dns: string} | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdatingRole, setIsUpdatingRole] = useState<string | null>(null);
-  const [syncMsg, setSyncMsg] = useState('');
+  
+  // Security Tab States
+  const [newPass, setNewPass] = useState('');
+  const [passMsg, setPassMsg] = useState<{type: 'success'|'error', text: string} | null>(null);
+  const [isResettingUser, setIsResettingUser] = useState<string | null>(null);
 
   const userIsAdmin = isAdmin(currentUser);
   const userIsSuperAdmin = isGlobalAdmin(currentUser);
@@ -75,7 +79,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     const rawKey = (process.env.API_KEY || "").trim();
     const keyHint = rawKey.length > 8 ? `${rawKey.substring(0, 4)}...${rawKey.substring(rawKey.length - 4)}` : "Not Set";
     
-    // DNS Reachability Check
     let dnsStatus = "Checking...";
     try {
         const start = Date.now();
@@ -93,6 +96,31 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         apiKeyHint: keyHint,
         dns: dnsStatus
     });
+  };
+
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPass.length < 8) {
+        setPassMsg({ type: 'error', text: "Token must be at least 8 characters." });
+        return;
+    }
+    setIsLoading(true);
+    const res = await updateUserPassword(newPass);
+    if (res.success) {
+        setPassMsg({ type: 'success', text: res.message });
+        setNewPass('');
+    } else {
+        setPassMsg({ type: 'error', text: res.message });
+    }
+    setIsLoading(false);
+  };
+
+  const handleAdminResetTrigger = async (email: string, uid: string) => {
+    if (!currentUser || isResettingUser) return;
+    setIsResettingUser(uid);
+    const res = await adminTriggerReset(email, currentUser.username);
+    alert(res.message);
+    setIsResettingUser(null);
   };
 
   const handleRoleChange = async (uid: string, newRole: any) => {
@@ -114,7 +142,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-[fadeIn_0.2s_ease-out]">
       <div className="bg-[#1a2333] border border-slate-700/50 rounded-2xl shadow-2xl w-full max-w-7xl overflow-hidden flex flex-col max-h-[92vh]">
         
-        {/* Header */}
         <div className="p-5 border-b border-slate-700/50 flex justify-between items-center bg-[#0f172a]">
           <div className="flex items-center gap-3">
             <h2 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-2">
@@ -131,9 +158,13 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         </div>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar */}
           <div className="w-64 border-r border-slate-700/50 bg-[#0f172a] p-4 space-y-1.5 overflow-y-auto">
             <button onClick={() => setActiveTab('appearance')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'appearance' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>Visuals</button>
+            
+            {currentUser && (
+               <button onClick={() => setActiveTab('my-security')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'my-security' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>🛡️ My Security</button>
+            )}
+
             <button onClick={() => setActiveTab('health')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'health' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>System Health</button>
             
             {userIsAdmin && (
@@ -151,9 +182,41 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             )}
           </div>
 
-          {/* Tab Content */}
           <div className="flex-1 p-8 overflow-y-auto custom-scrollbar bg-[#1a2333]">
             
+            {activeTab === 'my-security' && (
+              <div className="max-w-md animate-[fadeIn_0.2s_ease-out]">
+                 <h4 className="text-lg font-black text-white uppercase mb-6 tracking-tight">Credential Management</h4>
+                 <form onSubmit={handlePasswordUpdate} className="space-y-4">
+                    <div>
+                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">New Security Token</label>
+                        <input 
+                            type="password" 
+                            value={newPass}
+                            onChange={e => setNewPass(e.target.value)}
+                            placeholder="At least 8 characters"
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-primary-500"
+                        />
+                    </div>
+                    {passMsg && (
+                        <div className={`p-3 rounded-lg text-xs font-bold ${passMsg.type === 'success' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'}`}>
+                            {passMsg.text}
+                        </div>
+                    )}
+                    <button 
+                        type="submit" 
+                        disabled={isLoading || !newPass}
+                        className="w-full py-3 bg-primary-600 hover:bg-primary-500 disabled:bg-slate-700 text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-lg transition-all"
+                    >
+                        {isLoading ? 'Updating...' : 'Change Token'}
+                    </button>
+                 </form>
+                 <p className="mt-8 text-xs text-slate-500 leading-relaxed italic border-t border-slate-800 pt-4">
+                    Note: If you haven't logged in recently, the system will prompt you to sign out and back in before allowing this update for security reasons.
+                 </p>
+              </div>
+            )}
+
             {activeTab === 'health' && (
               <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -169,130 +232,64 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                        <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">API Connectivity</h5>
                        <p className={`text-lg font-bold ${healthStatus?.dns.includes('Reachable') ? 'text-emerald-500' : 'text-rose-500'}`}>{healthStatus?.dns || 'Resolving...'}</p>
                     </div>
-                    <div className="p-6 bg-black/20 border border-slate-700/50 rounded-2xl">
-                       <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Active API Key Hint</h5>
-                       <p className="text-lg font-mono font-bold text-indigo-400">{healthStatus?.apiKeyHint || 'Checking...'}</p>
-                    </div>
-                    <div className="p-6 bg-black/20 border border-slate-700/50 rounded-2xl">
-                       <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Local Sync Cache</h5>
-                       <p className="text-lg font-bold text-white">{healthStatus?.storage || 'Calculating...'}</p>
-                    </div>
-                    <div className="p-6 bg-black/20 border border-slate-700/50 rounded-2xl">
-                       <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Session State</h5>
-                       <p className="text-lg font-bold text-white">{healthStatus?.session || 'Resolving...'}</p>
-                    </div>
                  </div>
-                 
-                 {(healthStatus?.dns.includes('Blocked') || healthStatus?.ai.includes('Network Block')) && (
-                   <div className="p-6 bg-rose-500/10 border border-rose-500/20 rounded-2xl animate-pulse">
-                      <h4 className="text-sm font-black text-rose-500 uppercase mb-2 flex items-center gap-2">⚠️ Network Interference Detected</h4>
-                      <div className="text-xs text-rose-200/80 leading-relaxed">
-                        The browser failed to reach <strong>googleapis.com</strong>. This is usually caused by:
-                        <ul className="list-disc ml-5 mt-2 space-y-1">
-                          <li><strong>Adblockers:</strong> Extensions like uBlock Origin block Gemini's domain by default. Disable them for this site.</li>
-                          <li><strong>Corporate VPN/Firewall:</strong> Work networks often block unknown AI endpoints.</li>
-                          <li><strong>Region Restrictions:</strong> Ensure the Gemini API is available in your current country.</li>
-                        </ul>
-                      </div>
-                   </div>
-                 )}
-
                  <div className="p-8 border-2 border-dashed border-slate-700 rounded-3xl bg-slate-900/40">
-                    <div className="flex flex-col md:flex-row items-center gap-6">
-                        <div className="flex-1">
-                            <h4 className="font-black text-white uppercase tracking-tight mb-2">Detailed Infrastructure Sweep</h4>
-                            <p className="text-xs text-slate-400 leading-relaxed">This runs a diagnostic handshake with Gemini 3 Pro. Note: If you see "Failed to Fetch", check your browser's Developer Tools (F12) Console for specific CORS errors.</p>
-                        </div>
-                        <button onClick={runDiagnostics} className="whitespace-nowrap px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-xl active:scale-95">Re-run Diagnostics</button>
-                    </div>
+                    <button onClick={runDiagnostics} className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all">Re-run Diagnostics</button>
                  </div>
               </div>
             )}
 
             {activeTab === 'admin' && userIsAdmin && (
               <div className="space-y-8 animate-[fadeIn_0.2s_ease-out]">
-                {requests.length > 0 && (
-                   <div className="space-y-3">
-                      <h4 className="font-black text-amber-500 uppercase tracking-widest text-xs">Pending Approvals</h4>
-                      {requests.map(r => (
-                        <div key={r.uid} className="flex items-center justify-between p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                            <span className="text-sm font-bold text-amber-200">{r.username} ({r.email})</span>
-                            <div className="flex gap-2">
-                                <button onClick={() => approveRequest(r.uid).then(loadAdminData)} className="px-4 py-1 bg-emerald-600 text-white text-[10px] font-black rounded-lg">Approve</button>
-                                <button onClick={() => denyRequest(r.uid).then(loadAdminData)} className="px-4 py-1 bg-rose-600 text-white text-[10px] font-black rounded-lg">Deny</button>
-                            </div>
-                        </div>
-                      ))}
-                   </div>
-                )}
                 <div className="overflow-x-auto rounded-2xl border border-slate-700 bg-black/20 shadow-xl">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-800/50 border-b border-slate-700 text-[10px] uppercase font-black text-slate-500">
                                 <th className="px-4 py-4">Identity</th>
-                                <th className="px-4 py-4">Network Info</th>
-                                <th className="px-4 py-4">AI Utilization</th>
-                                <th className="px-4 py-4">Authority Role</th>
+                                <th className="px-4 py-4">Role</th>
+                                <th className="px-4 py-4">Utilization</th>
                                 <th className="px-4 py-4">Status</th>
-                                <th className="px-4 py-4 text-right">Manage</th>
+                                <th className="px-4 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="text-xs">
                             {users.map(u => (
                                 <tr key={u.uid} className="border-b border-slate-800/50 hover:bg-slate-800/20">
                                     <td className="px-4 py-4 font-black text-white">
-                                      <div className="flex items-center gap-2">
-                                        {u.username}
-                                        {u.uid === currentUser?.uid && <span className="text-[8px] bg-primary-500/20 text-primary-400 px-1.5 py-0.5 rounded font-black">YOU</span>}
-                                      </div>
-                                      <span className="text-[9px] text-slate-500 font-normal">{u.email}</span>
+                                      {u.username}
+                                      <span className="text-[9px] text-slate-500 font-normal block">{u.email}</span>
                                     </td>
                                     <td className="px-4 py-4">
-                                        <div className="flex flex-col gap-0.5">
-                                            <span className="text-white flex items-center gap-1">{u.countryFlag || '🌐'} {u.country || 'Unknown'}</span>
-                                            <span className="text-[9px] font-mono text-slate-500 bg-slate-900/50 px-1.5 py-0.5 rounded w-fit">{u.ipAddress || '0.0.0.0'}</span>
-                                        </div>
+                                      {u.uid !== currentUser?.uid ? (
+                                        <select 
+                                          value={u.role} 
+                                          onChange={(e) => handleRoleChange(u.uid, e.target.value)}
+                                          className="bg-slate-900 border border-slate-700 text-indigo-400 rounded px-2 py-1 text-[10px] font-black uppercase"
+                                        >
+                                          <option value="user">User</option>
+                                          <option value="admin">Admin</option>
+                                        </select>
+                                      ) : <span className="text-rose-400 font-black uppercase">{u.role}</span>}
                                     </td>
                                     <td className="px-4 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                                <div className="h-full bg-indigo-500" style={{ width: `${Math.min(100, ((u.aiUsageCount || 0) / DAILY_REQUEST_LIMIT) * 100)}%` }} />
-                                            </div>
-                                            <span className="font-mono text-[10px] text-slate-400 font-bold">{u.aiUsageCount || 0}</span>
-                                        </div>
+                                        <span className="font-mono text-slate-400">{u.aiUsageCount || 0} reqs</span>
                                     </td>
-                                    <td className="px-4 py-4">
-                                      {/* Role selector dropdown for Admins */}
-                                      {userIsAdmin && u.uid !== currentUser?.uid ? (
-                                        <div className="relative inline-block">
-                                          <select 
-                                            disabled={isUpdatingRole === u.uid}
-                                            value={u.role} 
-                                            onChange={(e) => handleRoleChange(u.uid, e.target.value)}
-                                            className={`bg-slate-900 border border-slate-700 text-indigo-400 rounded-lg px-2 py-1 text-[10px] font-black uppercase outline-none focus:ring-1 focus:ring-primary-500 transition-all ${isUpdatingRole === u.uid ? 'opacity-50 cursor-wait' : 'cursor-pointer hover:border-indigo-500 hover:text-white'}`}
-                                          >
-                                            <option value="user">User</option>
-                                            <option value="admin">Admin</option>
-                                            {userIsSuperAdmin && <option value="super-admin">Super Admin</option>}
-                                          </select>
-                                          {isUpdatingRole === u.uid && (
-                                            <span className="absolute -right-5 top-1.5 animate-spin text-primary-500 text-[10px]">◌</span>
-                                          )}
-                                        </div>
-                                      ) : (
-                                        <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase shadow-sm ${u.role === 'super-admin' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : u.role === 'admin' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-slate-800 text-slate-400'}`}>
-                                          {u.role}
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="px-4 py-4"><span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${u.status === 'active' ? 'text-emerald-500 bg-emerald-500/10' : 'text-rose-500 bg-rose-500/10'}`}>{u.status}</span></td>
+                                    <td className="px-4 py-4"><span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${u.status === 'active' ? 'text-emerald-500 bg-emerald-500/10' : 'text-rose-500 bg-rose-500/10'}`}>{u.status}</span></td>
                                     <td className="px-4 py-4 text-right">
                                         <div className="flex justify-end gap-1.5">
-                                          <button onClick={() => toggleUserStatus(u.uid, u.status).then(loadAdminData)} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all shadow-sm" title="Toggle Access">
+                                          <button 
+                                            onClick={() => handleAdminResetTrigger(u.email, u.uid)}
+                                            disabled={isResettingUser === u.uid}
+                                            className="p-2 rounded-lg bg-indigo-500/10 hover:bg-indigo-500 text-indigo-400 hover:text-white transition-all shadow-sm"
+                                            title="Send Password Reset Email"
+                                          >
+                                            {isResettingUser === u.uid ? '⌛' : '🔑'}
+                                          </button>
+                                          <button onClick={() => toggleUserStatus(u.uid, u.status).then(loadAdminData)} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all shadow-sm">
                                             {u.status === 'active' ? '🔒' : '🔓'}
                                           </button>
                                           {u.uid !== currentUser?.uid && (
-                                            <button onClick={() => { if(confirm("Permanently purge this user and all associated data?")) deleteUserAccount(u.uid).then(loadAdminData); }} className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white transition-all shadow-sm">
+                                            <button onClick={() => { if(confirm("Purge user?")) deleteUserAccount(u.uid).then(loadAdminData); }} className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white transition-all">
                                               🗑️
                                             </button>
                                           )}
@@ -323,72 +320,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                         {t}
                       </button>
                     ))}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'traffic' && userIsAdmin && (
-              <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
-                <div className="flex justify-between items-center">
-                    <h4 className="font-black text-indigo-400 uppercase tracking-widest text-xs">Live Traffic Monitor</h4>
-                    <button onClick={() => { if(confirm("Purge?")) { clearTrafficLogs(); setTrafficLogs([]); } }} className="text-[10px] font-bold text-rose-500 underline uppercase tracking-widest">Purge Logs</button>
-                </div>
-                <div className="bg-black/40 rounded-2xl border border-slate-800 overflow-hidden font-mono shadow-inner">
-                   <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
-                       {trafficLogs.map(log => (
-                           <div key={log.id} className="grid grid-cols-12 gap-2 p-3 text-[10px] border-b border-slate-800 hover:bg-slate-800/40">
-                               <div className={`col-span-1 font-bold ${log.status < 300 ? 'text-emerald-500' : 'text-rose-500'}`}>{log.status}</div>
-                               <div className="col-span-1 text-slate-500">{log.method}</div>
-                               <div className="col-span-4 text-indigo-400 truncate">{log.endpoint}</div>
-                               <div className="col-span-2 text-slate-400">{log.ip}</div>
-                               <div className="col-span-4 text-right">
-                                   <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${log.type === 'suspicious' ? 'bg-rose-500/20 text-rose-500 animate-pulse' : 'bg-slate-700 text-slate-400'}`}>
-                                       {log.type}
-                                   </span>
-                               </div>
-                           </div>
-                       ))}
-                   </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'security' && userIsSuperAdmin && (
-              <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
-                <h4 className="font-black text-rose-500 uppercase tracking-widest text-xs">Audit Vault</h4>
-                <div className="bg-black/40 rounded-2xl border border-slate-800 overflow-hidden shadow-inner">
-                   <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
-                       {auditLogs.map(log => (
-                           <div key={log.id} className="p-4 border-b border-slate-800 flex items-start gap-4 hover:bg-slate-800/20">
-                               <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center shrink-0 text-lg">📜</div>
-                               <div className="flex-1">
-                                   <div className="flex justify-between items-center mb-1">
-                                       <p className="text-xs font-black text-white uppercase">{log.action}</p>
-                                       <span className="text-[10px] font-mono text-slate-500">{new Date(log.timestamp).toLocaleString()}</span>
-                                   </div>
-                                   <p className="text-[11px] text-slate-400">Actor: <span className="text-primary-400 font-bold">{log.actor}</span> | Target: {log.target || 'System'}</p>
-                                   {log.details && <p className="text-[9px] mt-2 p-2 bg-slate-900/80 rounded border border-slate-700 font-mono text-indigo-300">{log.details}</p>}
-                               </div>
-                           </div>
-                       ))}
-                   </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'logs' && userIsAdmin && (
-              <div className="space-y-6 animate-[fadeIn_0.2s_ease-out]">
-                <h4 className="font-black text-indigo-400 uppercase tracking-widest text-xs">AI Interaction Intel</h4>
-                <div className="space-y-3">
-                   {aiLogs.map(log => (
-                       <div key={log.id} className="p-4 bg-[#0f172a] rounded-2xl border border-slate-700/50 flex flex-col gap-2">
-                           <div className="flex justify-between items-center">
-                               <span className="text-xs font-black uppercase text-indigo-400">{log.action}</span>
-                               <span className="text-[10px] font-mono text-slate-500">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                           </div>
-                           <p className="text-[10px] text-slate-400 font-mono italic p-3 bg-black/20 rounded-xl border border-slate-800 leading-relaxed">{log.details}</p>
-                       </div>
-                   ))}
                 </div>
               </div>
             )}
