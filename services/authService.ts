@@ -49,7 +49,6 @@ export const logSystemCheckpoint = (message: string, level: SystemLogEntry['leve
         const logs: SystemLogEntry[] = logsStr ? JSON.parse(logsStr) : [];
         logs.unshift({ id: crypto.randomUUID(), timestamp: Date.now(), message, level });
         localStorage.setItem(SYSTEM_LOG_KEY, JSON.stringify(logs.slice(0, 100)));
-        // Dispatch event for real-time UI updates in Settings Panel
         window.dispatchEvent(new CustomEvent('weavenote_system_log', { detail: message }));
     } catch (e) {}
 };
@@ -212,10 +211,7 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
             try {
                 const q = query(collection(db, 'users'), where('username', '==', email), limit(1));
                 const snapshot = await getDocs(q);
-                
-                if (snapshot.empty) {
-                    return { success: false, error: `Identity handle "${email}" not found.` };
-                }
+                if (snapshot.empty) return { success: false, error: `Identity handle "${email}" not found.` };
                 email = snapshot.docs[0].data().email;
             } catch (e: any) {
                 if (e.code === 'permission-denied') return { success: false, error: "Username lookup blocked. Update Cloud Rules." };
@@ -227,26 +223,20 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
         let userData: User | null = null;
         try {
             const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
-            if (userDoc.exists()) {
-                userData = userDoc.data() as User;
-            }
+            if (userDoc.exists()) userData = userDoc.data() as User;
         } catch (pError: any) {
             logSystemCheckpoint("[AUTH_CHECKPOINT_READ_FAIL] Firestore blocked profile read.", "error");
         }
         
         const info = await fetchClientInfo();
-        
         if (!userData) {
             userData = {
                 uid: userCredential.user.uid, username: email.split('@')[0], email, 
                 permission: 'edit', status: 'active', role: 'user', lastLogin: Date.now(),
                 aiUsageCount: 0, ...info
             };
-            await setDoc(doc(db, 'users', userCredential.user.uid), userData).catch(e => {
-                logSystemCheckpoint(`[AUTH_FAIL_PROFILE_CREATE] Write rejected by rules: ${e.code}`, "error");
-            });
+            await setDoc(doc(db, 'users', userCredential.user.uid), userData);
         } else {
-            // Check ban/suspension status at login
             const now = Date.now();
             if (userData.status === 'banned') {
                 await signOut(auth);
@@ -257,7 +247,7 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
                 const hoursLeft = Math.ceil((userData.statusUntil - now) / 3600000);
                 return { success: false, error: `Account suspended. Access returns in approx ${hoursLeft}h.` };
             }
-            updateDoc(doc(db, 'users', userCredential.user.uid), { lastLogin: Date.now(), ...info }).catch(() => {});
+            updateDoc(doc(db, 'users', userCredential.user.uid), { lastLogin: now, ...info }).catch(() => {});
         }
 
         logAudit('LOGIN_SUCCESS', userData.username).catch(() => {});
@@ -274,11 +264,8 @@ export const checkDatabaseConnection = async (): Promise<{ success: boolean; lat
     if (!isFirebaseReady || !db) return { success: false, latency: 0, message: "Cloud Unconfigured" };
     const start = Date.now();
     try {
-        if (auth?.currentUser) {
-            await getDoc(doc(db, 'users', auth.currentUser.uid));
-        } else {
-            await getDocs(query(collection(db, 'users'), limit(1)));
-        }
+        if (auth?.currentUser) await getDoc(doc(db, 'users', auth.currentUser.uid));
+        else await getDocs(query(collection(db, 'users'), limit(1)));
         return { success: true, latency: Date.now() - start, message: "Connected" };
     } catch (e: any) {
         if (e.code === 'permission-denied') return { success: true, latency: Date.now() - start, message: "Operational (Secured)" };
@@ -287,22 +274,6 @@ export const checkDatabaseConnection = async (): Promise<{ success: boolean; lat
 };
 
 export const logout = async () => { if (auth) await signOut(auth); };
-
-export const requestAccount = async (username: string, password: string, email: string): Promise<{ success: boolean; message: string }> => {
-    if (!isFirebaseReady || !auth || !db) return { success: false, message: "Service offline." };
-    try {
-        const info = await fetchClientInfo();
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
-        const newUser: User = {
-            uid: cred.user.uid, username, email, permission: 'edit', status: 'active', role: 'user',
-            ipAddress: info.ip, country: info.country, countryFlag: info.flag, lastLogin: Date.now(), aiUsageCount: 0
-        };
-        await setDoc(doc(db, 'users', cred.user.uid), newUser);
-        return { success: true, message: "Identity created." };
-    } catch (e: any) {
-        return { success: false, message: `Setup failed: ${e.message}` };
-    }
-};
 
 export const getUsers = async (): Promise<User[]> => {
     if (!db) return [];
@@ -321,11 +292,6 @@ export const setAccountStatus = async (uid: string, status: UserStatus, duration
         update.statusUntil = null;
     }
     await updateDoc(doc(db, 'users', uid), update);
-};
-
-export const deleteUserAccount = async (uid: string) => {
-    if (!db) return;
-    await deleteDoc(doc(db, 'users', uid));
 };
 
 export const updateUserRole = async (uid: string, role: UserRole) => {
@@ -354,40 +320,30 @@ export const adminTriggerReset = async (email: string): Promise<{ success: boole
     }
 };
 
-export const getAuditLogs = async (): Promise<AuditLogEntry[]> => {
-    if (!db) return [];
-    try {
-        const snapshot = await getDocs(query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc'), limit(100)));
-        return snapshot.docs.map(d => d.data() as AuditLogEntry);
-    } catch { return []; }
-};
-
-export const incrementUserAIUsage = async (uid: string) => {
-    if (!db) return;
-    try {
-        const userDocRef = doc(db, 'users', uid);
-        await updateDoc(userDocRef, { aiUsageCount: increment(1) });
-    } catch (e) {
-        console.error("AI usage count update failed", e);
-    }
-};
-
-// Fix: Added missing testWriteCapability function
 export const testWriteCapability = async (): Promise<{ success: boolean; message: string }> => {
-    if (!db || !auth?.currentUser) {
-        return { success: false, message: "Cloud Unconfigured or Not Authenticated" };
-    }
+    if (!db || !auth?.currentUser) return { success: false, message: "Cloud Unconfigured or Not Authenticated" };
     try {
         const testDoc = doc(db, 'system_test', auth.currentUser.uid);
-        await setDoc(testDoc, { 
-            timestamp: Date.now(), 
-            uid: auth.currentUser.uid,
-            test: "Security Rule Validation" 
-        });
-        return { success: true, message: "Write operation successful. Permissions are correctly configured." };
+        await setDoc(testDoc, { timestamp: Date.now(), uid: auth.currentUser.uid, test: "Security Rule Validation" });
+        return { success: true, message: "Write operation successful. Permissions verified." };
     } catch (e: any) {
-        console.error("PERMISSION_TEST_FAIL:", e);
         return { success: false, message: `Write operation failed: ${e.message}` };
+    }
+};
+
+export const requestAccount = async (username: string, password: string, email: string): Promise<{ success: boolean; message: string }> => {
+    if (!isFirebaseReady || !auth || !db) return { success: false, message: "Service offline." };
+    try {
+        const info = await fetchClientInfo();
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        const newUser: User = {
+            uid: cred.user.uid, username, email, permission: 'edit', status: 'active', role: 'user',
+            ipAddress: info.ip, country: info.country, countryFlag: info.flag, lastLogin: Date.now(), aiUsageCount: 0
+        };
+        await setDoc(doc(db, 'users', cred.user.uid), newUser);
+        return { success: true, message: "Identity created." };
+    } catch (e: any) {
+        return { success: false, message: `Setup failed: ${e.message}` };
     }
 };
 
@@ -399,4 +355,12 @@ export const sendResetLink = async (email: string): Promise<{ success: boolean; 
     } catch (e: any) {
         return { success: false, message: "Reset failed. Verify your email format." };
     }
+};
+
+export const incrementUserAIUsage = async (uid: string) => {
+    if (!db) return;
+    try {
+        const userDocRef = doc(db, 'users', uid);
+        await updateDoc(userDocRef, { aiUsageCount: increment(1) });
+    } catch (e) {}
 };

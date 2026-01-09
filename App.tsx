@@ -196,13 +196,21 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUpdateNote = async (id: string, title: string, content: string, category?: string, tags?: string[]) => {
+  const handleUpdateNote = async (id: string, title: string, content: string, category?: string, tags?: string[], projectData?: ProjectData) => {
       if (!canEdit) return;
       const target = notes.find(n => n.id === id);
       if (!target) return;
       const mergedTags = Array.from(new Set([...(tags || target.tags), ...extractHashtags(content), ...extractHashtags(title)]));
-      const updated = { ...target, title, content, ...(category ? { category } : {}), tags: mergedTags };
+      const updated = { 
+          ...target, 
+          title, 
+          content, 
+          ...(category ? { category } : {}), 
+          tags: mergedTags,
+          ...(projectData ? { projectData } : {})
+      };
       setNotes(prev => prev.map(n => n.id === id ? updated : n));
+      if (expandedNote?.id === id) setExpandedNote(updated);
       await saveNote(updated, storageOwner);
   };
 
