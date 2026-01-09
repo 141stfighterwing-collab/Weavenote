@@ -88,21 +88,59 @@ const NoteCard: React.FC<NoteCardProps> = ({
         </div>
       </div>
 
-      <div className={`prose prose-sm max-w-none flex-grow text-sm line-clamp-[6] overflow-hidden mb-4 mt-1 ${isMatrix ? 'text-[#39ff14]' : 'opacity-80'} whitespace-pre-wrap`}>
-         <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{note.content}</ReactMarkdown>
-      </div>
+      {/* Project-specific Metadata Section */}
+      {note.type === 'project' && note.projectData && (
+        <div className="mb-4 space-y-3 animate-[fadeIn_0.3s_ease-out] bg-black/5 rounded-lg p-3 border border-black/5">
+            {/* Progress Bar */}
+            <div className="space-y-1.5">
+                <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest opacity-60">
+                    <span>Current Progress</span>
+                    <span>{calculateProgress}%</span>
+                </div>
+                <div className="w-full h-2 bg-black/10 rounded-full overflow-hidden shadow-inner">
+                    <div 
+                        className={`h-full transition-all duration-1000 ease-out ${isMatrix ? 'bg-[#39ff14]' : 'bg-emerald-500'}`} 
+                        style={{ width: `${calculateProgress}%` }}
+                    />
+                </div>
+            </div>
 
-      {note.type === 'project' && (
-        <div className="mb-4 space-y-1.5">
-            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest opacity-60">
-                <span>Progress</span>
-                <span>{calculateProgress}%</span>
-            </div>
-            <div className="w-full h-2 bg-black/10 rounded-full overflow-hidden">
-                <div className={`h-full transition-all duration-1000 ${isMatrix ? 'bg-[#39ff14]' : 'bg-emerald-500'}`} style={{ width: `${calculateProgress}%` }} />
-            </div>
+            {/* Deliverables Preview */}
+            {note.projectData.deliverables && note.projectData.deliverables.length > 0 && (
+                <div className="space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Deliverables</p>
+                    <ul className="text-[10px] space-y-0.5 opacity-80">
+                        {note.projectData.deliverables.slice(0, 2).map((d, i) => (
+                            <li key={i} className="truncate flex items-center gap-1.5">
+                                <span className={isMatrix ? 'text-[#39ff14]' : 'text-emerald-600'}>→</span> {d}
+                            </li>
+                        ))}
+                        {note.projectData.deliverables.length > 2 && (
+                            <li className="text-[8px] italic opacity-50">+{note.projectData.deliverables.length - 2} more...</li>
+                        )}
+                    </ul>
+                </div>
+            )}
+
+            {/* Milestones Preview */}
+            {note.projectData.milestones && note.projectData.milestones.length > 0 && (
+                <div className="space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Next Milestones</p>
+                    <div className="flex flex-wrap gap-1">
+                        {note.projectData.milestones.slice(0, 2).map((m, i) => (
+                            <span key={i} className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border transition-colors ${m.status === 'completed' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700' : 'bg-black/5 border-black/5 text-slate-500'}`}>
+                                {m.status === 'completed' ? '✓ ' : '○ '}{m.label}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
       )}
+
+      <div className={`prose prose-sm max-w-none flex-grow text-sm ${note.type === 'project' ? 'line-clamp-3' : 'line-clamp-[6]'} overflow-hidden mb-4 mt-1 ${isMatrix ? 'text-[#39ff14]' : 'opacity-80'} whitespace-pre-wrap`}>
+         <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{note.content}</ReactMarkdown>
+      </div>
 
       <div className="flex items-center justify-between gap-1.5 mt-auto pt-3 border-t border-black/5">
         <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
