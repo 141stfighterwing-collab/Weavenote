@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Note, NOTE_COLORS, ProjectData, ProjectMilestone, ProjectPhase, Folder } from '../types';
+import { Note, NOTE_COLORS, ProjectData, ProjectMilestone, ProjectPhase, Folder, ProjectItem } from '../types';
 import GanttChart from './GanttChart';
 import WorkflowEditor from './WorkflowEditor';
 
@@ -68,6 +68,19 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
       onUpdateProjectData(note.id, { ...note.projectData, workflow: { nodes, edges } });
   };
 
+  const toggleProjectItem = (type: 'objectives' | 'deliverables', index: number) => {
+    if (!note || !note.projectData || !onUpdateProjectData) return;
+    const items = [...note.projectData[type]];
+    const current = items[index];
+    
+    // Support legacy string items
+    const label = typeof current === 'string' ? current : current.label;
+    const status = (typeof current === 'string' ? 'pending' : current.status) === 'completed' ? 'pending' : 'completed';
+    
+    items[index] = { label, status } as ProjectItem;
+    onUpdateProjectData(note.id, { ...note.projectData, [type]: items });
+  };
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" onClick={onClose}>
       <div 
@@ -106,13 +119,35 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
                         {note.projectData.objectives && note.projectData.objectives.length > 0 && (
                             <div className={`p-5 rounded-2xl border ${isMatrix ? 'bg-black border-[#39ff14]/20' : 'bg-white/40 border-black/5'}`}>
                                 <h3 className="text-xs font-black uppercase tracking-[0.2em] mb-3 opacity-60">🎯 Objectives</h3>
-                                <ul className="space-y-2">{note.projectData.objectives.map((obj, i) => (<li key={i} className="text-sm flex gap-2"><span className="opacity-40">•</span>{obj}</li>))}</ul>
+                                <ul className="space-y-2">
+                                  {note.projectData.objectives.map((obj, i) => {
+                                    const label = typeof obj === 'string' ? obj : obj.label;
+                                    const checked = typeof obj === 'string' ? false : obj.status === 'completed';
+                                    return (
+                                      <li key={i} className="text-sm flex gap-3 items-center group cursor-pointer" onClick={() => toggleProjectItem('objectives', i)}>
+                                        <input type="checkbox" checked={checked} readOnly className={`h-4 w-4 rounded cursor-pointer ${isMatrix ? 'accent-[#39ff14]' : 'text-primary-600'}`} />
+                                        <span className={`${checked ? 'line-through opacity-50' : ''}`}>{label}</span>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
                             </div>
                         )}
                         {note.projectData.deliverables && note.projectData.deliverables.length > 0 && (
                             <div className={`p-5 rounded-2xl border ${isMatrix ? 'bg-black border-[#39ff14]/20' : 'bg-white/40 border-black/5'}`}>
                                 <h3 className="text-xs font-black uppercase tracking-[0.2em] mb-3 opacity-60">🎁 Deliverables</h3>
-                                <ul className="space-y-2">{note.projectData.deliverables.map((del, i) => (<li key={i} className="text-sm flex gap-2"><span className="opacity-40">→</span>{del}</li>))}</ul>
+                                <ul className="space-y-2">
+                                  {note.projectData.deliverables.map((del, i) => {
+                                    const label = typeof del === 'string' ? del : del.label;
+                                    const checked = typeof del === 'string' ? false : del.status === 'completed';
+                                    return (
+                                      <li key={i} className="text-sm flex gap-3 items-center group cursor-pointer" onClick={() => toggleProjectItem('deliverables', i)}>
+                                        <input type="checkbox" checked={checked} readOnly className={`h-4 w-4 rounded cursor-pointer ${isMatrix ? 'accent-[#39ff14]' : 'text-primary-600'}`} />
+                                        <span className={`${checked ? 'line-through opacity-50' : ''}`}>{label}</span>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
                             </div>
                         )}
                     </div>

@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef } from 'react';
-import { Note, NOTE_COLORS, NoteColor, Folder } from '../types';
+import { Note, NOTE_COLORS, NoteColor, Folder, ProjectItem } from '../types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -118,11 +118,15 @@ const NoteCard: React.FC<NoteCardProps> = ({
                 <div className="space-y-1">
                     <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Deliverables</p>
                     <ul className="text-[10px] space-y-0.5 opacity-80">
-                        {note.projectData.deliverables.slice(0, 2).map((d, i) => (
-                            <li key={i} className="truncate flex items-center gap-1.5">
-                                <span className={isMatrix ? 'text-[#39ff14]' : 'text-emerald-600'}>→</span> {d}
-                            </li>
-                        ))}
+                        {note.projectData.deliverables.slice(0, 2).map((d, i) => {
+                            const label = typeof d === 'string' ? d : d.label;
+                            const checked = typeof d === 'string' ? false : d.status === 'completed';
+                            return (
+                                <li key={i} className={`truncate flex items-center gap-1.5 ${checked ? 'line-through opacity-50' : ''}`}>
+                                    <span className={isMatrix ? 'text-[#39ff14]' : 'text-emerald-600'}>{checked ? '✓' : '→'}</span> {label}
+                                </li>
+                            );
+                        })}
                         {note.projectData.deliverables.length > 2 && (
                             <li className="text-[8px] italic opacity-50">+{note.projectData.deliverables.length - 2} more...</li>
                         )}

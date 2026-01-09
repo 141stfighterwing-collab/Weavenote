@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Note, ProjectData, ProjectPhase, ProjectMilestone } from '../types';
+import { Note, ProjectData, ProjectPhase, ProjectMilestone, ProjectItem } from '../types';
 import { processNoteWithAI } from '../services/geminiService';
 
 interface EditNoteModalProps {
@@ -37,8 +37,8 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
       setError(null);
 
       if (note.type === 'project' && note.projectData) {
-          setObjectives(note.projectData.objectives.join('\n'));
-          setDeliverables(note.projectData.deliverables.join('\n'));
+          setObjectives(note.projectData.objectives.map(o => typeof o === 'string' ? o : o.label).join('\n'));
+          setDeliverables(note.projectData.deliverables.map(d => typeof d === 'string' ? d : d.label).join('\n'));
           setManualProgress(note.projectData.manualProgress || 0);
           setTimeline(note.projectData.timeline || []);
       } else {
@@ -112,14 +112,23 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
     
     let projectData: ProjectData | undefined = undefined;
     if (note.type === 'project') {
+        const parseLinesToItems = (text: string, existing: ProjectItem[]) => {
+          return text.split('\n').filter(l => l.trim()).map(l => {
+            const label = l.trim();
+            const found = existing.find(ex => (typeof ex === 'string' ? ex : ex.label) === label);
+            if (found) return typeof found === 'string' ? { label: found, status: 'pending' as const } : found;
+            return { label, status: 'pending' as const };
+          });
+        };
+
         projectData = {
             ...note.projectData,
-            objectives: objectives.split('\n').filter(o => o.trim()),
-            deliverables: deliverables.split('\n').filter(d => d.trim()),
+            objectives: parseLinesToItems(objectives, note.projectData?.objectives || []),
+            deliverables: parseLinesToItems(deliverables, note.projectData?.deliverables || []),
             manualProgress: manualProgress,
             timeline: timeline,
             isCompleted: manualProgress === 100
-        };
+        } as ProjectData;
     }
 
     onSave(note.id, title, content, aiResult?.category, finalTags, projectData);

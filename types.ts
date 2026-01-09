@@ -32,9 +32,14 @@ export interface WorkflowEdge {
   target: string;
 }
 
+export interface ProjectItem {
+  label: string;
+  status: 'pending' | 'completed';
+}
+
 export interface ProjectData {
-  objectives: string[];
-  deliverables: string[];
+  objectives: ProjectItem[];
+  deliverables: ProjectItem[];
   milestones: ProjectMilestone[];
   timeline: ProjectPhase[];
   workflow?: {

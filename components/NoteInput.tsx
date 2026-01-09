@@ -7,8 +7,8 @@ interface NoteInputProps {
   onAddNote: (text: string, type: NoteType, attachments?: string[], forcedTags?: string[], useAI?: boolean, manualTitle?: string, extraProjectData?: { 
     manualProgress?: number, 
     isCompleted?: boolean,
-    manualObjectives?: string[],
-    manualDeliverables?: string[],
+    manualObjectives?: { label: string, status: 'pending' | 'completed' }[],
+    manualDeliverables?: { label: string, status: 'pending' | 'completed' }[],
     manualMilestones?: ProjectMilestone[]
   }) => Promise<any>;
   onTypeChange?: (type: NoteType) => void;
@@ -65,8 +65,8 @@ const NoteInput: React.FC<NoteInputProps> = ({
     const extraData = activeType === 'project' ? { 
         manualProgress: projectProgress, 
         isCompleted: projectProgress === 100 || projectCompleted,
-        manualObjectives: objectives.split('\n').filter(l => l.trim()),
-        manualDeliverables: deliverables.split('\n').filter(l => l.trim()),
+        manualObjectives: objectives.split('\n').filter(l => l.trim()).map(l => ({ label: l, status: 'pending' as const })),
+        manualDeliverables: deliverables.split('\n').filter(l => l.trim()).map(l => ({ label: l, status: 'pending' as const })),
         manualMilestones: milestoneLabel ? [{ label: milestoneLabel, date: new Date().toISOString().split('T')[0], status: 'pending' as const }] : []
     } : undefined;
 
