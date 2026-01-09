@@ -425,7 +425,28 @@ const App: React.FC = () => {
                         {viewMode === 'mindmap' ? (<div className="h-[600px] border rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/50"><MindMap notes={activeNotes} onNoteClick={(id) => { const n = activeNotes.find(n => n.id === id); if (n) { handleExpandNote(n); setViewMode('grid'); } }} /></div>) : (
                             <>
                                 {activeTab === 'deep' ? (<div className="space-y-3">{filteredNotes.map(note => (<div key={note.id} onClick={() => handleExpandNote(note)} className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center hover:shadow-lg hover:border-primary-400 dark:hover:border-primary-500 cursor-pointer transition-all animate-[fadeIn_0.2s_ease-out]"><div className="min-w-0 pr-4"><h3 className="font-bold text-lg text-slate-800 dark:text-white truncate">{note.title}</h3><p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mt-1">{note.content.substring(0, 180)}</p><div className="flex gap-2 mt-2">{note.tags.slice(0, 3).map(tag => (<span key={tag} className="text-[10px] text-primary-600 dark:text-primary-400 font-bold">#{tag}</span>))}</div></div><div className="flex flex-col items-end gap-2 shrink-0"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(note.createdAt).toLocaleDateString()}</span><div className="p-2 rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg></div></div></div>))}</div>) : (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">{filteredNotes.map(note => (<NoteCard key={note.id} note={note} folders={folders} onDelete={handleDeleteNote} onTagClick={(t) => setActiveTagFilter(t)} onChangeColor={async (id, c) => { setNotes(prev => prev.map(n => n.id === id ? { ...n, color: c } : n)); if (storageOwner) await saveNote({ ...notes.find(n => n.id === id)!, color: c }, storageOwner); }} onEdit={setEditingNote} onExpand={handleExpandNote} readOnly={!canEdit} onViewImage={setViewingImage} onToggleCheckbox={handleToggleCheckbox} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} onMoveToFolder={handleMoveNote} onToggleComplete={handleToggleProjectCompletion} />))}</div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">{filteredNotes.map(note => (
+                                      <NoteCard 
+                                        key={note.id} 
+                                        note={note} 
+                                        folders={folders} 
+                                        onDelete={handleDeleteNote} 
+                                        onTagClick={(t) => setActiveTagFilter(t)} 
+                                        onChangeColor={async (id, c) => { 
+                                          setNotes(prev => prev.map(n => n.id === id ? { ...n, color: c } : n)); 
+                                          if (storageOwner) await saveNote({ ...notes.find(n => n.id === id)!, color: c }, storageOwner); 
+                                        }} 
+                                        onEdit={setEditingNote} 
+                                        onExpand={handleExpandNote} 
+                                        readOnly={!canEdit} 
+                                        onViewImage={setViewingImage} 
+                                        onToggleCheckbox={handleToggleCheckbox} 
+                                        onAddTag={handleAddTag} 
+                                        onRemoveTag={handleRemoveTag} 
+                                        onMoveToFolder={handleMoveNote} 
+                                        onToggleComplete={handleToggleProjectCompletion} 
+                                      />
+                                    ))}</div>
                                 )}
                                 {filteredNotes.length === 0 && (<div className="col-span-full text-center py-20 bg-white/50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700"><p className="text-slate-400 text-lg font-bold">No results found.</p><p className="text-slate-400 text-sm mt-1">Try switching categories or clearing filters.</p>{isFiltered && <button onClick={clearFilters} className="mt-4 px-6 py-2 bg-primary-600 text-white rounded-full font-bold shadow-md">Clear all filters</button>}</div>)}
                             </>
@@ -449,7 +470,18 @@ const App: React.FC = () => {
         </footer>
 
         <EditNoteModal note={editingNote} isOpen={!!editingNote} onClose={() => setEditingNote(null)} onSave={handleUpdateNote} currentUser={currentUser?.username || 'Guest'} />
-        <NoteDetailModal note={expandedNote} isOpen={!!expandedNote} onClose={() => setExpandedNote(null)} currentUser={currentUser?.username || 'Guest'} onViewImage={setViewingImage} onToggleCheckbox={handleToggleCheckbox} onSaveExpanded={(id, content) => handleUpdateNote(id, expandedNote?.title || '', content)} onToggleComplete={handleToggleProjectCompletion} onUpdateProjectData={handleUpdateProjectData} />
+        <NoteDetailModal 
+          note={expandedNote} 
+          folders={folders}
+          isOpen={!!expandedNote} 
+          onClose={() => setExpandedNote(null)} 
+          currentUser={currentUser?.username || 'Guest'} 
+          onViewImage={setViewingImage} 
+          onToggleCheckbox={handleToggleCheckbox} 
+          onSaveExpanded={(id, content) => handleUpdateNote(id, expandedNote?.title || '', content)} 
+          onToggleComplete={handleToggleProjectCompletion} 
+          onUpdateProjectData={handleUpdateProjectData} 
+        />
         <TrashModal isOpen={showTrash} onClose={() => setShowTrash(false)} trashedNotes={trashedNotes} onRestore={handleRestoreNote} onPermanentlyDelete={handlePermanentDelete} onEmptyTrash={handleEmptyTrash} />
         <ImageViewerModal src={viewingImage} isOpen={!!viewingImage} onClose={() => setViewingImage(null)} />
         <SettingsPanel isOpen={showSettings} onClose={() => setShowSettings(false)} currentUser={currentUser} darkMode={darkMode} toggleDarkMode={() => setDarkMode(!darkMode)} theme={theme} setTheme={setTheme} notes={activeNotes} />

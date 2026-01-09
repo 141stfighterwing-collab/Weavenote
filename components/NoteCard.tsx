@@ -34,6 +34,8 @@ const NoteCard: React.FC<NoteCardProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
 
+  const folder = useMemo(() => folders.find(f => f.id === note.folderId), [folders, note.folderId]);
+
   const calculateProgress = useMemo(() => {
       if (!note.projectData) return 0;
       if (note.projectData.isCompleted) return 100;
@@ -80,8 +82,14 @@ const NoteCard: React.FC<NoteCardProps> = ({
     >
       <div className="flex justify-between items-start mb-3 border-b border-black/5 pb-2">
         <div className="flex-grow min-w-0 pr-2">
-           <div className="flex items-center gap-2 mb-1">
+           <div className="flex items-center gap-2 mb-1 flex-wrap">
              <span className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-full ${isMatrix ? 'bg-[#39ff14]/20 text-[#39ff14]' : 'bg-black/40 text-white'}`}>{note.type}</span>
+             {folder && (
+               <span className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${isMatrix ? 'bg-[#39ff14]/10 border border-[#39ff14]/30 text-[#39ff14]' : 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300'}`}>
+                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                 {folder.name}
+               </span>
+             )}
              <span className={`text-[10px] uppercase font-bold opacity-50 tracking-wider truncate`}>{note.category}</span>
            </div>
            <h3 className={`text-xl font-bold leading-tight line-clamp-2 ${isFinished ? 'opacity-60 line-through' : ''}`}>{note.title}</h3>

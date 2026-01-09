@@ -1,12 +1,13 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Note, NOTE_COLORS, ProjectData, ProjectMilestone, ProjectPhase } from '../types';
+import { Note, NOTE_COLORS, ProjectData, ProjectMilestone, ProjectPhase, Folder } from '../types';
 import GanttChart from './GanttChart';
 import WorkflowEditor from './WorkflowEditor';
 
 interface NoteDetailModalProps {
   note: Note | null;
+  folders?: Folder[];
   isOpen: boolean;
   onClose: () => void;
   showLinkPreviews?: boolean;
@@ -24,7 +25,7 @@ const processContent = (text: string) => {
 };
 
 const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ 
-    note, isOpen, onClose, onViewImage, 
+    note, folders = [], isOpen, onClose, onViewImage, 
     onToggleCheckbox, onSaveExpanded, onToggleComplete, onUpdateProjectData, currentUser 
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -34,6 +35,8 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
   useEffect(() => {
     if (isOpen && containerRef.current) setContainerWidth(containerRef.current.clientWidth - 64);
   }, [isOpen]);
+
+  const folder = useMemo(() => folders.find(f => f.id === note?.folderId), [folders, note?.folderId]);
 
   if (!isOpen || !note) return null;
   
@@ -74,8 +77,14 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
       >
         <div className={`flex justify-between items-start p-6 pb-4 border-b border-black/5 ${isMatrix ? 'bg-black' : 'bg-black/5'}`}>
             <div className="flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${isMatrix ? 'bg-[#39ff14]/20 text-[#39ff14]' : 'bg-black/40 text-white'}`}>{note.type}</span>
+                    {folder && (
+                      <span className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${isMatrix ? 'bg-[#39ff14]/10 border border-[#39ff14]/30 text-[#39ff14]' : 'bg-primary-600 text-white shadow-sm'}`}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        {folder.name}
+                      </span>
+                    )}
                     <span className="text-[10px] font-black uppercase tracking-widest opacity-40">{note.category}</span>
                 </div>
                 <h2 className={`text-3xl font-black mt-1 ${isCompleted ? 'line-through opacity-60' : ''}`}>{note.title}</h2>
