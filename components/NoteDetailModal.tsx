@@ -52,6 +52,44 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
           }
           return <input {...props} />;
       },
+      a: ({ href, children }: any) => {
+          if (!href) return <span>{children}</span>;
+          const isImageUrl = /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(href);
+          const isVideoUrl = /\.(mp4|webm|ogg)$/i.test(href);
+          const getYouTubeId = (url: string) => {
+              const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+              const match = url.match(regExp);
+              return (match && match[2].length === 11) ? match[2] : null;
+          };
+          const ytId = getYouTubeId(href);
+
+          if (isImageUrl) {
+              return (
+                  <div className="my-4">
+                      <img src={href} alt="Preview" className="max-w-full h-auto rounded-xl border border-black/10 shadow-lg hover:scale-[1.01] transition-transform cursor-pointer" onClick={() => onViewImage(href)} />
+                      <a href={href} target="_blank" rel="noopener noreferrer" className="block text-[10px] opacity-40 mt-2 hover:underline truncate">{href}</a>
+                  </div>
+              );
+          }
+          if (ytId) {
+              return (
+                  <div className="my-4 aspect-video w-full rounded-xl overflow-hidden shadow-xl border border-black/10">
+                      <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${ytId}`} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
+                  </div>
+              );
+          }
+          if (isVideoUrl) {
+              return (
+                  <div className="my-4 w-full">
+                      <video controls className="w-full rounded-xl shadow-xl border border-black/10">
+                          <source src={href} />
+                      </video>
+                      <a href={href} target="_blank" rel="noopener noreferrer" className="block text-[10px] opacity-40 mt-2 hover:underline truncate">{href}</a>
+                  </div>
+              );
+          }
+          return <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary-600 dark:text-primary-400 font-bold hover:underline">{children}</a>;
+      },
       code: ({node, inline, className, children, ...props}: any) => {
         return !inline ? (
           <div className={`${isMatrix ? 'bg-black border-[#39ff14]/30' : 'bg-slate-900'} p-6 rounded-2xl border my-6 overflow-x-auto shadow-2xl relative`}>

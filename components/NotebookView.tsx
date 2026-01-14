@@ -102,19 +102,16 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
     return () => document.removeEventListener('mouseup', handleMouseUp);
   }, [isFullscreen, selectedNote, activePenColor]);
 
-  // Fix: Added missing startNaming function
   const startNaming = () => {
     setNewTitle('');
     setIsNaming(true);
   };
 
-  // Fix: Added missing cancelNaming function
   const cancelNaming = () => {
     setIsNaming(false);
     setNewTitle('');
   };
 
-  // Fix: Added missing handleCreateSubmit function
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || isCreating) return;
@@ -162,34 +159,19 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
     
     const selectedText = selection.toString();
     if (!selectedText || selectedText.trim().length === 0) return;
-
-    // To prevent the "stops working" issue, we need to handle existing tags.
-    // If the selected text contains <mark> tags, we should probably clean them first.
-    // But since selection.toString() is plain text, we need to match it carefully.
     
     let newContent = selectedNote.content;
     
     if (color === 'transparent') {
-      // ERASER: Look for existing mark tags that contain this text exactly or partially
-      // We use a broader approach for eraser: remove any mark tags within this range if possible.
-      // For simplicity, we match the text and strip surrounding mark tags.
       const escaped = selectedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
       const eraserRegex = new RegExp(`<mark[^>]*>(${escaped})</mark>`, 'g');
       newContent = selectedNote.content.replace(eraserRegex, '$1');
     } else {
-      // HIGHLIGHTER: Wrap the plain text.
-      // PROBLEM: If we highlight "hello" twice, we get <mark><mark>hello</mark></mark>.
-      // SOLUTION: Check if the text is already wrapped.
       const highlightTag = `<mark style="background-color: ${color}; color: black; border-radius: 2px; padding: 0 2px;">${selectedText}</mark>`;
-      
-      // Simple guard against identical nesting
       if (selectedNote.content.includes(highlightTag)) {
         showFeedback('error', 'Already highlighted');
         return;
       }
-
-      // We find the first occurrence that isn't already inside a mark tag.
-      // This is a basic heuristic for a complex problem (text with HTML).
       newContent = selectedNote.content.replace(selectedText, highlightTag);
     }
     
@@ -219,6 +201,44 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
               return <input type="checkbox" checked={props.checked} readOnly className="mt-1 h-4 w-4 rounded text-primary-600 focus:ring-primary-500" />;
           }
           return <input {...props} />;
+      },
+      a: ({ href, children }: any) => {
+          if (!href) return <span>{children}</span>;
+          const isImageUrl = /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(href);
+          const isVideoUrl = /\.(mp4|webm|ogg)$/i.test(href);
+          const getYouTubeId = (url: string) => {
+              const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+              const match = url.match(regExp);
+              return (match && match[2].length === 11) ? match[2] : null;
+          };
+          const ytId = getYouTubeId(href);
+
+          if (isImageUrl) {
+              return (
+                  <div className="my-6">
+                      <img src={href} alt="Preview" className="max-w-full h-auto rounded-lg border shadow-lg" />
+                      <a href={href} target="_blank" rel="noopener noreferrer" className="block text-[10px] opacity-40 mt-1 hover:underline">{href}</a>
+                  </div>
+              );
+          }
+          if (ytId) {
+              return (
+                  <div className="my-6 aspect-video w-full rounded-lg overflow-hidden shadow-lg border">
+                      <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${ytId}`} frameBorder="0" allowFullScreen></iframe>
+                  </div>
+              );
+          }
+          if (isVideoUrl) {
+              return (
+                  <div className="my-6 w-full">
+                      <video controls className="w-full rounded-lg shadow-lg border">
+                          <source src={href} />
+                      </video>
+                      <a href={href} target="_blank" rel="noopener noreferrer" className="block text-[10px] opacity-40 mt-1 hover:underline">{href}</a>
+                  </div>
+              );
+          }
+          return <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary-600 font-bold hover:underline">{children}</a>;
       },
       code: ({node, inline, className, children, ...props}: any) => {
           return !inline ? (

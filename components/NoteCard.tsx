@@ -66,6 +66,42 @@ const NoteCard: React.FC<NoteCardProps> = ({
               return <input type="checkbox" checked={props.checked} onChange={() => onToggleCheckbox(note.id, index)} onClick={(e) => e.stopPropagation()} className={`mt-1 h-3 w-3 rounded focus:ring-primary-500 ${note.color === 'matrix' ? 'accent-[#39ff14]' : 'text-primary-600'}`} />;
           }
           return <input {...props} />;
+      },
+      a: ({ href, children }: any) => {
+          if (!href) return <span>{children}</span>;
+          const isImageUrl = /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(href);
+          const isVideoUrl = /\.(mp4|webm|ogg)$/i.test(href);
+          const getYouTubeId = (url: string) => {
+              const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+              const match = url.match(regExp);
+              return (match && match[2].length === 11) ? match[2] : null;
+          };
+          const ytId = getYouTubeId(href);
+
+          if (isImageUrl) {
+              return (
+                  <div className="my-2" onClick={(e) => e.stopPropagation()}>
+                      <img src={href} alt="Preview" className="max-w-full h-auto rounded-lg border border-black/5 shadow-sm max-h-48 object-cover" />
+                  </div>
+              );
+          }
+          if (ytId) {
+              return (
+                  <div className="my-2 aspect-video w-full rounded-lg overflow-hidden shadow-sm" onClick={(e) => e.stopPropagation()}>
+                      <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${ytId}`} frameBorder="0" allowFullScreen></iframe>
+                  </div>
+              );
+          }
+          if (isVideoUrl) {
+              return (
+                  <div className="my-2 w-full" onClick={(e) => e.stopPropagation()}>
+                      <video controls className="w-full rounded-lg shadow-sm max-h-48">
+                          <source src={href} />
+                      </video>
+                  </div>
+              );
+          }
+          return <span className="text-primary-600 dark:text-primary-400 underline">{children}</span>;
       }
   };
 
