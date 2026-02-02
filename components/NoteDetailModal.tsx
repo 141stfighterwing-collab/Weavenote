@@ -54,14 +54,22 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
       },
       a: ({ href, children }: any) => {
           if (!href) return <span>{children}</span>;
-          const isImageUrl = /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(href);
-          const isVideoUrl = /\.(mp4|webm|ogg)$/i.test(href);
+          const isImageUrl = /\.(jpeg|jpg|gif|png|webp|svg|avif|bmp|tiff)(\?.*)?$/i.test(href);
+          const isVideoUrl = /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(href);
+          
           const getYouTubeId = (url: string) => {
               const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
               const match = url.match(regExp);
               return (match && match[2].length === 11) ? match[2] : null;
           };
+
+          const getVimeoId = (url: string) => {
+              const match = url.match(/(?:vimeo\.com\/|player\.vimeo\.com\/video\/)(\d+)/);
+              return match ? match[1] : null;
+          };
+
           const ytId = getYouTubeId(href);
+          const vmId = getVimeoId(href);
 
           if (isImageUrl) {
               return (
@@ -75,6 +83,13 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
               return (
                   <div className="my-4 aspect-video w-full rounded-xl overflow-hidden shadow-xl border border-black/10">
                       <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${ytId}`} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
+                  </div>
+              );
+          }
+          if (vmId) {
+              return (
+                  <div className="my-4 aspect-video w-full rounded-xl overflow-hidden shadow-xl border border-black/10">
+                      <iframe className="w-full h-full" src={`https://player.vimeo.com/video/${vmId}`} frameBorder="0" allowFullScreen></iframe>
                   </div>
               );
           }

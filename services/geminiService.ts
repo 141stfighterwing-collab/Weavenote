@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { ProcessedNoteData, NoteType } from "../types";
 import { incrementUserAIUsage } from "./authService";
@@ -27,9 +26,8 @@ const logAIUsage = (username: string, action: string, details: string) => {
     localStorage.setItem('ideaweaver_ai_logs', JSON.stringify(logs.slice(0, 100)));
 };
 
-// Fix: Strictly follow GoogleGenAI initialization with named parameters and use process.env.API_KEY directly
 export const cleanAndFormatIngestedText = async (rawText: string, filename: string, username: string, userId?: string): Promise<ProcessedNoteData> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const prompt = `Format this document extracted text into structured Markdown. Identify title, category, tags. Return JSON with keys: "title", "formattedContent", "category", "tags".\n\nText:\n${rawText.substring(0, 10000)}`;
 
   try {
@@ -51,9 +49,8 @@ export const cleanAndFormatIngestedText = async (rawText: string, filename: stri
   }
 };
 
-// Fix: Strictly follow GoogleGenAI initialization with named parameters and use process.env.API_KEY directly
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string, userId?: string): Promise<ProcessedNoteData> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const prompt = `Organize this user input into a structured note. Return strictly JSON with keys: "title", "formattedContent", "category", "tags".\n\nInput: ${text}`;
 
   try {
@@ -75,9 +72,8 @@ export const processNoteWithAI = async (text: string, existingCategories: string
   }
 };
 
-// Fix: Strictly follow GoogleGenAI initialization with named parameters and use process.env.API_KEY directly
 export const expandNoteContent = async (content: string, username: string, userId?: string) => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
       const response = await ai.models.generateContent({
           model: 'gemini-3-pro-preview',
@@ -92,14 +88,12 @@ export const expandNoteContent = async (content: string, username: string, userI
     }
 };
 
-// Fix: Strictly follow GoogleGenAI initialization with named parameters and use process.env.API_KEY directly
 export const runConnectivityTest = async () => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) return { success: false, message: "Error: No API_KEY configured." };
 
   try {
     const ai = new GoogleGenAI({ apiKey });
-    // Using a valid model call is the only way to test connectivity reliably.
     const response = await ai.models.generateContent({ 
         model: 'gemini-3-flash-preview', 
         contents: 'ping',
