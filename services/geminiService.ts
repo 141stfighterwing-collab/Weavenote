@@ -90,52 +90,28 @@ export const expandNoteContent = async (content: string, username: string, userI
 
 export const runConnectivityTest = async () => {
   const apiKey = process.env.API_KEY;
-  
-  if (!apiKey || apiKey.trim() === "") {
-    return { 
-      success: false, 
-      message: "Error: API_KEY is missing from client bundle. Check Vercel Env Vars." 
-    };
-  }
-
-  // Diagnostics
-  const keySnippet = `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`;
-  console.debug(`Handshake attempt with key: ${keySnippet}`);
+  if (!apiKey) return { success: false, message: "Error: No API_KEY configured." };
 
   try {
-    // Re-initialize for every test as per guidelines
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    // Simplest possible call to rule out config issues
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({ 
         model: 'gemini-3-flash-preview', 
-        contents: 'Say "connected"' 
+        contents: 'ping',
+        config: { 
+          maxOutputTokens: 10,
+          thinkingConfig: { thinkingBudget: 0 }
+        }
     });
     
     if (response && response.text) {
-        return { 
-          success: true, 
-          message: "Handshake Successful", 
-          steps: ["SDK Initialized", "Key Validated", "Model Responded"] 
-        };
+        return { success: true, message: "Handshake Successful", steps: ["SDK Initialized", "API Keys Validated", "Model Response Verified"] };
     }
-    return { success: false, message: "Handshake Failed: Empty response received." };
+    return { success: false, message: "Handshake Failed: Empty response." };
   } catch (e: any) {
-    // Log the RAW error to the browser console to help debug protocol level issues
-    console.error("DEBUG: RAW Gemini Error:", e);
-    
-    let msg = e.message || "Unknown error";
-    
-    // Check for lower-level fetch failures (Protocol error, DNS, etc)
-    if (e.name === 'TypeError' && msg.includes('fetch')) {
-      msg = `Fetch Failure: The browser failed to establish a secure connection to Google. This often means the API key is restricted to a different origin, or a browser extension/firewall is blocking the request. Raw details: ${msg}`;
-    } else if (msg.includes("403")) {
-      msg = "Access Forbidden: Check if your API Key is enabled for 'Generative Language API' in Google Cloud Console.";
-    } else if (msg.includes("429")) {
-      msg = "Quota Limit Reached.";
-    } else if (msg.includes("API_KEY_INVALID")) {
-      msg = "Invalid Key String.";
-    }
-    
+    console.error("AI CONNECTION DEBUG:", e);
+    let msg = e.message || "Unknown connectivity error";
+    if (msg.includes("403")) msg = "API Key Invalid or Restricted.";
+    if (msg.includes("429")) msg = "Quota Exceeded.";
     return { success: false, message: `Service Error: ${msg}` };
   }
 };
