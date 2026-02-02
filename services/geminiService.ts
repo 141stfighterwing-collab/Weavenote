@@ -28,12 +28,12 @@ const logAIUsage = (username: string, action: string, details: string) => {
 
 export const cleanAndFormatIngestedText = async (rawText: string, filename: string, username: string, userId?: string): Promise<ProcessedNoteData> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const prompt = `Format this document extracted text into structured Markdown. Identify title, category, tags. Return JSON with keys: "title", "formattedContent", "category", "tags".\n\nText:\n${rawText.substring(0, 10000)}`;
+  const promptText = `Format this document extracted text into structured Markdown. Identify title, category, tags. Return JSON with keys: "title", "formattedContent", "category", "tags".\n\nText:\n${rawText.substring(0, 10000)}`;
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview', 
-      contents: prompt,
+      contents: { parts: [{ text: promptText }] },
       config: { responseMimeType: 'application/json' }
     });
 
@@ -51,12 +51,12 @@ export const cleanAndFormatIngestedText = async (rawText: string, filename: stri
 
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string, userId?: string): Promise<ProcessedNoteData> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const prompt = `Organize this user input into a structured note. Return strictly JSON with keys: "title", "formattedContent", "category", "tags".\n\nInput: ${text}`;
+  const promptText = `Organize this user input into a structured note. Return strictly JSON with keys: "title", "formattedContent", "category", "tags".\n\nInput: ${text}`;
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: prompt,
+      contents: { parts: [{ text: promptText }] },
       config: { responseMimeType: 'application/json' }
     });
 
@@ -77,7 +77,7 @@ export const expandNoteContent = async (content: string, username: string, userI
     try {
       const response = await ai.models.generateContent({
           model: 'gemini-3-pro-preview',
-          contents: `Deep dive expand on this: ${content}`,
+          contents: { parts: [{ text: `Deep dive expand on this: ${content}` }] },
       });
       incrementUsage(userId);
       logAIUsage(username, 'DEEP_DIVE', `Expanded content block`);
@@ -90,13 +90,24 @@ export const expandNoteContent = async (content: string, username: string, userI
 
 export const runConnectivityTest = async () => {
   const apiKey = process.env.API_KEY;
-  if (!apiKey) return { success: false, message: "Error: No API_KEY configured." };
+  
+  if (!apiKey || apiKey.trim() === "") {
+    return { 
+      success: false, 
+      message: "Error: API_KEY is empty or undefined. Verify Vercel Environment Variables." 
+    };
+  }
+
+  // Diagnostic info (obfuscated key for safety)
+  const keySnippet = `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`;
+  console.debug(`Diagnostic: Attempting handshake with key snippet: ${keySnippet}`);
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    // Fix: Use process.env.API_KEY directly when initializing GoogleGenAI to comply with coding guidelines
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({ 
         model: 'gemini-3-flash-preview', 
-        contents: 'ping',
+        contents: { parts: [{ text: 'ping' }] },
         config: { 
           maxOutputTokens: 10,
           thinkingConfig: { thinkingBudget: 0 }
@@ -104,14 +115,28 @@ export const runConnectivityTest = async () => {
     });
     
     if (response && response.text) {
-        return { success: true, message: "Handshake Successful", steps: ["SDK Initialized", "API Keys Validated", "Model Response Verified"] };
+        return { 
+          success: true, 
+          message: "Handshake Successful", 
+          steps: ["SDK Initialized", `Key Loaded (${keySnippet})`, "Model Response Verified"] 
+        };
     }
-    return { success: false, message: "Handshake Failed: Empty response." };
+    return { success: false, message: "Handshake Failed: Received empty text response from model." };
   } catch (e: any) {
     console.error("AI CONNECTION DEBUG:", e);
     let msg = e.message || "Unknown connectivity error";
-    if (msg.includes("403")) msg = "API Key Invalid or Restricted.";
-    if (msg.includes("429")) msg = "Quota Exceeded.";
+    
+    // Check for common browser fetch failure reasons
+    if (msg.includes("Failed to fetch")) {
+      msg = "Network request blocked. Check for Adblockers, VPNs, or browser extensions interfering with Google API domains.";
+    } else if (msg.includes("403")) {
+      msg = "Permission Denied: Your API Key may be restricted by project/region, or the Gemini 3 preview models are not enabled for this key.";
+    } else if (msg.includes("429")) {
+      msg = "Quota Exceeded: Too many requests for this key.";
+    } else if (msg.includes("API_KEY_INVALID")) {
+      msg = "API Key Invalid: The provided string is not a valid Google Cloud API key.";
+    }
+    
     return { success: false, message: `Service Error: ${msg}` };
   }
 };
