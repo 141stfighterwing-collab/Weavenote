@@ -28,6 +28,9 @@ const NoteInput: React.FC<NoteInputProps> = ({
   const [title, setTitle] = useState('');
   const [isParsingDoc, setIsParsingDoc] = useState(false);
   
+  // Code Tab Specific State
+  const [codeSnippet, setCodeSnippet] = useState('');
+
   // Project Engine State
   const [projectProgress, setProjectProgress] = useState(0);
   const [objectives, setObjectives] = useState('');
@@ -45,9 +48,14 @@ const NoteInput: React.FC<NoteInputProps> = ({
   const handleAction = async (useAI: boolean) => {
     if (useAI && isGuest) return; 
 
-    const content = editorRef.current?.innerHTML || '';
-    if (!content.trim() && !title.trim() && !objectives.trim()) return;
+    let content = editorRef.current?.innerHTML || '';
+    if (!content.trim() && !title.trim() && !objectives.trim() && !codeSnippet.trim()) return;
     
+    // Combine code snippet if in code tab
+    if (activeType === 'code' && codeSnippet.trim()) {
+      content += `\n\n\`\`\`\n${codeSnippet}\n\`\`\``;
+    }
+
     const extraData = activeType === 'project' ? { 
         manualProgress: projectProgress, 
         isCompleted: projectProgress === 100,
@@ -56,12 +64,11 @@ const NoteInput: React.FC<NoteInputProps> = ({
         manualMilestones: milestoneLabel ? [{ label: milestoneLabel, date: new Date().toISOString().split('T')[0], status: 'pending' as const }] : []
     } : undefined;
 
-    // Tags are generated in the background by onAddNote calling processNoteWithAI
     await onAddNote(content, activeType, [], [], useAI, title, extraData);
     
     // Reset
     if (editorRef.current) editorRef.current.innerHTML = '';
-    setTitle(''); setProjectProgress(0); setObjectives(''); setDeliverables(''); setMilestoneLabel('');
+    setTitle(''); setProjectProgress(0); setObjectives(''); setDeliverables(''); setMilestoneLabel(''); setCodeSnippet('');
   };
 
   const getBackgroundColor = () => {
@@ -157,7 +164,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
             </button>
         </div>
 
-        <div className="min-h-[200px]">
+        <div className={`transition-all duration-300 ${activeType === 'code' ? 'min-h-[120px]' : 'min-h-[200px]'}`}>
             <div 
               ref={editorRef}
               contentEditable
@@ -167,10 +174,22 @@ const NoteInput: React.FC<NoteInputProps> = ({
                     execCommand('indent');
                 }
               }}
-              className="w-full min-h-[200px] p-6 focus:outline-none text-slate-700 dark:text-slate-200 text-sm whitespace-pre-wrap font-sans leading-relaxed empty:before:content-[attr(placeholder)] empty:before:text-slate-400"
-              placeholder="Start typing your ideas here... Styles apply in real-time."
+              className={`w-full p-6 focus:outline-none text-slate-700 dark:text-slate-200 text-sm whitespace-pre-wrap font-sans leading-relaxed empty:before:content-[attr(placeholder)] empty:before:text-slate-400 ${activeType === 'code' ? 'min-h-[120px]' : 'min-h-[200px]'}`}
+              placeholder={activeType === 'code' ? "Add a description for this code snippet..." : "Start typing your ideas here... Styles apply in real-time."}
             />
         </div>
+
+        {activeType === 'code' && (
+          <div className="p-4 mx-2 mb-2 bg-slate-900 rounded-xl border border-slate-700 shadow-inner group transition-all focus-within:ring-2 focus-within:ring-indigo-500/50">
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Example Code Block</label>
+            <textarea
+              value={codeSnippet}
+              onChange={(e) => setCodeSnippet(e.target.value)}
+              placeholder="Paste your example code here..."
+              className="w-full h-48 bg-transparent text-indigo-300 font-mono text-xs outline-none resize-none custom-scrollbar placeholder:opacity-20"
+            />
+          </div>
+        )}
         
         <div className="flex items-center justify-between p-3 border-t dark:border-slate-700">
             <div className="flex items-center gap-3">
