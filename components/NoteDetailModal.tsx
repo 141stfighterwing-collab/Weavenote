@@ -3,8 +3,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { Note, NOTE_COLORS, ProjectData, ProjectMilestone, ProjectPhase, Folder, ProjectItem } from '../types';
-import GanttChart from './GanttChart';
-import WorkflowEditor from './WorkflowEditor';
 
 interface NoteDetailModalProps {
   note: Note | null;
@@ -22,23 +20,15 @@ interface NoteDetailModalProps {
 
 const processContent = (text: string) => {
     if (!text) return "";
-    // Wrap consecutive newlines in actual paragraph spacing
     return text.replace(/([^\S]|^)(https?:\/\/[^\s]+)(?=[^\S]|$)/g, '$1[$2]($2)');
 };
 
 const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ 
     note, folders = [], isOpen, onClose, onViewImage, 
-    onToggleCheckbox, onSaveExpanded, onToggleComplete, onUpdateProjectData, currentUser 
+    onToggleCheckbox, currentUser 
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(600);
   const checkboxCounter = useRef(0);
-
-  useEffect(() => {
-    if (isOpen && containerRef.current) setContainerWidth(containerRef.current.clientWidth - 64);
-  }, [isOpen]);
-
-  const folder = useMemo(() => folders.find(f => f.id === note?.folderId), [folders, note?.folderId]);
 
   if (!isOpen || !note) return null;
   
@@ -58,8 +48,6 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
       a: ({ href, children }: any) => {
           if (!href) return <span>{children}</span>;
           const isImageUrl = /\.(jpeg|jpg|gif|png|webp|svg|avif|bmp|tiff)(\?.*)?$/i.test(href);
-          const isVideoUrl = /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(href);
-          
           if (isImageUrl) return <img src={href} alt="Preview" className="max-w-full h-auto rounded-xl border border-black/10 shadow-lg cursor-pointer" onClick={() => onViewImage(href)} />;
           return <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary-600 dark:text-primary-400 font-bold hover:underline">{children}</a>;
       },
