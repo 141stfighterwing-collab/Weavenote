@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { Note, NOTE_COLORS, ProjectData, ProjectMilestone, ProjectPhase, Folder, ProjectItem } from '../types';
+import { getTagStyle } from './NoteCard';
 
 interface NoteDetailModalProps {
   note: Note | null;
@@ -91,14 +92,20 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
                 </ReactMarkdown>
             </div>
             
-            {/* Restored Tag Display */}
             {note.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-12 pt-6 border-t border-black/5">
-                    {note.tags.map(tag => (
-                        <span key={tag} className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${isMatrix ? 'bg-[#39ff14]/10 text-[#39ff14]' : 'bg-black/5 text-slate-500'}`}>
-                            #{tag}
-                        </span>
-                    ))}
+                    {note.tags.map(tag => {
+                        const style = getTagStyle(tag);
+                        return (
+                          <span 
+                            key={tag} 
+                            style={isMatrix ? {} : style}
+                            className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${isMatrix ? 'bg-[#39ff14]/10 text-[#39ff14] border-[#39ff14]/30' : ''}`}
+                          >
+                              #{tag}
+                          </span>
+                        );
+                    })}
                 </div>
             )}
         </div>

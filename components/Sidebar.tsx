@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Note, Folder } from '../types';
+import { getTagStyle } from './NoteCard';
 
 interface SidebarProps {
   notes: Note[];
@@ -253,16 +254,21 @@ const Sidebar: React.FC<SidebarProps> = ({
             <h3 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 text-xs uppercase tracking-wider">🏷️ Popular Tags</h3>
           </div>
           <div className="flex flex-wrap gap-2">
-            {popularTags.map(([tag, count]) => (
-                <button 
-                    key={tag} 
-                    onClick={() => onTagClick(tag)}
-                    className={`px-3 py-1 text-[10px] font-black uppercase tracking-tight rounded-full transition-all flex items-center gap-2 ${activeTag === tag ? 'bg-primary-600 text-white shadow-md' : 'bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-300 hover:bg-primary-100 dark:hover:bg-primary-900/40 hover:text-primary-700'}`}
-                >
-                    <span>#{tag}</span>
-                    <span className={`text-[8px] opacity-40 font-mono ${activeTag === tag ? 'text-white' : ''}`}>{count}</span>
-                </button>
-            ))}
+            {popularTags.map(([tag, count]) => {
+                const isActive = activeTag === tag;
+                const style = getTagStyle(tag, isActive);
+                return (
+                    <button 
+                        key={tag} 
+                        onClick={() => onTagClick(tag)}
+                        style={style}
+                        className={`px-3 py-1 text-[10px] font-black uppercase tracking-tight rounded-full border transition-all flex items-center gap-2 hover:scale-110 active:scale-95`}
+                    >
+                        <span>#{tag}</span>
+                        <span className={`text-[8px] opacity-60 font-mono`}>{count}</span>
+                    </button>
+                );
+            })}
             {popularTags.length === 0 && <p className="text-[10px] italic text-slate-400 py-4 w-full text-center">AI generating tags in background...</p>}
           </div>
       </div>

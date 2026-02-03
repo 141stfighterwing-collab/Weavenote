@@ -21,6 +21,28 @@ interface NoteCardProps {
   onToggleComplete?: (id: string) => void;
 }
 
+// Global helper for tag colors
+export const getTagStyle = (tag: string, isActive: boolean = false) => {
+    let hash = 0;
+    for (let i = 0; i < tag.length; i++) {
+        hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash % 360);
+    if (isActive) {
+        return {
+            backgroundColor: `hsl(${hue}, 75%, 45%)`,
+            color: '#fff',
+            borderColor: `hsl(${hue}, 75%, 35%)`,
+            boxShadow: `0 4px 12px hsla(${hue}, 75%, 45%, 0.3)`
+        };
+    }
+    return {
+        backgroundColor: `hsla(${hue}, 80%, 50%, 0.12)`,
+        color: `hsl(${hue}, 85%, 30%)`,
+        borderColor: `hsla(${hue}, 80%, 50%, 0.25)`
+    };
+};
+
 const NoteCard: React.FC<NoteCardProps> = ({ 
   note, folders = [], onDelete, onTagClick, onEdit, onExpand, 
   readOnly = false, onToggleCheckbox, onToggleComplete, onMoveToFolder, onChangeColor 
@@ -104,18 +126,21 @@ const NoteCard: React.FC<NoteCardProps> = ({
       </div>
 
       <div className="mt-auto">
-        {/* Restored Tag Badges */}
         {note.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-4">
-            {note.tags.map(tag => (
-              <button 
-                key={tag} 
-                onClick={(e) => { e.stopPropagation(); onTagClick(tag); }}
-                className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md transition-colors ${isMatrix ? 'bg-[#39ff14]/10 text-[#39ff14] border border-[#39ff14]/20' : 'bg-black/5 text-black/50 hover:bg-black/10'}`}
-              >
-                #{tag}
-              </button>
-            ))}
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {note.tags.map(tag => {
+              const style = getTagStyle(tag);
+              return (
+                <button 
+                  key={tag} 
+                  onClick={(e) => { e.stopPropagation(); onTagClick(tag); }}
+                  style={isMatrix ? {} : style}
+                  className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md border transition-all hover:scale-105 active:scale-95 ${isMatrix ? 'bg-[#39ff14]/10 text-[#39ff14] border-[#39ff14]/30' : ''}`}
+                >
+                  #{tag}
+                </button>
+              );
+            })}
           </div>
         )}
 
