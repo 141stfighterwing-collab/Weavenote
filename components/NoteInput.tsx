@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { NoteType, ProjectMilestone } from '../types';
 import { parseDocument } from '../services/documentParser';
@@ -19,6 +20,9 @@ interface NoteInputProps {
   enableImages?: boolean;
 }
 
+const FONTS = ["Inter", "System-ui", "Serif", "Fira Code", "Arial", "Georgia", "Times New Roman", "Verdana", "Courier New"];
+const SIZES = ["8pt", "10pt", "12pt", "14pt", "16pt", "18pt", "24pt", "36pt", "48pt", "72pt"];
+
 const NoteInput: React.FC<NoteInputProps> = ({ 
     onAddNote, onTypeChange, isProcessing, activeType, readOnly = false, isGuest = true 
 }) => {
@@ -26,91 +30,47 @@ const NoteInput: React.FC<NoteInputProps> = ({
   const [code, setCode] = useState('');
   const [title, setTitle] = useState('');
   const [isParsingDoc, setIsParsingDoc] = useState(false);
-  const [ingestProgress, setIngestProgress] = useState({ current: 0, total: 0, percent: 0 });
-  const [validationError, setValidationError] = useState<string | null>(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
+  // Project Engine State
   const [projectProgress, setProjectProgress] = useState(0);
   const [projectCompleted, setProjectCompleted] = useState(false);
   const [objectives, setObjectives] = useState('');
   const [deliverables, setDeliverables] = useState('');
   const [milestoneLabel, setMilestoneLabel] = useState('');
+  const [milestoneDate, setMilestoneDate] = useState(new Date().toISOString().split('T')[0]);
 
   const mainTextareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const validateInput = () => {
-    if (title.length > 200) return "Title too long (max 200).";
-    if (text.length > 10000) return "Content too long (max 10000).";
-    if (code.length > 15000) return "Code block too large.";
-    return null;
-  };
-
   const handleAction = async (useAI: boolean) => {
     if (useAI && isGuest) return; 
-
-    const error = validateInput();
-    if (error) {
-      setValidationError(error);
-      setTimeout(() => setValidationError(null), 3000);
-      return;
-    }
 
     let rawSubmission = text;
     if (activeType === 'code' && code.trim()) {
         rawSubmission = `${text}\n\n### Script/Code\n\`\`\`\n${code}\n\`\`\``;
     }
-    if (!rawSubmission.trim() && !title.trim() && !objectives.trim()) return;
+    
+    // Check if we have anything to save
+    const hasData = rawSubmission.trim() || title.trim() || objectives.trim() || deliverables.trim();
+    if (!hasData) return;
     
     const extraData = activeType === 'project' ? { 
         manualProgress: projectProgress, 
         isCompleted: projectProgress === 100 || projectCompleted,
         manualObjectives: objectives.split('\n').filter(l => l.trim()).map(l => ({ label: l, status: 'pending' as const })),
         manualDeliverables: deliverables.split('\n').filter(l => l.trim()).map(l => ({ label: l, status: 'pending' as const })),
-        manualMilestones: milestoneLabel ? [{ label: milestoneLabel, date: new Date().toISOString().split('T')[0], status: 'pending' as const }] : []
+        manualMilestones: milestoneLabel ? [{ label: milestoneLabel, date: milestoneDate, status: 'pending' as const }] : []
     } : undefined;
 
     await onAddNote(rawSubmission, activeType, [], [], useAI, title, extraData);
     
+    // Reset all states
     setText(''); setCode(''); setTitle('');
     setProjectProgress(0); setProjectCompleted(false);
     setObjectives(''); setDeliverables(''); setMilestoneLabel('');
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const totalFiles = files.length;
-    setIsParsingDoc(true);
-    setIngestProgress({ current: 0, total: totalFiles, percent: 0 });
-
-    try {
-      for (let i = 0; i < totalFiles; i++) {
-        const file = files[i];
-        setIngestProgress(prev => ({ ...prev, current: i + 1, percent: Math.round((i / totalFiles) * 100) }));
-        
-        const rawText = await parseDocument(file);
-        
-        if (!isGuest) {
-          const cleaned = await cleanAndFormatIngestedText(rawText, file.name, "User"); 
-          await onAddNote(cleaned.formattedContent, 'document', [], [], false, cleaned.title || file.name.split('.')[0]);
-        } else {
-          await onAddNote(rawText, 'document', [], [], false, file.name.split('.')[0]);
-        }
-      }
-      setIngestProgress(prev => ({ ...prev, percent: 100 }));
-      setTimeout(() => setIngestProgress({ current: 0, total: 0, percent: 0 }), 1000);
-    } catch (err: any) {
-      console.error("Ingestion Error:", err);
-      setValidationError(err.message || "Failed to process one or more documents.");
-    } finally {
-      setIsParsingDoc(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const insertText = (before: string, after: string = '') => {
+  const applyWrap = (before: string, after: string = '') => {
     const textarea = mainTextareaRef.current;
     if (!textarea) return;
     const start = textarea.selectionStart;
@@ -120,27 +80,46 @@ const NoteInput: React.FC<NoteInputProps> = ({
     setText(newText);
     setTimeout(() => {
       textarea.focus();
-      textarea.setSelectionRange(end + before.length + after.length, end + before.length + after.length);
+      textarea.setSelectionRange(start + before.length, end + before.length);
     }, 0);
   };
 
-  const emojis = ['💡', '📌', '✅', '🚀', '🔥', '📚', '✨', '🧠', '📅', '📝'];
+  const applyStyle = (family?: string, size?: string) => {
+    const style = `style="${family ? `font-family: ${family};` : ''}${size ? `font-size: ${size};` : ''}"`;
+    applyWrap(`<span ${style}>`, '</span>');
+  };
+
+  const handleTab = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        const textarea = e.currentTarget;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const before = text.substring(0, start);
+        const after = text.substring(end);
+        
+        if (e.shiftKey) { // Decrease Indent
+            const lineStart = before.lastIndexOf('\n') + 1;
+            const currentLine = text.substring(lineStart, end);
+            if (currentLine.startsWith('    ')) {
+                setText(before.substring(0, lineStart) + currentLine.substring(4) + after);
+                setTimeout(() => textarea.setSelectionRange(start - 4, end - 4), 0);
+            }
+        } else { // Increase Indent
+            setText(before + '    ' + after);
+            setTimeout(() => textarea.setSelectionRange(start + 4, end + 4), 0);
+        }
+    }
+  };
 
   const getBackgroundColor = () => {
       switch (activeType) {
-          case 'quick': return 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/10';
-          case 'notebook': return 'bg-slate-50 border-slate-300 dark:bg-slate-900/10';
-          case 'deep': return 'bg-blue-50 border-blue-200 dark:bg-blue-900/10';
-          case 'code': return 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/10';
-          case 'project': return 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/10';
-          case 'document': return 'bg-slate-100 border-slate-300 dark:bg-slate-800/50';
-          default: return 'bg-slate-50 border-slate-200';
+          case 'quick': return 'bg-yellow-50/80 border-yellow-200 dark:bg-yellow-900/10';
+          case 'code': return 'bg-indigo-50/80 border-indigo-200 dark:bg-indigo-900/10';
+          case 'project': return 'bg-emerald-50/80 border-emerald-200 dark:bg-emerald-900/10';
+          default: return 'bg-slate-50 border-slate-200 dark:bg-slate-800/40';
       }
   };
-
-  const isDisabled = (!text.trim() && !code.trim() && !title.trim() && !objectives.trim()) || isProcessing || isParsingDoc;
-
-  if (readOnly) return <div className="p-6 text-center border-dashed border rounded-xl text-slate-400">🔒 Read Only</div>;
 
   return (
     <div className={`rounded-xl shadow-lg border p-1 mb-8 transition-all duration-300 ${getBackgroundColor()}`}>
@@ -149,144 +128,126 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 <button 
                   key={type} 
                   onClick={() => onTypeChange?.(type)} 
-                  className={`flex-1 py-2 text-xs font-black rounded-lg transition-all min-w-[70px] uppercase tracking-tight ${activeType === type ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600 border border-slate-100 dark:border-slate-700' : 'text-slate-500 hover:bg-white/40 dark:hover:bg-slate-800/40'}`}
+                  className={`flex-1 py-2 text-[10px] font-black rounded-lg transition-all min-w-[70px] uppercase tracking-widest ${activeType === type ? 'bg-white dark:bg-slate-800 shadow-sm text-primary-600 border border-slate-100 dark:border-slate-700' : 'text-slate-500 hover:bg-white/40 dark:hover:bg-slate-800/40'}`}
                 >
                     {type}
                 </button>
             ))}
         </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-1">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-1 overflow-hidden">
         <div className="flex items-center justify-between border-b border-slate-50 dark:border-slate-700 pr-2">
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title (optional)" className="flex-1 px-4 py-3 bg-transparent focus:outline-none font-bold text-lg text-slate-800 dark:text-white" />
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={activeType === 'project' ? "Project Title" : "Title (optional)"} className="flex-1 px-4 py-3 bg-transparent focus:outline-none font-bold text-lg text-slate-800 dark:text-white" />
             {activeType === 'document' && (
-              <button 
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isParsingDoc}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 disabled:bg-slate-400 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95"
-              >
+              <button onClick={() => fileInputRef.current?.click()} disabled={isParsingDoc} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 disabled:bg-slate-400 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95">
                 {isParsingDoc ? '⌛ Ingesting...' : '📎 Upload Docs'}
               </button>
             )}
-            <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.txt,.md" multiple onChange={handleFileUpload} />
+            <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.txt,.md" multiple onChange={async (e) => {
+                 const files = e.target.files;
+                 if (!files) return;
+                 setIsParsingDoc(true);
+                 try {
+                   // Fix: Explicitly cast the Array.from(files) to File[] to prevent 'unknown' type inference
+                   for (const file of Array.from(files) as File[]) {
+                     const raw = await parseDocument(file);
+                     await onAddNote(raw, 'document', [], [], !isGuest, file.name);
+                   }
+                 } finally { setIsParsingDoc(false); }
+            }} />
         </div>
-
-        {/* Multi-Doc Progress Bar */}
-        {isParsingDoc && ingestProgress.total > 1 && (
-            <div className="px-4 py-3 bg-primary-50 dark:bg-slate-900 border-b dark:border-slate-700">
-                <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-[10px] font-black uppercase text-primary-600 tracking-widest">Ingesting Documents ({ingestProgress.current}/{ingestProgress.total})</span>
-                    <span className="text-[10px] font-mono font-bold text-primary-600">{ingestProgress.percent}%</span>
-                </div>
-                <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                    <div className="h-full bg-primary-500 transition-all duration-300 ease-out" style={{ width: `${ingestProgress.percent}%` }} />
-                </div>
-            </div>
-        )}
 
         {/* Project Specific Fields */}
         {activeType === 'project' && (
-            <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50/50 dark:bg-slate-900/50 border-b dark:border-slate-700 animate-[fadeIn_0.3s_ease-out]">
-                <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">🎯 Objectives</label>
-                    <textarea 
-                        value={objectives} 
-                        onChange={(e) => setObjectives(e.target.value)} 
-                        placeholder="Key project goals..." 
-                        className="w-full h-20 p-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:ring-1 focus:ring-emerald-500 transition-all resize-none"
-                    />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">🎁 Deliverables</label>
-                    <textarea 
-                        value={deliverables} 
-                        onChange={(e) => setDeliverables(e.target.value)} 
-                        placeholder="Final output items..." 
-                        className="w-full h-20 p-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:ring-1 focus:ring-emerald-500 transition-all resize-none"
-                    />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">🚩 Next Milestone</label>
-                    <input 
-                        type="text"
-                        value={milestoneLabel} 
-                        onChange={(e) => setMilestoneLabel(e.target.value)} 
-                        placeholder="Upcoming milestone..." 
-                        className="w-full p-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 outline-none focus:ring-1 focus:ring-emerald-500 transition-all"
-                    />
-                    <div className="pt-2">
-                        <div className="flex justify-between items-center mb-1">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">📊 Status</label>
-                            <span className="text-[10px] font-black text-emerald-600">{projectProgress}%</span>
+            <div className="p-4 bg-emerald-50/30 dark:bg-emerald-950/20 border-b border-slate-100 dark:border-slate-700 animate-[fadeIn_0.3s_ease-out]">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Project Progress</label>
+                        <div className="flex items-center gap-3">
+                            <input type="range" min="0" max="100" value={projectProgress} onChange={(e) => setProjectProgress(parseInt(e.target.value))} className="flex-1 accent-emerald-500" />
+                            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 w-10">{projectProgress}%</span>
                         </div>
-                        <input 
-                            type="range" 
-                            min="0" 
-                            max="100" 
-                            step="5"
-                            value={projectProgress} 
-                            onChange={(e) => setProjectProgress(parseInt(e.target.value))} 
-                            className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                        />
+                    </div>
+                    <div className="md:col-span-2">
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Next Milestone</label>
+                        <div className="flex gap-2">
+                            <input type="text" placeholder="e.g. Initial Prototype" value={milestoneLabel} onChange={(e) => setMilestoneLabel(e.target.value)} className="flex-1 px-3 py-1.5 text-xs border rounded-lg bg-white dark:bg-slate-900 dark:border-slate-700" />
+                            <input type="date" value={milestoneDate} onChange={(e) => setMilestoneDate(e.target.value)} className="px-3 py-1.5 text-xs border rounded-lg bg-white dark:bg-slate-900 dark:border-slate-700" />
+                        </div>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Objectives (One per line)</label>
+                        <textarea value={objectives} onChange={(e) => setObjectives(e.target.value)} placeholder="• Complete requirements&#10;• Hire lead engineer" className="w-full h-20 p-3 text-xs border rounded-xl bg-white dark:bg-slate-900 dark:border-slate-700 resize-none" />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Deliverables (One per line)</label>
+                        <textarea value={deliverables} onChange={(e) => setDeliverables(e.target.value)} placeholder="• API Documentation&#10;• V1.0 APK" className="w-full h-20 p-3 text-xs border rounded-xl bg-white dark:bg-slate-900 dark:border-slate-700 resize-none" />
                     </div>
                 </div>
             </div>
         )}
 
-        {/* Formatting Toolbar */}
-        <div className="flex flex-wrap items-center gap-1 p-2 bg-slate-50/50 dark:bg-slate-900/50 border-b dark:border-slate-700 overflow-x-auto no-scrollbar">
-            <button type="button" onClick={() => insertText('**', '**')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs font-bold" title="Bold">B</button>
-            <button type="button" onClick={() => insertText('*', '*')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs italic" title="Italic">I</button>
-            <button type="button" onClick={() => insertText('# ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black" title="H1">H1</button>
-            <button type="button" onClick={() => insertText('## ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black" title="H2">H2</button>
-            <button type="button" onClick={() => insertText('### ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black" title="H3">H3</button>
+        {/* Pro Toolbar - Description Canvas Focus */}
+        <div className="flex flex-wrap items-center gap-1 p-2 bg-slate-50/80 dark:bg-slate-900/50 border-b dark:border-slate-700 overflow-x-auto no-scrollbar">
+            <select onChange={(e) => applyWrap(e.target.value)} className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded px-1.5 py-1 text-[10px] font-bold outline-none">
+                <option value="">Style</option>
+                <option value="# ">H1</option><option value="## ">H2</option><option value="### ">H3</option>
+                <option value="> ">Quote</option><option value="```\n">Code</option>
+            </select>
             <div className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1" />
-            <button type="button" onClick={() => insertText('- [ ] ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs" title="Checkbox">☑️</button>
-            <button type="button" onClick={() => insertText('- ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs" title="List">•</button>
+            <select onChange={(e) => applyStyle(e.target.value)} className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded px-1.5 py-1 text-[10px] font-bold outline-none max-w-[80px]">
+                <option value="">Font</option>
+                {FONTS.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+            <select onChange={(e) => applyStyle(undefined, e.target.value)} className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded px-1.5 py-1 text-[10px] font-bold outline-none">
+                <option value="">Size</option>
+                {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
             <div className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1" />
-            {emojis.map(e => (
-                <button key={e} type="button" onClick={() => insertText(e)} className="hover:bg-white dark:hover:bg-slate-700 p-1.5 rounded text-sm transition-transform hover:scale-110" title="Emoji">{e}</button>
-            ))}
+            <button type="button" onClick={() => applyWrap('**', '**')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs font-bold">B</button>
+            <button type="button" onClick={() => applyWrap('*', '*')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs italic">I</button>
+            <button type="button" onClick={() => applyWrap('<u>', '</u>')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs underline">U</button>
+            <button type="button" onClick={() => applyWrap('    ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded" title="Indent">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M17 10l5 5-5 5M3 6h18M3 12h10M3 18h18"/></svg>
+            </button>
+            <div className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1" />
+            <button type="button" onClick={() => applyWrap('💡')} className="p-1.5 rounded text-sm hover:scale-110">💡</button>
+            <button type="button" onClick={() => applyWrap('✅')} className="p-1.5 rounded text-sm hover:scale-110">✅</button>
         </div>
 
-        <div className="flex flex-col md:flex-row">
+        <div className="flex flex-col md:flex-row min-h-[200px]">
             <div className={`flex-1 ${activeType === 'code' ? 'md:border-r border-slate-100 dark:border-slate-700' : ''}`}>
                 <textarea 
                   ref={mainTextareaRef}
                   value={text} 
                   onChange={(e) => setText(e.target.value)} 
-                  placeholder={activeType === 'document' ? "Upload documents or paste content to organize..." : (activeType === 'project' ? "Project description and notes..." : "Draft your entry here...")} 
-                  className="w-full h-48 p-4 bg-transparent border-0 focus:ring-0 outline-none resize-none text-slate-700 dark:text-slate-200 text-sm whitespace-pre-wrap font-sans" 
+                  onKeyDown={handleTab}
+                  placeholder={activeType === 'project' ? "Project Description & Details..." : "Draft your entry here..."} 
+                  className="w-full h-full min-h-[200px] p-6 bg-transparent border-0 focus:ring-0 outline-none resize-none text-slate-700 dark:text-slate-200 text-sm whitespace-pre-wrap font-sans leading-relaxed" 
                 />
             </div>
             {activeType === 'code' && (
                 <div className="flex-1 bg-slate-950 dark:bg-black/40">
-                    <textarea value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste source code here..." className="w-full h-48 p-4 bg-transparent border-0 focus:ring-0 outline-none resize-none text-indigo-300 font-mono text-xs whitespace-pre" />
+                    <textarea value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste source code here..." className="w-full h-full p-4 bg-transparent border-0 focus:ring-0 outline-none resize-none text-indigo-300 font-mono text-xs whitespace-pre" />
                 </div>
             )}
         </div>
-
-        {validationError && (
-          <div className="px-4 py-2 bg-red-100 text-red-600 text-xs font-bold animate-pulse">
-            ⚠️ {validationError}
-          </div>
-        )}
         
         <div className="flex items-center justify-between p-3 border-t dark:border-slate-700">
             <div className="flex items-center gap-3">
-                <div className="text-[10px] text-slate-400 italic uppercase font-black tracking-widest">{activeType} mode {isParsingDoc ? '(Ingesting...)' : ''}</div>
-                {text.length > 0 && <div className="text-[10px] text-slate-400 font-bold">{text.length} chars</div>}
+                <div className="text-[9px] text-slate-400 italic uppercase font-black tracking-widest">{activeType} engine</div>
             </div>
             <div className="flex gap-2">
-                <button type="button" onClick={() => handleAction(false)} disabled={isDisabled} className="px-4 py-1.5 rounded-full font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 transition-colors">Add</button>
+                <button type="button" onClick={() => handleAction(false)} disabled={isProcessing} className="px-5 py-1.5 rounded-full font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 transition-colors uppercase tracking-widest">Add</button>
                 <button 
                   type="button" 
                   onClick={() => handleAction(true)} 
-                  disabled={isDisabled || isProcessing || isGuest || isParsingDoc} 
-                  className={`px-4 py-1.5 rounded-full font-bold text-sm transition-all transform hover:-translate-y-0.5 shadow-md hover:shadow-lg ${isGuest ? 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60' : 'bg-gradient-to-r from-primary-600 to-indigo-600 text-white'}`}
-                  title={isGuest ? "Login required for AI features" : "AI Organize"}
+                  disabled={isProcessing || isGuest} 
+                  className={`px-5 py-1.5 rounded-full font-bold text-xs transition-all transform hover:-translate-y-0.5 shadow-md uppercase tracking-widest ${isGuest ? 'bg-slate-200 text-slate-400' : 'bg-gradient-to-r from-emerald-600 to-indigo-600 text-white'}`}
                 >
-                  {isProcessing ? '✨ Organizing...' : isGuest ? '✨ AI (Login)' : '✨ AI Organize'}
+                  {isProcessing ? '✨ Organizing...' : '✨ AI Neural'}
                 </button>
             </div>
         </div>
