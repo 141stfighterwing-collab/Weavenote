@@ -103,6 +103,14 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
 
+  const popularTags = useMemo(() => {
+    const stats: Record<string, number> = {};
+    notes.forEach(note => {
+      note.tags.forEach(tag => { stats[tag] = (stats[tag] || 0) + 1; });
+    });
+    return Object.entries(stats).sort(([, a], [, b]) => b - a).slice(0, 15);
+  }, [notes]);
+
   const toggleFolderExpansion = (e: React.MouseEvent, folderId: string) => {
     e.stopPropagation();
     const newExpanded = new Set(expandedFolders);
@@ -178,7 +186,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                >
                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                  All Notes
-                 {dragOverFolderId === 'null' && <span className="ml-auto text-[10px] font-bold text-primary-600 animate-pulse">Un-file here</span>}
+                 {dragOverFolderId === 'null' && <span className="ml-auto text-[10px] font-bold text-primary-600 animate-pulse text-right">Move</span>}
                </button>
                {folders.map(folder => {
                    const isExpanded = expandedFolders.has(folder.id);
@@ -209,7 +217,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                            </button>
                            
                            <div className="flex items-center gap-1.5 pr-2">
-                             <span className="text-[10px] opacity-40 font-mono">{folderNotes.length}</span>
+                             <span className="text-[10px] opacity-40 font-mono text-right min-w-[14px]">{folderNotes.length}</span>
                              <button 
                                onClick={(e) => { e.stopPropagation(); onDeleteFolder(folder.id); }}
                                className="opacity-0 group-hover/folder:opacity-100 p-1 hover:text-red-500 transition-opacity"
@@ -237,6 +245,25 @@ const Sidebar: React.FC<SidebarProps> = ({
                      </div>
                    );
                })}
+          </div>
+      </div>
+
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
+          <div className="flex justify-between items-center mb-4 border-b border-slate-50 dark:border-slate-700 pb-2">
+            <h3 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 text-xs uppercase tracking-wider">🏷️ Popular Tags</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {popularTags.map(([tag, count]) => (
+                <button 
+                    key={tag} 
+                    onClick={() => onTagClick(tag)}
+                    className={`px-3 py-1 text-[10px] font-black uppercase tracking-tight rounded-full transition-all flex items-center gap-2 ${activeTag === tag ? 'bg-primary-600 text-white shadow-md' : 'bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-300 hover:bg-primary-100 dark:hover:bg-primary-900/40 hover:text-primary-700'}`}
+                >
+                    <span>#{tag}</span>
+                    <span className={`text-[8px] opacity-40 font-mono ${activeTag === tag ? 'text-white' : ''}`}>{count}</span>
+                </button>
+            ))}
+            {popularTags.length === 0 && <p className="text-[10px] italic text-slate-400 py-4 w-full text-center">AI generating tags in background...</p>}
           </div>
       </div>
     </aside>

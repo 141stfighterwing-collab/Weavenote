@@ -103,18 +103,35 @@ const NoteCard: React.FC<NoteCardProps> = ({
          </ReactMarkdown>
       </div>
 
-      <div className="flex items-center justify-end gap-2 mt-auto pt-4 border-t border-black/5">
-        <div className="flex items-center gap-1 shrink-0 relative">
-          <button onClick={(e) => { e.stopPropagation(); setShowColorPicker(!showColorPicker); }} className={`p-2 rounded-xl shadow-sm hover:scale-110 transition-transform ${isMatrix ? 'bg-[#39ff14]/10 text-[#39ff14]' : 'bg-white/50 text-slate-600'}`}>🎨</button>
-          {showColorPicker && (
-            <div className="absolute bottom-full right-0 mb-3 p-3 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border dark:border-slate-700 flex flex-wrap gap-1.5 w-44 z-50">
-              {Object.values(NoteColor).map((c) => (
-                <button key={c} onClick={(e) => { e.stopPropagation(); onChangeColor(note.id, c); setShowColorPicker(false); }} className={`w-7 h-7 rounded-lg border transition-transform hover:scale-110 ${c === 'matrix' ? 'bg-black border-[#39ff14]' : `bg-${c}-200`}`} title={c} />
-              ))}
+      <div className="mt-auto">
+        {/* Restored Tag Badges */}
+        {note.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-4">
+            {note.tags.map(tag => (
+              <button 
+                key={tag} 
+                onClick={(e) => { e.stopPropagation(); onTagClick(tag); }}
+                className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md transition-colors ${isMatrix ? 'bg-[#39ff14]/10 text-[#39ff14] border border-[#39ff14]/20' : 'bg-black/5 text-black/50 hover:bg-black/10'}`}
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center justify-end gap-2 pt-4 border-t border-black/5">
+            <div className="flex items-center gap-1 shrink-0 relative">
+            <button onClick={(e) => { e.stopPropagation(); setShowColorPicker(!showColorPicker); }} className={`p-2 rounded-xl shadow-sm hover:scale-110 transition-transform ${isMatrix ? 'bg-[#39ff14]/10 text-[#39ff14]' : 'bg-white/50 text-slate-600'}`}>🎨</button>
+            {showColorPicker && (
+                <div className="absolute bottom-full right-0 mb-3 p-3 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border dark:border-slate-700 flex flex-wrap gap-1.5 w-44 z-50">
+                {Object.values(NoteColor).map((c) => (
+                    <button key={c} onClick={(e) => { e.stopPropagation(); onChangeColor(note.id, c); setShowColorPicker(false); }} className={`w-7 h-7 rounded-lg border transition-transform hover:scale-110 ${c === 'matrix' ? 'bg-black border-[#39ff14]' : `bg-${c}-200`}`} title={c} />
+                ))}
+                </div>
+            )}
+            <button onClick={(e) => { e.stopPropagation(); onEdit(note); }} className={`p-2 rounded-xl shadow-sm hover:scale-110 transition-transform ${isMatrix ? 'bg-[#39ff14]/10 text-[#39ff14]' : 'bg-white/50 text-slate-600'}`}>✏️</button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(note.id); }} className="p-2 bg-rose-500/20 text-rose-700 rounded-xl shadow-sm hover:scale-110 transition-transform">🗑️</button>
             </div>
-          )}
-          <button onClick={(e) => { e.stopPropagation(); onEdit(note); }} className={`p-2 rounded-xl shadow-sm hover:scale-110 transition-transform ${isMatrix ? 'bg-[#39ff14]/10 text-[#39ff14]' : 'bg-white/50 text-slate-600'}`}>✏️</button>
-          <button onClick={(e) => { e.stopPropagation(); onDelete(note.id); }} className="p-2 bg-rose-500/20 text-rose-700 rounded-xl shadow-sm hover:scale-110 transition-transform">🗑️</button>
         </div>
       </div>
     </div>
