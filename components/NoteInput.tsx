@@ -20,15 +20,13 @@ interface NoteInputProps {
 }
 
 const FONTS = ["Inter", "System-ui", "Serif", "Fira Code", "Arial", "Georgia", "Times New Roman", "Verdana", "Courier New"];
-const SIZES = ["1", "2", "3", "4", "5", "6", "7"]; // HTML Font sizes
+const SIZES = ["1", "2", "3", "4", "5", "6", "7"];
 
 const NoteInput: React.FC<NoteInputProps> = ({ 
     onAddNote, onTypeChange, isProcessing, activeType, readOnly = false, isGuest = true 
 }) => {
   const [title, setTitle] = useState('');
   const [isParsingDoc, setIsParsingDoc] = useState(false);
-  
-  // Code Tab Specific State
   const [codeSnippet, setCodeSnippet] = useState('');
 
   // Project Engine State
@@ -41,8 +39,18 @@ const NoteInput: React.FC<NoteInputProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const execCommand = (command: string, value: string = '') => {
-    document.execCommand(command, false, value);
-    if (editorRef.current) editorRef.current.focus();
+    if (editorRef.current) {
+        editorRef.current.focus();
+        document.execCommand(command, false, value);
+    }
+  };
+
+  const insertCheckbox = () => {
+    if (editorRef.current) {
+        editorRef.current.focus();
+        // Insert a markdown task list item
+        document.execCommand('insertHTML', false, '<div>- [ ] &nbsp;</div>');
+    }
   };
 
   const handleAction = async (useAI: boolean) => {
@@ -51,7 +59,6 @@ const NoteInput: React.FC<NoteInputProps> = ({
     let content = editorRef.current?.innerHTML || '';
     if (!content.trim() && !title.trim() && !objectives.trim() && !codeSnippet.trim()) return;
     
-    // Combine code snippet if in code tab
     if (activeType === 'code' && codeSnippet.trim()) {
       content += `\n\n\`\`\`\n${codeSnippet}\n\`\`\``;
     }
@@ -66,7 +73,6 @@ const NoteInput: React.FC<NoteInputProps> = ({
 
     await onAddNote(content, activeType, [], [], useAI, title, extraData);
     
-    // Reset
     if (editorRef.current) editorRef.current.innerHTML = '';
     setTitle(''); setProjectProgress(0); setObjectives(''); setDeliverables(''); setMilestoneLabel(''); setCodeSnippet('');
   };
@@ -142,7 +148,6 @@ const NoteInput: React.FC<NoteInputProps> = ({
             </div>
         )}
 
-        {/* Real-time Styling Toolbar */}
         <div className="flex flex-wrap items-center gap-1 p-2 bg-slate-50/80 dark:bg-slate-900/50 border-b dark:border-slate-700 overflow-x-auto no-scrollbar">
             <select onChange={(e) => execCommand('fontName', e.target.value)} className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded px-1.5 py-1 text-[10px] font-bold outline-none max-w-[90px]">
                 <option value="">Font</option>
@@ -153,13 +158,14 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
             <div className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1" />
-            <button onClick={() => execCommand('bold')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded font-black text-xs">B</button>
-            <button onClick={() => execCommand('italic')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded italic text-xs">I</button>
-            <button onClick={() => execCommand('underline')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded underline text-xs">U</button>
-            <button onClick={() => execCommand('strikeThrough')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded line-through text-xs">S</button>
+            <button onClick={() => execCommand('bold')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded font-black text-xs px-2.5">B</button>
+            <button onClick={() => execCommand('italic')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded italic text-xs px-2.5">/</button>
+            <button onClick={() => execCommand('underline')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded underline text-xs px-2.5">U</button>
+            <button onClick={() => execCommand('strikeThrough')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded line-through text-xs px-2.5">S</button>
             <div className="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1" />
-            <button onClick={() => execCommand('insertUnorderedList')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-xs">Bullet</button>
-            <button onClick={() => execCommand('indent')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded">
+            <button onClick={() => execCommand('insertUnorderedList')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-bold px-2 uppercase tracking-tighter">Bullet</button>
+            <button onClick={insertCheckbox} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-bold px-2 uppercase tracking-tighter flex items-center gap-1">Task</button>
+            <button onClick={() => execCommand('indent')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded px-2">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M17 10l5 5-5 5M3 6h18M3 12h10M3 18h18"/></svg>
             </button>
         </div>

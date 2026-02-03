@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
     getUsers, isAdmin, isGlobalAdmin, checkDatabaseConnection,
     updateUserRole, updateUserPassword, adminTriggerReset, testWriteCapability,
     getSystemLogs, SystemLogEntry, setAccountStatus
 } from '../services/authService';
-import { runConnectivityTest, getAIUsageLogs, DAILY_REQUEST_LIMIT, getDailyUsage } from '../services/geminiService';
+import { runConnectivityTest, getAIUsageLogs, DAILY_REQUEST_LIMIT, getDailyUsage, DiagnosticLog } from '../services/geminiService';
 import { Theme, User, Note, UserRole, UserStatus } from '../types';
 
 interface SettingsPanelProps {
@@ -25,13 +25,17 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const [users, setUsers] = useState<User[]>([]);
   const [systemLogs, setSystemLogs] = useState<SystemLogEntry[]>([]);
   const [aiLogs, setAiLogs] = useState<any[]>([]);
+  const [diagnosticLogs, setDiagnosticLogs] = useState<DiagnosticLog[]>([]);
   const [healthStatus, setHealthStatus] = useState<{db: string, ai: string, dns: string} | null>(null);
   const [isTestingPerms, setIsTestingPerms] = useState(false);
+  const [isRunningDiagnostics, setIsRunningDiagnostics] = useState(false);
   const [permTestResult, setPermTestResult] = useState<{success: boolean, message: string} | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   
   const [newPass, setNewPass] = useState('');
   const [passMsg, setPassMsg] = useState<{type: 'success'|'error', text: string} | null>(null);
+
+  const terminalEndRef = useRef<HTMLDivElement>(null);
 
   const userIsAdmin = isAdmin(currentUser);
   const dailyAIUsage = getDailyUsage() || 0;
@@ -45,6 +49,12 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     }
   }, [isOpen, activeTab, userIsAdmin]);
 
+  useEffect(() => {
+    if (terminalEndRef.current) {
+        terminalEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [diagnosticLogs]);
+
   const loadAdminData = async () => {
     setIsLoading(true);
     try {
@@ -54,13 +64,22 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   };
 
   const runDiagnostics = async () => {
+    setIsRunningDiagnostics(true);
+    setDiagnosticLogs([]);
     setHealthStatus(null);
+    
     const [dbCheck, aiCheck] = await Promise.all([checkDatabaseConnection(), runConnectivityTest()]);
+    
+    // Merge and sort logs by timestamp
+    const combinedLogs = [...dbCheck.logs, ...aiCheck.logs].sort((a, b) => a.timestamp - b.timestamp);
+    setDiagnosticLogs(combinedLogs);
+
     setHealthStatus({
-        db: dbCheck.success ? `Connected (${dbCheck.latency}ms)` : `Critical: ${dbCheck.message}`,
+        db: dbCheck.success ? `${dbCheck.message} (${dbCheck.latency}ms)` : `Error: ${dbCheck.message}`,
         ai: aiCheck.success ? "Active / Healthy" : `Error: ${aiCheck.message}`,
         dns: "Reachable"
     });
+    setIsRunningDiagnostics(false);
   };
 
   const handleTestPermissions = async () => {
@@ -374,7 +393,7 @@ service cloud.firestore {
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="p-6 bg-black/20 border border-slate-700/50 rounded-2xl text-center">
                        <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Database</h5>
-                       <p className={`font-bold ${healthStatus?.db.includes('Connected') ? 'text-emerald-500' : 'text-rose-500'}`}>{healthStatus?.db || 'Checking...'}</p>
+                       <p className={`font-bold ${healthStatus?.db.includes('Connected') || healthStatus?.db.includes('Operational') ? 'text-emerald-500' : 'text-rose-500'}`}>{healthStatus?.db || 'Checking...'}</p>
                     </div>
                     <div className="p-6 bg-black/20 border border-slate-700/50 rounded-2xl text-center">
                        <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">AI Engine</h5>
@@ -385,7 +404,43 @@ service cloud.firestore {
                        <p className="text-emerald-500 font-bold">{healthStatus?.dns || 'Resolving...'}</p>
                     </div>
                  </div>
-                 <button onClick={runDiagnostics} className="px-8 py-3 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest">Re-run Diagnostics</button>
+
+                 <div className="flex flex-col gap-3">
+                    <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest px-1">Detailed Diagnostic Terminal</h4>
+                    <div className="bg-slate-950 border border-slate-800 rounded-xl p-6 font-mono text-[11px] h-64 overflow-y-auto custom-scrollbar flex flex-col gap-1.5 shadow-inner ring-4 ring-black/5">
+                        {diagnosticLogs.length > 0 ? (
+                            <>
+                                {diagnosticLogs.map((log, idx) => (
+                                    <div key={idx} className="flex gap-3">
+                                        <span className="text-slate-600 shrink-0">[{new Date(log.timestamp).toLocaleTimeString()}]</span>
+                                        <span className={`font-bold uppercase shrink-0 min-w-[50px] ${
+                                            log.type === 'error' ? 'text-rose-500' : 
+                                            log.type === 'success' ? 'text-emerald-500' : 
+                                            log.type === 'warn' ? 'text-amber-500' : 'text-indigo-400'
+                                        }`}>
+                                            {log.type}
+                                        </span>
+                                        <span className={log.type === 'error' ? 'text-rose-400 font-bold' : 'text-slate-300'}>{log.message}</span>
+                                    </div>
+                                ))}
+                                <div ref={terminalEndRef} />
+                            </>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-full opacity-20 italic">
+                                <span>No logs recorded.</span>
+                                <span>Press "Re-run Diagnostics" to start handshake.</span>
+                            </div>
+                        )}
+                    </div>
+                 </div>
+
+                 <button 
+                    onClick={runDiagnostics} 
+                    disabled={isRunningDiagnostics}
+                    className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg transition-all transform active:scale-95"
+                 >
+                    {isRunningDiagnostics ? '⌛ Handshake in progress...' : 'Re-run Diagnostics'}
+                 </button>
               </div>
             )}
           </div>

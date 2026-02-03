@@ -77,7 +77,15 @@ const NoteCard: React.FC<NoteCardProps> = ({
       input: (props: any) => {
           if (props.type === 'checkbox') {
               const index = checkboxCounter.current++;
-              return <input type="checkbox" checked={props.checked} onChange={() => onToggleCheckbox(note.id, index)} onClick={(e) => e.stopPropagation()} className={`mt-1 h-3.5 w-3.5 rounded focus:ring-primary-500 ${note.color === 'matrix' ? 'accent-[#39ff14]' : 'text-primary-600'}`} />;
+              return (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onToggleCheckbox(note.id, index); }}
+                  className="inline-flex items-center justify-center mr-2 transform active:scale-75 transition-transform text-sm"
+                  title={props.checked ? "Completed" : "Mark Complete"}
+                >
+                  {props.checked ? '✅' : '⬜'}
+                </button>
+              );
           }
           return <input {...props} />;
       }

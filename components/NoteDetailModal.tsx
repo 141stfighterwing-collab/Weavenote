@@ -42,7 +42,14 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
       input: (props: any) => {
           if (props.type === 'checkbox') {
               const index = checkboxCounter.current++;
-              return <input type="checkbox" checked={props.checked || false} onChange={() => { if (note) onToggleCheckbox(note.id, index); }} className={`mt-1 h-4 w-4 rounded ${isMatrix ? 'accent-[#39ff14]' : ''}`} />;
+              return (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); if (note) onToggleCheckbox(note.id, index); }}
+                  className="inline-flex items-center justify-center mr-2 transform active:scale-75 transition-transform text-lg align-middle"
+                >
+                  {props.checked ? '✅' : '⬜'}
+                </button>
+              );
           }
           return <input {...props} />;
       },

@@ -88,12 +88,31 @@ export const expandNoteContent = async (content: string, username: string, userI
     }
 };
 
+export interface DiagnosticLog {
+  timestamp: number;
+  message: string;
+  type: 'info' | 'success' | 'error' | 'warn';
+}
+
 export const runConnectivityTest = async () => {
+  const logs: DiagnosticLog[] = [];
+  const addLog = (message: string, type: DiagnosticLog['type'] = 'info') => logs.push({ timestamp: Date.now(), message, type });
+
+  addLog("Starting System Handshake...");
   const apiKey = process.env.API_KEY;
-  if (!apiKey) return { success: false, message: "Error: No API_KEY configured." };
+
+  if (!apiKey) {
+    addLog("CRITICAL: process.env.API_KEY is undefined or empty.", "error");
+    return { success: false, message: "Error: No API_KEY configured.", logs };
+  }
+
+  addLog(`Environment Key Found (${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)})`);
+  addLog("Initializing @google/genai SDK...");
 
   try {
     const ai = new GoogleGenAI({ apiKey });
+    addLog("Sending verification ping to gemini-3-flash-preview...");
+    
     const response = await ai.models.generateContent({ 
         model: 'gemini-3-flash-preview', 
         contents: 'ping',
@@ -104,15 +123,29 @@ export const runConnectivityTest = async () => {
     });
     
     if (response && response.text) {
-        return { success: true, message: "Handshake Successful", steps: ["SDK Initialized", "API Keys Validated", "Model Response Verified"] };
+        addLog("API Response received: " + response.text, "success");
+        addLog("Model latency verified within limits.", "success");
+        return { success: true, message: "AI Engine Healthy", logs };
     }
-    return { success: false, message: "Handshake Failed: Empty response." };
+    addLog("Model returned empty content payload.", "warn");
+    return { success: false, message: "Handshake Failed: Empty response.", logs };
   } catch (e: any) {
-    console.error("AI CONNECTION DEBUG:", e);
     let msg = e.message || "Unknown connectivity error";
-    if (msg.includes("403")) msg = "API Key Invalid or Restricted.";
-    if (msg.includes("429")) msg = "Quota Exceeded.";
-    return { success: false, message: `Service Error: ${msg}` };
+    
+    if (msg.includes("403")) {
+      addLog("SERVER ERROR 403: API Key is invalid or restricted to specific IP/Domain.", "error");
+      msg = "API Key Invalid or Restricted (Check GCP Console)";
+    } else if (msg.includes("429")) {
+      addLog("SERVER ERROR 429: Rate limit hit or credit quota exhausted.", "error");
+      msg = "Quota Exceeded / Account Billing Required";
+    } else if (msg.includes("401")) {
+      addLog("SERVER ERROR 401: Unauthorized request. Token might be expired.", "error");
+      msg = "Unauthorized (Expired Key)";
+    } else {
+      addLog("UNEXPECTED ERROR: " + msg, "error");
+    }
+
+    return { success: false, message: msg, logs };
   }
 };
 

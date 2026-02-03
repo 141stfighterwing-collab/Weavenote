@@ -23,6 +23,7 @@ import {
     increment
 } from 'firebase/firestore';
 import { User, Permission, UserStatus, UserRole } from '../types';
+import { DiagnosticLog } from './geminiService';
 
 export interface AuditLogEntry {
     id: string;
@@ -260,16 +261,37 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
     }
 };
 
-export const checkDatabaseConnection = async (): Promise<{ success: boolean; latency: number; message: string }> => {
-    if (!isFirebaseReady || !db) return { success: false, latency: 0, message: "Cloud Unconfigured" };
+export const checkDatabaseConnection = async (): Promise<{ success: boolean; latency: number; message: string; logs: DiagnosticLog[] }> => {
+    const logs: DiagnosticLog[] = [];
+    const addLog = (message: string, type: DiagnosticLog['type'] = 'info') => logs.push({ timestamp: Date.now(), message, type });
+
+    addLog("Initializing Firestore Handshake...");
+    if (!isFirebaseReady || !db) {
+        addLog("CRITICAL: Firebase App is NOT initialized. Check config.ts.", "error");
+        return { success: false, latency: 0, message: "Cloud Unconfigured", logs };
+    }
+
     const start = Date.now();
     try {
-        if (auth?.currentUser) await getDoc(doc(db, 'users', auth.currentUser.uid));
-        else await getDocs(query(collection(db, 'users'), limit(1)));
-        return { success: true, latency: Date.now() - start, message: "Connected" };
+        addLog(`Targeting Firestore DB Project...`);
+        if (auth?.currentUser) {
+            addLog(`Authenticated Context Found (UID: ${auth.currentUser.uid.substring(0, 5)}...)`);
+            await getDoc(doc(db, 'users', auth.currentUser.uid));
+        } else {
+            addLog(`Anonymous Context. Testing public read...`);
+            await getDocs(query(collection(db, 'users'), limit(1)));
+        }
+        const latency = Date.now() - start;
+        addLog(`Handshake Successful (${latency}ms)`, "success");
+        return { success: true, latency, message: "Connected", logs };
     } catch (e: any) {
-        if (e.code === 'permission-denied') return { success: true, latency: Date.now() - start, message: "Operational (Secured)" };
-        return { success: false, latency: 0, message: "Connectivity Failure" };
+        const latency = Date.now() - start;
+        if (e.code === 'permission-denied') {
+            addLog("PERMISSION DENIED: Firebase Rules blocked the read request.", "warn");
+            return { success: true, latency, message: "Operational (Secured)", logs };
+        }
+        addLog(`CRITICAL ERROR: ${e.code || 'UNKNOWN'} - ${e.message}`, "error");
+        return { success: false, latency: 0, message: "Connectivity Failure", logs };
     }
 };
 
