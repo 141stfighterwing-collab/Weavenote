@@ -114,17 +114,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     setExpandedFolders(newExpanded);
   };
 
-  const topTags = useMemo(() => {
-    const counts: Record<string, number> = {};
-    notes.forEach(n => n.tags.forEach(t => counts[t] = (counts[t] || 0) + 1));
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10);
-  }, [notes]);
-
-  const getHashColor = (str: string) => {
-    let hash = 0; for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    return `hsl(${Math.abs(hash % 360)}, 70%, 45%)`; 
-  };
-
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newFolderName.trim()) {
@@ -148,7 +137,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     setDragOverFolderId(null);
     const noteId = e.dataTransfer.getData('noteId');
     if (noteId && onMoveNote) {
-      // If folderId is undefined, it removes it from its current folder
       onMoveNote(noteId, folderId);
     }
   };
@@ -250,22 +238,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                    );
                })}
           </div>
-      </div>
-
-      <div className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700 transition-colors">
-        <h3 className="font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2 text-xs uppercase tracking-wider">🔥 Popular Tags</h3>
-        <div className="flex flex-wrap gap-2">
-            {topTags.map(([tag, count]) => (
-                <button
-                    key={tag}
-                    onClick={() => onTagClick(tag)}
-                    className={`text-[10px] font-bold px-2 py-1 rounded-md transition-all border ${activeTag === tag ? 'ring-2 ring-primary-400' : ''}`}
-                    style={{ backgroundColor: activeTag === tag ? getHashColor(tag) : 'transparent', color: activeTag === tag ? 'white' : getHashColor(tag), borderColor: getHashColor(tag) + '40' }}
-                >
-                    #{tag}
-                </button>
-            ))}
-        </div>
       </div>
     </aside>
   );
