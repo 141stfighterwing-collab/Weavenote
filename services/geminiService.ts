@@ -35,7 +35,6 @@ const extractJsonResponse = (text: string): any => {
         // Direct parse attempt first
         return JSON.parse(text);
     } catch (e) {
-        // Find the first occurrence of { and the last occurrence of }
         const start = text.indexOf('{');
         const end = text.lastIndexOf('}');
         
@@ -53,7 +52,7 @@ const extractJsonResponse = (text: string): any => {
 };
 
 export const cleanAndFormatIngestedText = async (rawText: string, filename: string, username: string, userId?: string): Promise<ProcessedNoteData> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
   const prompt = `Format this document extracted text into structured Markdown. Identify title, category, tags. Return JSON with keys: "title", "formattedContent", "category", "tags".\n\nText:\n${rawText.substring(0, 10000)}`;
 
   try {
@@ -76,7 +75,7 @@ export const cleanAndFormatIngestedText = async (rawText: string, filename: stri
 };
 
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string, userId?: string): Promise<ProcessedNoteData> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
   const prompt = `Organize this user input into a structured note. Return strictly JSON with keys: "title", "formattedContent", "category", "tags".\n\nInput: ${text}`;
 
   try {
@@ -99,7 +98,7 @@ export const processNoteWithAI = async (text: string, existingCategories: string
 };
 
 export const expandNoteContent = async (content: string, username: string, userId?: string) => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
     try {
       const response = await ai.models.generateContent({
           model: 'gemini-3-pro-preview',
@@ -124,54 +123,75 @@ export const runConnectivityTest = async () => {
   const logs: DiagnosticLog[] = [];
   const addLog = (message: string, type: DiagnosticLog['type'] = 'info') => logs.push({ timestamp: Date.now(), message, type });
 
-  addLog("Starting System Handshake...");
+  addLog("System Diagnostics: Initiating AI Handshake...");
   const apiKey = process.env.API_KEY;
 
   if (!apiKey) {
-    addLog("CRITICAL: process.env.API_KEY is undefined or empty.", "error");
-    return { success: false, message: "Error: No API_KEY configured.", logs };
+    addLog("CRITICAL: API_KEY is missing from the environment.", "error");
+    return { success: false, message: "Missing API Key", logs };
   }
 
-  addLog(`Environment Key Found (${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)})`);
-  addLog("Initializing @google/genai SDK...");
+  if (!apiKey.startsWith("AIza")) {
+    addLog("WARNING: API Key format looks suspicious. It should usually start with 'AIza'.", "warn");
+  }
+
+  addLog(`Auth Context: Key detected (${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)})`);
+  addLog("Initializing @google/genai SDK v1.32+...");
 
   try {
     const ai = new GoogleGenAI({ apiKey });
-    addLog("Sending verification ping to gemini-3-flash-preview...");
+    addLog("Sending verification ping to generative-language.googleapis.com...");
     
+    // Use a very light-weight model call to test health
     const response = await ai.models.generateContent({ 
         model: 'gemini-3-flash-preview', 
         contents: 'ping',
         config: { 
-          maxOutputTokens: 10,
+          maxOutputTokens: 5,
           thinkingConfig: { thinkingBudget: 0 }
         }
     });
     
     if (response && response.text) {
-        addLog("API Response received: " + response.text, "success");
-        addLog("Model latency verified within limits.", "success");
-        return { success: true, message: "AI Engine Healthy", logs };
+        addLog(`SUCCESS: Response received [${response.text.trim()}]`, "success");
+        addLog("Handshake verified. AI Engine is healthy.", "success");
+        return { success: true, message: "Active & Healthy", logs };
     }
-    addLog("Model returned empty content payload.", "warn");
-    return { success: false, message: "Handshake Failed: Empty response.", logs };
-  } catch (e: any) {
-    let msg = e.message || "Unknown connectivity error";
     
-    if (msg.includes("403")) {
-      addLog("SERVER ERROR 403: API Key is invalid or restricted to specific IP/Domain.", "error");
-      msg = "API Key Invalid or Restricted (Check GCP Console)";
-    } else if (msg.includes("429")) {
-      addLog("SERVER ERROR 429: Rate limit hit or credit quota exhausted.", "error");
-      msg = "Quota Exceeded / Account Billing Required";
-    } else if (msg.includes("401")) {
-      addLog("SERVER ERROR 401: Unauthorized request. Token might be expired.", "error");
-      msg = "Unauthorized (Expired Key)";
-    } else {
-      addLog("UNEXPECTED ERROR: " + msg, "error");
+    addLog("Model returned a blank response. Check model status.", "warn");
+    return { success: false, message: "Empty API Response", logs };
+  } catch (e: any) {
+    const msg = e.message || String(e);
+    
+    // Detect "Failed to fetch" - very common in browser if blocked
+    if (msg.toLowerCase().includes("failed to fetch") || msg.toLowerCase().includes("networkerror")) {
+        addLog("NETWORK ERROR: Request was blocked before leaving the browser.", "error");
+        addLog("POSSIBLE CAUSES: Ad-Blocker (uBlock, etc), Corporate Firewall, or VPN blocking Google APIs.", "warn");
+        addLog("FIX: Disable ad-blockers for this site or try a different network.", "info");
+        return { success: false, message: "Network/CORS Block", logs };
     }
 
-    return { success: false, message: msg, logs };
+    if (msg.includes("403")) {
+        addLog("FORBIDDEN (403): Your key is valid but access is denied.", "error");
+        addLog("POSSIBLE CAUSE: API key is restricted to specific IP/Domain in Google Cloud Console.", "warn");
+        addLog("FIX: Update API Key restrictions at console.cloud.google.com.", "info");
+        return { success: false, message: "API Restrictions (403)", logs };
+    } 
+
+    if (msg.includes("401")) {
+        addLog("UNAUTHORIZED (401): The API Key is incorrect or invalid.", "error");
+        addLog("FIX: Re-enter or generate a new API Key from AI Studio.", "info");
+        return { success: false, message: "Invalid API Key (401)", logs };
+    }
+
+    if (msg.includes("429")) {
+        addLog("QUOTA EXCEEDED (429): Too many requests in a short time.", "error");
+        addLog("FIX: Wait 60 seconds or switch to a paid tier/project.", "info");
+        return { success: false, message: "Rate Limited (429)", logs };
+    }
+
+    addLog(`UNEXPECTED ENGINE ERROR: ${msg}`, "error");
+    return { success: false, message: `Engine Error: ${msg.substring(0, 30)}...`, logs };
   }
 };
 

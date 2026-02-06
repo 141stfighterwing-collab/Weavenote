@@ -68,15 +68,17 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     setDiagnosticLogs([]);
     setHealthStatus(null);
     
-    const [dbCheck, aiCheck] = await Promise.all([checkDatabaseConnection(), runConnectivityTest()]);
+    // First run DB check
+    const dbCheck = await checkDatabaseConnection();
+    setDiagnosticLogs(prev => [...prev, ...dbCheck.logs]);
     
-    // Merge and sort logs by timestamp
-    const combinedLogs = [...dbCheck.logs, ...aiCheck.logs].sort((a, b) => a.timestamp - b.timestamp);
-    setDiagnosticLogs(combinedLogs);
+    // Then run AI check
+    const aiCheck = await runConnectivityTest();
+    setDiagnosticLogs(prev => [...prev, ...aiCheck.logs].sort((a, b) => a.timestamp - b.timestamp));
 
     setHealthStatus({
         db: dbCheck.success ? `${dbCheck.message} (${dbCheck.latency}ms)` : `Error: ${dbCheck.message}`,
-        ai: aiCheck.success ? "Active / Healthy" : `Error: ${aiCheck.message}`,
+        ai: aiCheck.success ? aiCheck.message : `Failed: ${aiCheck.message}`,
         dns: "Reachable"
     });
     setIsRunningDiagnostics(false);
@@ -397,7 +399,7 @@ service cloud.firestore {
                     </div>
                     <div className="p-6 bg-black/20 border border-slate-700/50 rounded-2xl text-center">
                        <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">AI Engine</h5>
-                       <p className={`font-bold ${healthStatus?.ai.includes('Active') ? 'text-indigo-500' : 'text-rose-500'}`}>{healthStatus?.ai || 'Checking...'}</p>
+                       <p className={`font-bold ${healthStatus?.ai.includes('Active') || healthStatus?.ai.includes('Healthy') ? 'text-indigo-500' : 'text-rose-500'}`}>{healthStatus?.ai || 'Checking...'}</p>
                     </div>
                     <div className="p-6 bg-black/20 border border-slate-700/50 rounded-2xl text-center">
                        <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">API Connectivity</h5>
@@ -420,7 +422,7 @@ service cloud.firestore {
                                         }`}>
                                             {log.type}
                                         </span>
-                                        <span className={log.type === 'error' ? 'text-rose-400 font-bold' : 'text-slate-300'}>{log.message}</span>
+                                        <span className={log.type === 'error' ? 'text-rose-400 font-bold' : log.type === 'warn' ? 'text-amber-400' : 'text-slate-300'}>{log.message}</span>
                                     </div>
                                 ))}
                                 <div ref={terminalEndRef} />
