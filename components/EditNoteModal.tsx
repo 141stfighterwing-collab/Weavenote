@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Note, ProjectData, ProjectPhase, ProjectMilestone, ProjectItem } from '../types';
 import { processNoteWithAI } from '../services/geminiService';
+import { getTagStyle } from './NoteCard';
 
 interface EditNoteModalProps {
   note: Note | null;
@@ -16,6 +17,8 @@ const SIZES = ["1", "2", "3", "4", "5", "6", "7"];
 const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, onSave, currentUser }) => {
   const [title, setTitle] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
   
   // Project Engine State
   const [objectives, setObjectives] = useState('');
@@ -28,6 +31,7 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
   useEffect(() => {
     if (note) {
       setTitle(note.title);
+      setTags(note.tags);
       if (editorRef.current) editorRef.current.innerHTML = note.content;
       if (note.type === 'project' && note.projectData) {
           setObjectives(note.projectData.objectives.map(o => typeof o === 'string' ? o : o.label).join('\n'));
@@ -51,6 +55,7 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
           const content = editorRef.current?.innerHTML || '';
           const processed = await processNoteWithAI(content, [], note.type, currentUser);
           setTitle(processed.title);
+          setTags(prev => Array.from(new Set([...prev, ...processed.tags.map(t => t.toLowerCase().replace('#', ''))])));
           if (editorRef.current) editorRef.current.innerHTML = processed.formattedContent;
       } catch (err: any) {
           console.error(err);
@@ -59,10 +64,22 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
       }
   };
 
+  const addTag = () => {
+      const val = tagInput.trim().toLowerCase().replace('#', '');
+      if (val && !tags.includes(val)) {
+          setTags([...tags, val]);
+          setTagInput('');
+      }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+      setTags(tags.filter(t => t !== tagToRemove));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const content = editorRef.current?.innerHTML || '';
-    onSave(note.id, title, content, undefined, undefined, note.type === 'project' ? {
+    onSave(note.id, title, content, undefined, tags, note.type === 'project' ? {
         ...note.projectData,
         objectives: objectives.split('\n').filter(l => l.trim()).map(l => ({ label: l, status: 'pending' as const })),
         deliverables: deliverables.split('\n').filter(l => l.trim()).map(l => ({ label: l, status: 'pending' as const })),
@@ -118,9 +135,35 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
 
             {/* Description Right Column */}
             <div className={`${note.type === 'project' ? 'lg:col-span-8' : 'lg:col-span-12'} space-y-6 flex flex-col`}>
-                <div>
-                    <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Entry Title</label>
-                    <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-5 py-3 border border-slate-200 dark:border-slate-700 rounded-xl font-black text-lg dark:bg-slate-900 dark:text-white outline-none" required />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Entry Title</label>
+                        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-5 py-3 border border-slate-200 dark:border-slate-700 rounded-xl font-black text-lg dark:bg-slate-900 dark:text-white outline-none" required />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Manage Hashtags</label>
+                        <div className="flex flex-wrap gap-1.5 p-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 min-h-[50px]">
+                            {tags.map(tag => (
+                                <span key={tag} style={getTagStyle(tag)} className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1 group/tag">
+                                    #{tag}
+                                    <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-500 transition-colors">✕</button>
+                                </span>
+                            ))}
+                            <input 
+                                type="text"
+                                value={tagInput}
+                                onChange={e => setTagInput(e.target.value)}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter' || e.key === ',') {
+                                        e.preventDefault();
+                                        addTag();
+                                    }
+                                }}
+                                placeholder="Add tag..."
+                                className="bg-transparent outline-none text-xs font-bold text-slate-400 min-w-[80px] flex-1"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex-grow flex flex-col min-h-[400px]">

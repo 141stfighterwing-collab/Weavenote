@@ -26,6 +26,32 @@ const logAIUsage = (username: string, action: string, details: string) => {
     localStorage.setItem('ideaweaver_ai_logs', JSON.stringify(logs.slice(0, 100)));
 };
 
+/**
+ * Robust JSON extractor to handle cases where the model appends text after the JSON object
+ * or wraps the JSON in markdown code blocks.
+ */
+const extractJsonResponse = (text: string): any => {
+    try {
+        // Direct parse attempt first
+        return JSON.parse(text);
+    } catch (e) {
+        // Find the first occurrence of { and the last occurrence of }
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}');
+        
+        if (start !== -1 && end !== -1 && end > start) {
+            const jsonStr = text.substring(start, end + 1);
+            try {
+                return JSON.parse(jsonStr);
+            } catch (innerError) {
+                console.error("Failed to parse extracted JSON block:", jsonStr);
+                throw innerError;
+            }
+        }
+        throw new Error("No valid JSON object found in response");
+    }
+};
+
 export const cleanAndFormatIngestedText = async (rawText: string, filename: string, username: string, userId?: string): Promise<ProcessedNoteData> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const prompt = `Format this document extracted text into structured Markdown. Identify title, category, tags. Return JSON with keys: "title", "formattedContent", "category", "tags".\n\nText:\n${rawText.substring(0, 10000)}`;
@@ -37,7 +63,7 @@ export const cleanAndFormatIngestedText = async (rawText: string, filename: stri
       config: { responseMimeType: 'application/json' }
     });
 
-    const parsed = JSON.parse(response.text || "{}") as ProcessedNoteData;
+    const parsed = extractJsonResponse(response.text || "{}") as ProcessedNoteData;
     incrementUsage(userId);
     logAIUsage(username, 'DOCUMENT_INGEST', `Processed ${filename}`);
     logTraffic('POST', 'gemini-3-flash/ingest', 200, rawText.length);
@@ -60,7 +86,7 @@ export const processNoteWithAI = async (text: string, existingCategories: string
       config: { responseMimeType: 'application/json' }
     });
 
-    const parsed = JSON.parse(response.text || "{}") as ProcessedNoteData;
+    const parsed = extractJsonResponse(response.text || "{}") as ProcessedNoteData;
     incrementUsage(userId);
     logAIUsage(username, 'NOTE_ORGANIZE', `Organized ${noteType} entry`);
     logTraffic('POST', 'gemini-3-flash/organize', 200, text.length);

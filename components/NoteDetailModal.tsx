@@ -31,6 +31,11 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const checkboxCounter = useRef(0);
 
+  const folderName = useMemo(() => {
+    if (!note?.folderId || !folders) return null;
+    return folders.find(f => f.id === note.folderId)?.name;
+  }, [note, folders]);
+
   if (!isOpen || !note) return null;
   
   const colorClass = NOTE_COLORS[note.color];
@@ -82,6 +87,15 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
                 <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${isMatrix ? 'bg-[#39ff14]/20 text-[#39ff14]' : 'bg-black/40 text-white'}`}>{note.type}</span>
                     <span className="text-[9px] font-black uppercase tracking-widest opacity-40">{note.category}</span>
+                    {folderName && (
+                        <>
+                            <span className="text-slate-400">/</span>
+                            <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest opacity-70">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                                {folderName}
+                            </span>
+                        </>
+                    )}
                 </div>
                 <h2 className={`text-2xl font-black mt-1 ${isCompleted ? 'line-through opacity-60' : ''}`}>{note.title}</h2>
             </div>

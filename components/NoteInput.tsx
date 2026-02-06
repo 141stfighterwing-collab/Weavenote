@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { NoteType, ProjectMilestone } from '../types';
 import { parseDocument } from '../services/documentParser';
 import { cleanAndFormatIngestedText } from '../services/geminiService';
+import { getTagStyle } from './NoteCard';
 
 interface NoteInputProps {
   onAddNote: (text: string, type: NoteType, attachments?: string[], forcedTags?: string[], useAI?: boolean, manualTitle?: string, extraProjectData?: { 
@@ -28,6 +29,8 @@ const NoteInput: React.FC<NoteInputProps> = ({
   const [title, setTitle] = useState('');
   const [isParsingDoc, setIsParsingDoc] = useState(false);
   const [codeSnippet, setCodeSnippet] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
 
   // Project Engine State
   const [projectProgress, setProjectProgress] = useState(0);
@@ -48,7 +51,6 @@ const NoteInput: React.FC<NoteInputProps> = ({
   const insertCheckbox = () => {
     if (editorRef.current) {
         editorRef.current.focus();
-        // Insert a markdown task list item
         document.execCommand('insertHTML', false, '<div>- [ ] &nbsp;</div>');
     }
   };
@@ -71,11 +73,21 @@ const NoteInput: React.FC<NoteInputProps> = ({
         manualMilestones: milestoneLabel ? [{ label: milestoneLabel, date: new Date().toISOString().split('T')[0], status: 'pending' as const }] : []
     } : undefined;
 
-    await onAddNote(content, activeType, [], [], useAI, title, extraData);
+    await onAddNote(content, activeType, [], tags, useAI, title, extraData);
     
     if (editorRef.current) editorRef.current.innerHTML = '';
-    setTitle(''); setProjectProgress(0); setObjectives(''); setDeliverables(''); setMilestoneLabel(''); setCodeSnippet('');
+    setTitle(''); setProjectProgress(0); setObjectives(''); setDeliverables(''); setMilestoneLabel(''); setCodeSnippet(''); setTags([]);
   };
+
+  const addTag = () => {
+    const val = tagInput.trim().toLowerCase().replace('#', '');
+    if (val && !tags.includes(val)) {
+        setTags([...tags, val]);
+        setTagInput('');
+    }
+  };
+
+  const removeTag = (t: string) => setTags(tags.filter(tag => tag !== t));
 
   const getBackgroundColor = () => {
       switch (activeType) {
@@ -183,6 +195,30 @@ const NoteInput: React.FC<NoteInputProps> = ({
               className={`w-full p-6 focus:outline-none text-slate-700 dark:text-slate-200 text-sm whitespace-pre-wrap font-sans leading-relaxed empty:before:content-[attr(placeholder)] empty:before:text-slate-400 ${activeType === 'code' ? 'min-h-[120px]' : 'min-h-[200px]'}`}
               placeholder={activeType === 'code' ? "Add a description for this code snippet..." : "Start typing your ideas here... Styles apply in real-time."}
             />
+        </div>
+
+        <div className="px-4 pb-2">
+            <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700 min-h-[40px] items-center">
+                {tags.map(tag => (
+                    <span key={tag} style={getTagStyle(tag)} className="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
+                        #{tag}
+                        <button type="button" onClick={() => removeTag(tag)} className="hover:text-red-500">✕</button>
+                    </span>
+                ))}
+                <input 
+                    type="text"
+                    value={tagInput}
+                    onChange={e => setTagInput(e.target.value)}
+                    onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ',') {
+                            e.preventDefault();
+                            addTag();
+                        }
+                    }}
+                    placeholder="Add manual tags..."
+                    className="bg-transparent outline-none text-[10px] font-bold text-slate-400 min-w-[120px] flex-1"
+                />
+            </div>
         </div>
 
         {activeType === 'code' && (

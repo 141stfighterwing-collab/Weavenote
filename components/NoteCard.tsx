@@ -21,25 +21,34 @@ interface NoteCardProps {
   onToggleComplete?: (id: string) => void;
 }
 
-// Global helper for tag colors
+// Global helper for neon tag styles
 export const getTagStyle = (tag: string, isActive: boolean = false) => {
     let hash = 0;
     for (let i = 0; i < tag.length; i++) {
         hash = tag.charCodeAt(i) + ((hash << 5) - hash);
     }
     const hue = Math.abs(hash % 360);
+    
+    // Selection state: High-contrast solid neon with black text
     if (isActive) {
         return {
-            backgroundColor: `hsl(${hue}, 75%, 45%)`,
-            color: '#fff',
-            borderColor: `hsl(${hue}, 75%, 35%)`,
-            boxShadow: `0 4px 12px hsla(${hue}, 75%, 45%, 0.3)`
+            backgroundColor: `hsl(${hue}, 100%, 65%)`,
+            color: '#000',
+            borderColor: `hsl(${hue}, 100%, 80%)`,
+            boxShadow: `0 0 20px hsla(${hue}, 100%, 65%, 0.7), inset 0 0 8px rgba(255,255,255,0.6)`,
+            fontWeight: '900',
+            borderWidth: '2px'
         };
     }
+    
+    // Standard state: Glowing neon text and border
     return {
-        backgroundColor: `hsla(${hue}, 80%, 50%, 0.12)`,
-        color: `hsl(${hue}, 85%, 30%)`,
-        borderColor: `hsla(${hue}, 80%, 50%, 0.25)`
+        backgroundColor: `hsla(${hue}, 100%, 50%, 0.12)`,
+        color: `hsl(${hue}, 100%, 75%)`,
+        borderColor: `hsla(${hue}, 100%, 70%, 0.6)`,
+        boxShadow: `0 0 12px hsla(${hue}, 100%, 50%, 0.25)`,
+        textShadow: `0 0 8px hsla(${hue}, 100%, 75%, 0.5)`,
+        borderWidth: '1.5px'
     };
 };
 
@@ -51,6 +60,11 @@ const NoteCard: React.FC<NoteCardProps> = ({
   checkboxCounter.current = 0;
   const [isDragging, setIsDragging] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
+
+  const folderName = useMemo(() => {
+    if (!note.folderId || !folders) return null;
+    return folders.find(f => f.id === note.folderId)?.name;
+  }, [note.folderId, folders]);
 
   const calculateProgress = useMemo(() => {
       if (!note.projectData) return 0;
@@ -104,6 +118,12 @@ const NoteCard: React.FC<NoteCardProps> = ({
     >
       <div className="flex justify-between items-start mb-4 border-b border-black/5 pb-2">
         <h3 className={`text-xl font-black leading-tight line-clamp-2 ${isFinished ? 'opacity-60 line-through' : ''}`}>{note.title}</h3>
+        {folderName && (
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-black/5 rounded-lg border border-black/5 text-[9px] font-black uppercase tracking-widest text-slate-500 shrink-0">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                {folderName}
+            </div>
+        )}
       </div>
 
       {note.type === 'project' && note.projectData && (
