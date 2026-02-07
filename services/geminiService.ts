@@ -5,6 +5,15 @@ import { logTraffic } from "./trafficService";
 
 export const DAILY_REQUEST_LIMIT = 800;
 
+// Factory to prevent stale SDK instances
+const getAI = () => {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey || apiKey === "") {
+        throw new Error("API_KEY_MISSING");
+    }
+    return new GoogleGenAI({ apiKey });
+};
+
 const getUsageKey = () => `ideaweaver_usage_${new Date().toISOString().split('T')[0]}`;
 
 export const getDailyUsage = (): number => parseInt(localStorage.getItem(getUsageKey()) || '0', 10);
@@ -41,35 +50,42 @@ const extractJsonResponse = (text: string): any => {
 };
 
 export const cleanAndFormatIngestedText = async (rawText: string, filename: string, username: string, userId?: string): Promise<ProcessedNoteData> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
-  const prompt = `Format this document extracted text into structured Markdown. Identify title, category, tags. Return JSON with keys: "title", "formattedContent", "category", "tags".\n\nText:\n${rawText.substring(0, 10000)}`;
   try {
+    const ai = getAI();
+    const prompt = `Format this document extracted text into structured Markdown. Identify title, category, tags. Return JSON with keys: "title", "formattedContent", "category", "tags".\n\nText:\n${rawText.substring(0, 10000)}`;
+
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview', 
+      model: 'gemini-3-pro-preview', // High intelligence model for documents
       contents: prompt,
-      config: { responseMimeType: 'application/json' }
+      config: { 
+        responseMimeType: 'application/json',
+        temperature: 0.1 
+      }
     });
+
     const parsed = extractJsonResponse(response.text || "{}") as ProcessedNoteData;
     incrementUsage(userId);
     logAIUsage(username, 'DOCUMENT_INGEST', `Processed ${filename}`);
-    logTraffic('POST', 'gemini-3-flash/ingest', 200, rawText.length);
+    logTraffic('POST', 'gemini-3-pro/ingest', 200, rawText.length);
     return parsed;
   } catch (error: any) {
     logError('CLEAN_TEXT', error);
-    logTraffic('POST', 'gemini-3-flash/ingest', 500, rawText.length);
+    logTraffic('POST', 'gemini-3-pro/ingest', 500, rawText.length);
     throw error;
   }
 };
 
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string, userId?: string): Promise<ProcessedNoteData> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
-  const prompt = `Organize this user input into a structured note. Return strictly JSON with keys: "title", "formattedContent", "category", "tags".\n\nInput: ${text}`;
   try {
+    const ai = getAI();
+    const prompt = `Organize this user input into a structured note. Return strictly JSON with keys: "title", "formattedContent", "category", "tags".\n\nInput: ${text}`;
+    
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-flash-preview', // Flash is better for quick notes
       contents: prompt,
       config: { responseMimeType: 'application/json' }
     });
+
     const parsed = extractJsonResponse(response.text || "{}") as ProcessedNoteData;
     incrementUsage(userId);
     logAIUsage(username, 'NOTE_ORGANIZE', `Organized ${noteType} entry`);
@@ -83,11 +99,14 @@ export const processNoteWithAI = async (text: string, existingCategories: string
 };
 
 export const expandNoteContent = async (content: string, username: string, userId?: string) => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
     try {
+      const ai = getAI();
       const response = await ai.models.generateContent({
-          model: 'gemini-3-pro-preview',
+          model: 'gemini-3-pro-preview', // Pro for deep reasoning
           contents: `Deep dive expand on this: ${content}`,
+          config: {
+            thinkingConfig: { thinkingBudget: 4000 } // Enable chain of thought
+          }
       });
       incrementUsage(userId);
       logAIUsage(username, 'DEEP_DIVE', `Expanded content block`);
@@ -111,56 +130,55 @@ export const runConnectivityTest = async () => {
   const origin = window.location.origin;
   const isVercel = window.location.hostname.includes('vercel.app');
   
-  addLog("--- VERCEL FORENSIC DIAGNOSTICS ---");
-  addLog(`Current URL: ${origin}`, "info");
+  addLog("--- ENGINE DIAGNOSTICS ---");
+  addLog(`Environment: ${isVercel ? 'Vercel Preview/Prod' : 'Development'}`);
   
   const apiKey = process.env.API_KEY;
 
   if (!apiKey || apiKey === "" || apiKey === "undefined") {
-    addLog("CRITICAL: API_KEY is MISSING from the current build.", "error");
-    if (isVercel) {
-        addLog("CAUSE: You added the variable to Vercel, but did not REDEPLOY. Environment variables are baked into the code at build time.", "warn");
-        addLog("FIX: Go to Vercel -> Deployments -> Click '...' on your latest build -> Redeploy.", "success");
-    }
-    return { success: false, message: "Key Missing in Build", logs };
+    addLog("CRITICAL: API_KEY is physically missing from the JS bundle.", "error");
+    addLog("RESOLUTION: You must REDEPLOY on Vercel for new Env Vars to take effect.", "warn");
+    return { success: false, message: "Stale Build / Missing Key", logs };
   }
 
-  addLog(`Key Signature: ${apiKey.substring(0, 6)}... Detected.`, "info");
-  addLog("Attempting Handshake with Google Edge...");
+  addLog(`Key Verification: Signature ${apiKey.substring(0, 6)}... detected.`);
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = getAI();
+    addLog("Initiating Google Edge Handshake...");
+    
     const response = await ai.models.generateContent({ 
-        model: 'gemini-flash-lite-latest', // Use stable model for health check
-        contents: 'hi',
+        model: 'gemini-3-flash-preview', 
+        contents: 'ping',
         config: { maxOutputTokens: 2 }
     });
     
     if (response && response.text) {
-        addLog("SUCCESS: Handshake verified.", "success");
+        addLog("SUCCESS: AI Core Online and Responsive.", "success");
         return { success: true, message: "Engine Online", logs };
     }
-    return { success: false, message: "Null response received", logs };
+    return { success: false, message: "Null response", logs };
   } catch (e: any) {
     const msg = e.message || String(e);
     
+    if (msg.includes("API_KEY_MISSING")) {
+        addLog("ERROR: Code attempted to call AI without a key string.", "error");
+        return { success: false, message: "Empty Key String", logs };
+    }
+
     if (msg.toLowerCase().includes("failed to fetch") || msg.toLowerCase().includes("protocol_error")) {
         addLog("ERROR: net::ERR_HTTP2_PROTOCOL_ERROR", "error");
-        addLog("This usually means Google rejected the request before even looking at the key.", "warn");
-        addLog(`1. GOOGLE CLOUD: Ensure 'Generative Language API' is ENABLED.`, "info");
-        addLog(`2. RESTRICTIONS: Add '${origin}/*' to 'HTTP Referrers' in Google Cloud Console.`, "info");
-        addLog(`3. STALE BUILD: If you just updated your Key/Settings, you MUST trigger a NEW DEPLOYMENT on Vercel.`, "warn");
-        return { success: false, message: "Network/Security Block", logs };
+        addLog("REASON: Google rejected the stream. Check if 'Generative Language API' is ENABLED in Cloud Console.", "warn");
+        addLog(`ACTION: Add '${origin}/*' to your API Key restrictions.`, "info");
+        
+        if (isVercel) {
+            addLog("VERCEL NOTE: Turn OFF 'Deployment Protection' in Vercel Settings -> Security.", "info");
+        }
+        return { success: false, message: "Network Reset", logs };
     }
 
-    if (msg.includes("403")) {
-        addLog("FORBIDDEN (403): Unauthorized domain.", "error");
-        addLog(`FIX: Whitelist '${origin}' in your API Key settings.`, "warn");
-        return { success: false, message: "403 Forbidden", logs };
-    }
-
-    addLog(`ENGINE ERROR: ${msg}`, "error");
-    return { success: false, message: "API Handshake Failed", logs };
+    addLog(`UNHANDLED: ${msg}`, "error");
+    return { success: false, message: "Handshake Failed", logs };
   }
 };
 
