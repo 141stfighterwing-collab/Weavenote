@@ -124,25 +124,26 @@ export const runConnectivityTest = async () => {
   const addLog = (message: string, type: DiagnosticLog['type'] = 'info') => logs.push({ timestamp: Date.now(), message, type });
 
   addLog("System Diagnostics: Initiating AI Handshake...");
+  addLog(`Current Origin: ${window.location.origin}`, "info");
+  
   const apiKey = process.env.API_KEY;
 
   if (!apiKey) {
-    addLog("CRITICAL: API_KEY is missing from the environment.", "error");
+    addLog("CRITICAL: API_KEY is missing from environment variables.", "error");
+    addLog("REMEDY: Check your .env file or deployment settings (Vercel/Vite/Docker).", "warn");
     return { success: false, message: "Missing API Key", logs };
   }
 
   if (!apiKey.startsWith("AIza")) {
-    addLog("WARNING: API Key format looks suspicious. It should usually start with 'AIza'.", "warn");
+    addLog("WARNING: API Key format is invalid (missing 'AIza' prefix).", "warn");
   }
 
   addLog(`Auth Context: Key detected (${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)})`);
-  addLog("Initializing @google/genai SDK v1.32+...");
 
   try {
     const ai = new GoogleGenAI({ apiKey });
-    addLog("Sending verification ping to generative-language.googleapis.com...");
+    addLog("Pinging Google Generative Language API...");
     
-    // Use a very light-weight model call to test health
     const response = await ai.models.generateContent({ 
         model: 'gemini-3-flash-preview', 
         contents: 'ping',
@@ -153,45 +154,43 @@ export const runConnectivityTest = async () => {
     });
     
     if (response && response.text) {
-        addLog(`SUCCESS: Response received [${response.text.trim()}]`, "success");
-        addLog("Handshake verified. AI Engine is healthy.", "success");
+        addLog(`SUCCESS: API responded correctly.`, "success");
         return { success: true, message: "Active & Healthy", logs };
     }
     
-    addLog("Model returned a blank response. Check model status.", "warn");
-    return { success: false, message: "Empty API Response", logs };
+    return { success: false, message: "Unexpected empty response", logs };
   } catch (e: any) {
     const msg = e.message || String(e);
     
-    // Detect "Failed to fetch" - very common in browser if blocked
-    if (msg.toLowerCase().includes("failed to fetch") || msg.toLowerCase().includes("networkerror")) {
-        addLog("NETWORK ERROR: Request was blocked before leaving the browser.", "error");
-        addLog("POSSIBLE CAUSES: Ad-Blocker (uBlock, etc), Corporate Firewall, or VPN blocking Google APIs.", "warn");
-        addLog("FIX: Disable ad-blockers for this site or try a different network.", "info");
-        return { success: false, message: "Network/CORS Block", logs };
+    // Explicit 'Failed to fetch' check
+    if (msg.toLowerCase().includes("failed to fetch")) {
+        addLog("NETWORK BLOCKED: Browser aborted the request.", "error");
+        addLog("REMEDY 1: Ad-Blockers/VPNs. Ensure 'generativelanguage.googleapis.com' is whitelisted.", "warn");
+        addLog("REMEDY 2: CORS/CSP. If you self-host, ensure your Content Security Policy allows this domain.", "warn");
+        addLog(`REMEDY 3: Domain Restrictions. Visit console.cloud.google.com -> APIs & Services -> Credentials. Verify if this key is restricted to specific 'HTTP referrers' and add '${window.location.origin}/*'.`, "warn");
+        return { success: false, message: "Network/Security Block", logs };
     }
 
     if (msg.includes("403")) {
-        addLog("FORBIDDEN (403): Your key is valid but access is denied.", "error");
-        addLog("POSSIBLE CAUSE: API key is restricted to specific IP/Domain in Google Cloud Console.", "warn");
-        addLog("FIX: Update API Key restrictions at console.cloud.google.com.", "info");
-        return { success: false, message: "API Restrictions (403)", logs };
-    } 
+        addLog("PERMISSION DENIED (403): Unauthorized access.", "error");
+        addLog(`REMEDY: Most likely 'API Key Restrictions'. Your key is configured to only work on specific websites. Add '${window.location.origin}' to your key's allowed referrers in Google Cloud Console.`, "warn");
+        return { success: false, message: "Forbidden (403)", logs };
+    }
 
-    if (msg.includes("401")) {
-        addLog("UNAUTHORIZED (401): The API Key is incorrect or invalid.", "error");
-        addLog("FIX: Re-enter or generate a new API Key from AI Studio.", "info");
-        return { success: false, message: "Invalid API Key (401)", logs };
+    if (msg.includes("400")) {
+        addLog("BAD REQUEST (400): Parameter mismatch.", "error");
+        addLog("REMEDY: Ensure the 'Gemini API' is ENABLED for your project in Google Cloud Console.", "warn");
+        return { success: false, message: "Bad Request (400)", logs };
     }
 
     if (msg.includes("429")) {
-        addLog("QUOTA EXCEEDED (429): Too many requests in a short time.", "error");
-        addLog("FIX: Wait 60 seconds or switch to a paid tier/project.", "info");
+        addLog("RATE LIMIT (429): Quota exceeded.", "error");
+        addLog("REMEDY: Free tier limits hit. Wait 60s or enable billing.", "warn");
         return { success: false, message: "Rate Limited (429)", logs };
     }
 
-    addLog(`UNEXPECTED ENGINE ERROR: ${msg}`, "error");
-    return { success: false, message: `Engine Error: ${msg.substring(0, 30)}...`, logs };
+    addLog(`ENGINE ERROR: ${msg}`, "error");
+    return { success: false, message: `Error: ${msg.substring(0, 40)}`, logs };
   }
 };
 
