@@ -26,42 +26,29 @@ const logAIUsage = (username: string, action: string, details: string) => {
     localStorage.setItem('ideaweaver_ai_logs', JSON.stringify(logs.slice(0, 100)));
 };
 
-/**
- * Robust JSON extractor to handle cases where the model appends text after the JSON object
- * or wraps the JSON in markdown code blocks.
- */
 const extractJsonResponse = (text: string): any => {
     try {
-        // Direct parse attempt first
         return JSON.parse(text);
     } catch (e) {
         const start = text.indexOf('{');
         const end = text.lastIndexOf('}');
-        
         if (start !== -1 && end !== -1 && end > start) {
             const jsonStr = text.substring(start, end + 1);
-            try {
-                return JSON.parse(jsonStr);
-            } catch (innerError) {
-                console.error("Failed to parse extracted JSON block:", jsonStr);
-                throw innerError;
-            }
+            try { return JSON.parse(jsonStr); } catch { throw e; }
         }
-        throw new Error("No valid JSON object found in response");
+        throw e;
     }
 };
 
 export const cleanAndFormatIngestedText = async (rawText: string, filename: string, username: string, userId?: string): Promise<ProcessedNoteData> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
   const prompt = `Format this document extracted text into structured Markdown. Identify title, category, tags. Return JSON with keys: "title", "formattedContent", "category", "tags".\n\nText:\n${rawText.substring(0, 10000)}`;
-
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview', 
       contents: prompt,
       config: { responseMimeType: 'application/json' }
     });
-
     const parsed = extractJsonResponse(response.text || "{}") as ProcessedNoteData;
     incrementUsage(userId);
     logAIUsage(username, 'DOCUMENT_INGEST', `Processed ${filename}`);
@@ -77,14 +64,12 @@ export const cleanAndFormatIngestedText = async (rawText: string, filename: stri
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string, userId?: string): Promise<ProcessedNoteData> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
   const prompt = `Organize this user input into a structured note. Return strictly JSON with keys: "title", "formattedContent", "category", "tags".\n\nInput: ${text}`;
-
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
       config: { responseMimeType: 'application/json' }
     });
-
     const parsed = extractJsonResponse(response.text || "{}") as ProcessedNoteData;
     incrementUsage(userId);
     logAIUsage(username, 'NOTE_ORGANIZE', `Organized ${noteType} entry`);
@@ -123,74 +108,63 @@ export const runConnectivityTest = async () => {
   const logs: DiagnosticLog[] = [];
   const addLog = (message: string, type: DiagnosticLog['type'] = 'info') => logs.push({ timestamp: Date.now(), message, type });
 
-  addLog("System Diagnostics: Initiating AI Handshake...");
-  addLog(`Current Origin: ${window.location.origin}`, "info");
-  
+  const isVercel = window.location.hostname.includes('vercel.app');
+  addLog(`Diagnostic Session Start [Environment: ${isVercel ? 'Vercel Production' : 'Local/Preview'}]`);
+  addLog(`Current Origin: ${window.location.origin}`);
+
   const apiKey = process.env.API_KEY;
 
-  if (!apiKey) {
-    addLog("CRITICAL: API_KEY is missing from environment variables.", "error");
-    addLog("REMEDY: Check your .env file or deployment settings (Vercel/Vite/Docker).", "warn");
+  if (!apiKey || apiKey === "" || apiKey === "undefined") {
+    addLog("CRITICAL: API_KEY is physically missing from the build.", "error");
+    if (isVercel) {
+        addLog("VERCEL FIX: Go to Project Settings -> Environment Variables. Add 'API_KEY' and redeploy.", "warn");
+    } else {
+        addLog("LOCAL FIX: Ensure your .env file has 'API_KEY=AIza...' and restart Vite.", "warn");
+    }
     return { success: false, message: "Missing API Key", logs };
   }
 
-  if (!apiKey.startsWith("AIza")) {
-    addLog("WARNING: API Key format is invalid (missing 'AIza' prefix).", "warn");
-  }
-
-  addLog(`Auth Context: Key detected (${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)})`);
+  addLog(`Auth Token detected: ${apiKey.substring(0, 4)}... (Check for accidental spaces!)`);
+  addLog("Executing HTTP/2 Handshake Test...");
 
   try {
     const ai = new GoogleGenAI({ apiKey });
-    addLog("Pinging Google Generative Language API...");
     
+    // Explicit low-overhead test
     const response = await ai.models.generateContent({ 
         model: 'gemini-3-flash-preview', 
         contents: 'ping',
-        config: { 
-          maxOutputTokens: 5,
-          thinkingConfig: { thinkingBudget: 0 }
-        }
+        config: { maxOutputTokens: 2 }
     });
     
     if (response && response.text) {
-        addLog(`SUCCESS: API responded correctly.`, "success");
-        return { success: true, message: "Active & Healthy", logs };
+        addLog("SUCCESS: Connection established and verified.", "success");
+        return { success: true, message: "Engine Online", logs };
     }
-    
-    return { success: false, message: "Unexpected empty response", logs };
+    return { success: false, message: "Null Response", logs };
   } catch (e: any) {
     const msg = e.message || String(e);
     
-    // Explicit 'Failed to fetch' check
-    if (msg.toLowerCase().includes("failed to fetch")) {
-        addLog("NETWORK BLOCKED: Browser aborted the request.", "error");
-        addLog("REMEDY 1: Ad-Blockers/VPNs. Ensure 'generativelanguage.googleapis.com' is whitelisted.", "warn");
-        addLog("REMEDY 2: CORS/CSP. If you self-host, ensure your Content Security Policy allows this domain.", "warn");
-        addLog(`REMEDY 3: Domain Restrictions. Visit console.cloud.google.com -> APIs & Services -> Credentials. Verify if this key is restricted to specific 'HTTP referrers' and add '${window.location.origin}/*'.`, "warn");
-        return { success: false, message: "Network/Security Block", logs };
+    // Detection of the Protocol Error / Fetch Failure
+    if (msg.toLowerCase().includes("failed to fetch") || msg.toLowerCase().includes("protocol_error")) {
+        addLog("PROTOCOL FAILURE: The request was forcibly reset (ERR_HTTP2_PROTOCOL_ERROR).", "error");
+        addLog("MOST LIKELY CAUSE: API Key Domain Restrictions.", "warn");
+        addLog(`ACTION REQUIRED: Visit console.cloud.google.com -> Credentials -> Edit API Key. Set 'Application Restrictions' to 'HTTP referrers' and add '${window.location.origin}/*' to the list.`, "info");
+        
+        if (isVercel) {
+            addLog("NOTE: Vercel 'Deployment Protection' (Vercel Authentication) can break cross-origin protocol headers. Try disabling it in Vercel Settings -> Security.", "info");
+        }
+        return { success: false, message: "Network Protocol Reset", logs };
     }
 
     if (msg.includes("403")) {
-        addLog("PERMISSION DENIED (403): Unauthorized access.", "error");
-        addLog(`REMEDY: Most likely 'API Key Restrictions'. Your key is configured to only work on specific websites. Add '${window.location.origin}' to your key's allowed referrers in Google Cloud Console.`, "warn");
-        return { success: false, message: "Forbidden (403)", logs };
+        addLog("ACCESS DENIED (403): The key is valid but domain '${window.location.hostname}' is not whitelisted.", "error");
+        addLog(`FIX: Add '${window.location.origin}' to your API Key restrictions in Google Cloud.`, "warn");
+        return { success: false, message: "Domain Restricted (403)", logs };
     }
 
-    if (msg.includes("400")) {
-        addLog("BAD REQUEST (400): Parameter mismatch.", "error");
-        addLog("REMEDY: Ensure the 'Gemini API' is ENABLED for your project in Google Cloud Console.", "warn");
-        return { success: false, message: "Bad Request (400)", logs };
-    }
-
-    if (msg.includes("429")) {
-        addLog("RATE LIMIT (429): Quota exceeded.", "error");
-        addLog("REMEDY: Free tier limits hit. Wait 60s or enable billing.", "warn");
-        return { success: false, message: "Rate Limited (429)", logs };
-    }
-
-    addLog(`ENGINE ERROR: ${msg}`, "error");
-    return { success: false, message: `Error: ${msg.substring(0, 40)}`, logs };
+    addLog(`UNHANDLED EXCEPTION: ${msg}`, "error");
+    return { success: false, message: "Engine Error", logs };
   }
 };
 
