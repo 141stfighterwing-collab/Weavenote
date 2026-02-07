@@ -408,7 +408,15 @@ service cloud.firestore {
                  </div>
 
                  <div className="flex flex-col gap-3">
-                    <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest px-1">Detailed Diagnostic Terminal</h4>
+                    <div className="flex justify-between items-center px-1">
+                        <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest">Detailed Diagnostic Terminal</h4>
+                        <button 
+                            onClick={() => { navigator.clipboard.writeText(window.location.origin + '/*'); alert("Wildcard origin copied!"); }}
+                            className="text-[9px] font-black uppercase text-indigo-400 hover:text-indigo-300 border border-indigo-400/20 px-2 py-1 rounded-lg"
+                        >
+                            Copy Origin for Whitelist
+                        </button>
+                    </div>
                     <div className="bg-slate-950 border border-slate-800 rounded-xl p-6 font-mono text-[11px] h-64 overflow-y-auto custom-scrollbar flex flex-col gap-1.5 shadow-inner ring-4 ring-black/5">
                         {diagnosticLogs.length > 0 ? (
                             <>

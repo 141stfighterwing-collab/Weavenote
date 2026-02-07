@@ -108,63 +108,59 @@ export const runConnectivityTest = async () => {
   const logs: DiagnosticLog[] = [];
   const addLog = (message: string, type: DiagnosticLog['type'] = 'info') => logs.push({ timestamp: Date.now(), message, type });
 
+  const origin = window.location.origin;
   const isVercel = window.location.hostname.includes('vercel.app');
-  addLog(`Diagnostic Session Start [Environment: ${isVercel ? 'Vercel Production' : 'Local/Preview'}]`);
-  addLog(`Current Origin: ${window.location.origin}`);
-
+  
+  addLog("--- VERCEL FORENSIC DIAGNOSTICS ---");
+  addLog(`Current URL: ${origin}`, "info");
+  
   const apiKey = process.env.API_KEY;
 
   if (!apiKey || apiKey === "" || apiKey === "undefined") {
-    addLog("CRITICAL: API_KEY is physically missing from the build.", "error");
+    addLog("CRITICAL: API_KEY is MISSING from the current build.", "error");
     if (isVercel) {
-        addLog("VERCEL FIX: Go to Project Settings -> Environment Variables. Add 'API_KEY' and redeploy.", "warn");
-    } else {
-        addLog("LOCAL FIX: Ensure your .env file has 'API_KEY=AIza...' and restart Vite.", "warn");
+        addLog("CAUSE: You added the variable to Vercel, but did not REDEPLOY. Environment variables are baked into the code at build time.", "warn");
+        addLog("FIX: Go to Vercel -> Deployments -> Click '...' on your latest build -> Redeploy.", "success");
     }
-    return { success: false, message: "Missing API Key", logs };
+    return { success: false, message: "Key Missing in Build", logs };
   }
 
-  addLog(`Auth Token detected: ${apiKey.substring(0, 4)}... (Check for accidental spaces!)`);
-  addLog("Executing HTTP/2 Handshake Test...");
+  addLog(`Key Signature: ${apiKey.substring(0, 6)}... Detected.`, "info");
+  addLog("Attempting Handshake with Google Edge...");
 
   try {
     const ai = new GoogleGenAI({ apiKey });
-    
-    // Explicit low-overhead test
     const response = await ai.models.generateContent({ 
-        model: 'gemini-3-flash-preview', 
-        contents: 'ping',
+        model: 'gemini-flash-lite-latest', // Use stable model for health check
+        contents: 'hi',
         config: { maxOutputTokens: 2 }
     });
     
     if (response && response.text) {
-        addLog("SUCCESS: Connection established and verified.", "success");
+        addLog("SUCCESS: Handshake verified.", "success");
         return { success: true, message: "Engine Online", logs };
     }
-    return { success: false, message: "Null Response", logs };
+    return { success: false, message: "Null response received", logs };
   } catch (e: any) {
     const msg = e.message || String(e);
     
-    // Detection of the Protocol Error / Fetch Failure
     if (msg.toLowerCase().includes("failed to fetch") || msg.toLowerCase().includes("protocol_error")) {
-        addLog("PROTOCOL FAILURE: The request was forcibly reset (ERR_HTTP2_PROTOCOL_ERROR).", "error");
-        addLog("MOST LIKELY CAUSE: API Key Domain Restrictions.", "warn");
-        addLog(`ACTION REQUIRED: Visit console.cloud.google.com -> Credentials -> Edit API Key. Set 'Application Restrictions' to 'HTTP referrers' and add '${window.location.origin}/*' to the list.`, "info");
-        
-        if (isVercel) {
-            addLog("NOTE: Vercel 'Deployment Protection' (Vercel Authentication) can break cross-origin protocol headers. Try disabling it in Vercel Settings -> Security.", "info");
-        }
-        return { success: false, message: "Network Protocol Reset", logs };
+        addLog("ERROR: net::ERR_HTTP2_PROTOCOL_ERROR", "error");
+        addLog("This usually means Google rejected the request before even looking at the key.", "warn");
+        addLog(`1. GOOGLE CLOUD: Ensure 'Generative Language API' is ENABLED.`, "info");
+        addLog(`2. RESTRICTIONS: Add '${origin}/*' to 'HTTP Referrers' in Google Cloud Console.`, "info");
+        addLog(`3. STALE BUILD: If you just updated your Key/Settings, you MUST trigger a NEW DEPLOYMENT on Vercel.`, "warn");
+        return { success: false, message: "Network/Security Block", logs };
     }
 
     if (msg.includes("403")) {
-        addLog("ACCESS DENIED (403): The key is valid but domain '${window.location.hostname}' is not whitelisted.", "error");
-        addLog(`FIX: Add '${window.location.origin}' to your API Key restrictions in Google Cloud.`, "warn");
-        return { success: false, message: "Domain Restricted (403)", logs };
+        addLog("FORBIDDEN (403): Unauthorized domain.", "error");
+        addLog(`FIX: Whitelist '${origin}' in your API Key settings.`, "warn");
+        return { success: false, message: "403 Forbidden", logs };
     }
 
-    addLog(`UNHANDLED EXCEPTION: ${msg}`, "error");
-    return { success: false, message: "Engine Error", logs };
+    addLog(`ENGINE ERROR: ${msg}`, "error");
+    return { success: false, message: "API Handshake Failed", logs };
   }
 };
 
