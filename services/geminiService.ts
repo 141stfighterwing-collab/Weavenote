@@ -5,10 +5,14 @@ import { logTraffic } from "./trafficService";
 
 export const DAILY_REQUEST_LIMIT = 800;
 
-// Factory to prevent stale SDK instances
+/**
+ * Factory for the AI instance. 
+ * IMPORTANT: This SDK requires an API KEY STRING (starts with AIza...).
+ * It does NOT accept Service Account JSON or OAuth Client IDs.
+ */
 const getAI = () => {
     const apiKey = process.env.API_KEY;
-    if (!apiKey || apiKey === "") {
+    if (!apiKey || apiKey === "" || apiKey === "undefined") {
         throw new Error("API_KEY_MISSING");
     }
     return new GoogleGenAI({ apiKey });
@@ -52,14 +56,20 @@ const extractJsonResponse = (text: string): any => {
 export const cleanAndFormatIngestedText = async (rawText: string, filename: string, username: string, userId?: string): Promise<ProcessedNoteData> => {
   try {
     const ai = getAI();
-    const prompt = `Format this document extracted text into structured Markdown. Identify title, category, tags. Return JSON with keys: "title", "formattedContent", "category", "tags".\n\nText:\n${rawText.substring(0, 10000)}`;
+    const prompt = `Act as a high-end knowledge architect. Synthesize and format this messy document text into highly structured Markdown. 
+Extract the core essence, identify a precise title, category, and relevant tags.
+Return STRICT JSON with keys: "title", "formattedContent", "category", "tags".
+
+Source Text:
+${rawText.substring(0, 12000)}`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview', // High intelligence model for documents
+      model: 'gemini-3-pro-preview', 
       contents: prompt,
       config: { 
         responseMimeType: 'application/json',
-        temperature: 0.1 
+        temperature: 0.1,
+        thinkingConfig: { thinkingBudget: 4000 }
       }
     });
 
@@ -78,22 +88,35 @@ export const cleanAndFormatIngestedText = async (rawText: string, filename: stri
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string, userId?: string): Promise<ProcessedNoteData> => {
   try {
     const ai = getAI();
-    const prompt = `Organize this user input into a structured note. Return strictly JSON with keys: "title", "formattedContent", "category", "tags".\n\nInput: ${text}`;
+    // Specific instruction for messy copy-pastes - Deep Synthesis mode
+    const prompt = `Act as an expert knowledge organizer. The user is providing potentially messy, raw, or copy-pasted input fragments. 
+Your task: 
+1. Analyze the input fragments and understand the context (Deep Reasoning).
+2. Clean up formatting, remove irrelevant noise, and fix typos.
+3. Synthesize the content into a high-quality, readable, and professional Note.
+4. If it looks like a list of tasks, format it as a checklist. If it's conceptual, use proper headings.
+5. Return strictly JSON with keys: "title", "formattedContent", "category", "tags".
+
+Input: 
+${text}`;
     
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview', // Flash is better for quick notes
+      model: 'gemini-3-pro-preview', // Pro for better synthesis of fragmented text
       contents: prompt,
-      config: { responseMimeType: 'application/json' }
+      config: { 
+        responseMimeType: 'application/json',
+        thinkingConfig: { thinkingBudget: 4000 } // Give it a budget to think through the messy input
+      }
     });
 
     const parsed = extractJsonResponse(response.text || "{}") as ProcessedNoteData;
     incrementUsage(userId);
-    logAIUsage(username, 'NOTE_ORGANIZE', `Organized ${noteType} entry`);
-    logTraffic('POST', 'gemini-3-flash/organize', 200, text.length);
+    logAIUsage(username, 'SYNTHESIS_ORGANIZE', `Synthesized messy input into ${noteType}`);
+    logTraffic('POST', 'gemini-3-pro/organize', 200, text.length);
     return parsed;
   } catch (error: any) {
     logError('PROCESS_NOTE', error);
-    logTraffic('POST', 'gemini-3-flash/organize', 500, text.length);
+    logTraffic('POST', 'gemini-3-pro/organize', 500, text.length);
     throw error;
   }
 };
@@ -102,10 +125,10 @@ export const expandNoteContent = async (content: string, username: string, userI
     try {
       const ai = getAI();
       const response = await ai.models.generateContent({
-          model: 'gemini-3-pro-preview', // Pro for deep reasoning
-          contents: `Deep dive expand on this: ${content}`,
+          model: 'gemini-3-pro-preview', 
+          contents: `Deep dive expand on this idea with scholarly rigor and creative insight: ${content}`,
           config: {
-            thinkingConfig: { thinkingBudget: 4000 } // Enable chain of thought
+            thinkingConfig: { thinkingBudget: 8000 } 
           }
       });
       incrementUsage(userId);
@@ -130,22 +153,44 @@ export const runConnectivityTest = async () => {
   const origin = window.location.origin;
   const isVercel = window.location.hostname.includes('vercel.app');
   
-  addLog("--- ENGINE DIAGNOSTICS ---");
-  addLog(`Environment: ${isVercel ? 'Vercel Preview/Prod' : 'Development'}`);
+  addLog("--- SYSTEM IDENTITY FORENSICS ---");
+  addLog(`Diagnostic build: ${new Date().toLocaleString()}`);
+  addLog(`App Host: ${origin}`);
   
-  const apiKey = process.env.API_KEY;
+  const apiKey = process.env.API_KEY || "";
 
-  if (!apiKey || apiKey === "" || apiKey === "undefined") {
-    addLog("CRITICAL: API_KEY is physically missing from the JS bundle.", "error");
-    addLog("RESOLUTION: You must REDEPLOY on Vercel for new Env Vars to take effect.", "warn");
-    return { success: false, message: "Stale Build / Missing Key", logs };
+  if (apiKey === "" || apiKey === "undefined") {
+    addLog("CRITICAL: API Key is missing from the environment.", "error");
+    addLog("RESOLUTION: You must add 'API_KEY' to Vercel and then REDEPLOY the project.", "warn");
+    return { success: false, message: "Missing Env Var", logs };
   }
 
-  addLog(`Key Verification: Signature ${apiKey.substring(0, 6)}... detected.`);
+  // FORENSIC DETECTION OF WRONG CREDENTIAL TYPES
+  // This addresses the user providing a JSON Service Account
+  if (apiKey.trim().startsWith("{") && apiKey.includes("private_key")) {
+      addLog("DETECTION: You have pasted a SERVICE ACCOUNT JSON into the API_KEY field.", "error");
+      addLog("FIX: Browser SDKs require a standard 'API Key' string (starts with 'AIza...').", "success");
+      addLog("ACTION: Go to Google Cloud Console -> Credentials -> Create Credentials -> API Key. Copy that string into Vercel.", "warn");
+      return { success: false, message: "Wrong Credential Format", logs };
+  }
+
+  if (apiKey.includes("apps.googleusercontent.com")) {
+      addLog("DETECTION: You are using an OAuth 2.0 Client ID.", "error");
+      addLog("FIX: Gemini API requires a standard 'API Key', not an OAuth Client ID.", "success");
+      addLog("ACTION: Go to Google Cloud Console -> Credentials -> Create Credentials -> API Key.", "warn");
+      return { success: false, message: "Wrong Credential Type", logs };
+  }
+
+  if (!apiKey.startsWith("AIza")) {
+      addLog("DETECTION: Invalid key signature. Standard keys start with 'AIza'.", "error");
+      return { success: false, message: "Invalid Format", logs };
+  }
+
+  addLog(`Key Signature: ${apiKey.substring(0, 6)}... verified.`, "info");
 
   try {
     const ai = getAI();
-    addLog("Initiating Google Edge Handshake...");
+    addLog("Attempting Handshake with Google Edge Network...");
     
     const response = await ai.models.generateContent({ 
         model: 'gemini-3-flash-preview', 
@@ -154,30 +199,32 @@ export const runConnectivityTest = async () => {
     });
     
     if (response && response.text) {
-        addLog("SUCCESS: AI Core Online and Responsive.", "success");
+        addLog("SUCCESS: AI Core is alive and authorized.", "success");
         return { success: true, message: "Engine Online", logs };
     }
-    return { success: false, message: "Null response", logs };
+    return { success: false, message: "Empty Response", logs };
   } catch (e: any) {
     const msg = e.message || String(e);
     
-    if (msg.includes("API_KEY_MISSING")) {
-        addLog("ERROR: Code attempted to call AI without a key string.", "error");
-        return { success: false, message: "Empty Key String", logs };
-    }
-
     if (msg.toLowerCase().includes("failed to fetch") || msg.toLowerCase().includes("protocol_error")) {
-        addLog("ERROR: net::ERR_HTTP2_PROTOCOL_ERROR", "error");
-        addLog("REASON: Google rejected the stream. Check if 'Generative Language API' is ENABLED in Cloud Console.", "warn");
-        addLog(`ACTION: Add '${origin}/*' to your API Key restrictions.`, "info");
+        addLog("PROTOCOL ERROR (net::ERR_HTTP2_PROTOCOL_ERROR): The connection was reset.", "error");
+        addLog("CAUSE 1: Your API Key is restricted to the wrong domain.", "warn");
+        addLog(`RESOLUTION: Add '${origin}/*' to 'HTTP Referrers' in Google Cloud Console -> API Key Settings.`, "info");
         
         if (isVercel) {
-            addLog("VERCEL NOTE: Turn OFF 'Deployment Protection' in Vercel Settings -> Security.", "info");
+            addLog("CAUSE 2: Vercel 'Deployment Protection' is active.", "warn");
+            addLog("RESOLUTION: Go to Vercel Project Settings -> Security -> Turn OFF 'Deployment Protection'.", "info");
         }
-        return { success: false, message: "Network Reset", logs };
+        return { success: false, message: "Network Handshake Blocked", logs };
     }
 
-    addLog(`UNHANDLED: ${msg}`, "error");
+    if (msg.includes("403")) {
+        addLog("FORBIDDEN (403): Unauthorized domain or API not enabled.", "error");
+        addLog(`FIX: Enable 'Generative Language API' in your Google Cloud Project.`, "info");
+        return { success: false, message: "Permission Denied", logs };
+    }
+
+    addLog(`UNHANDLED ENGINE ERROR: ${msg}`, "error");
     return { success: false, message: "Handshake Failed", logs };
   }
 };
