@@ -2,8 +2,10 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import { Note, NOTE_COLORS, ProjectData, ProjectMilestone, ProjectPhase, Folder, ProjectItem } from '../types';
+import { Note, NOTE_COLORS, ProjectData, Folder } from '../types';
 import { getTagStyle } from './NoteCard';
+import GanttChart from './GanttChart';
+import WorkflowEditor from './WorkflowEditor';
 
 interface NoteDetailModalProps {
   note: Note | null;
@@ -26,10 +28,11 @@ const processContent = (text: string) => {
 
 const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ 
     note, folders = [], isOpen, onClose, onViewImage, 
-    onToggleCheckbox, currentUser 
+    onToggleCheckbox, onUpdateProjectData, currentUser 
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const checkboxCounter = useRef(0);
+  const [activeTab, setActiveTab] = useState<'content' | 'infrastructure'>('content');
 
   const folderName = useMemo(() => {
     if (!note?.folderId || !folders) return null;
@@ -39,7 +42,7 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
   if (!isOpen || !note) return null;
   
   const colorClass = NOTE_COLORS[note.color];
-  const isMatrix = note.color === 'matrix';
+  const isMatrix = note.color === 'matrix' || note.type === 'code';
   const isCompleted = note.projectData?.isCompleted;
 
   const markdownComponents = {
@@ -79,10 +82,10 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" onClick={onClose}>
       <div 
         ref={containerRef}
-        className={`relative w-full max-w-5xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden ${colorClass} ${isMatrix ? 'font-mono' : 'font-sans'}`}
+        className={`relative w-full max-w-5xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden ${isMatrix ? 'bg-black text-[#39ff14] font-mono' : colorClass + ' font-sans'}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className={`flex justify-between items-start p-6 pb-4 border-b border-black/5 ${isMatrix ? 'bg-black' : 'bg-black/5'}`}>
+        <div className={`flex justify-between items-start p-6 pb-4 border-b border-black/5 ${isMatrix ? 'bg-black border-[#39ff14]/20' : 'bg-black/5'}`}>
             <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${isMatrix ? 'bg-[#39ff14]/20 text-[#39ff14]' : 'bg-black/40 text-white'}`}>{note.type}</span>
@@ -102,19 +105,48 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
             <button onClick={onClose} className={`p-2 rounded-full transition-colors ${isMatrix ? 'hover:bg-[#39ff14]/10 text-[#39ff14]' : 'hover:bg-black/10'}`}>✕</button>
         </div>
 
-        <div className={`p-8 overflow-y-auto custom-scrollbar flex-grow ${isMatrix ? 'bg-black' : 'bg-white/10'}`}>
-             <div className={`prose prose-lg max-w-none opacity-95 ${isMatrix ? 'text-[#39ff14] prose-invert' : ''}`}>
-                <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]} 
-                    rehypePlugins={[rehypeRaw]} 
-                    components={markdownComponents}
-                >
-                    {processContent(note.content)}
-                </ReactMarkdown>
+        {note.type === 'project' && (
+            <div className={`flex px-6 border-b border-black/5 ${isMatrix ? 'bg-black border-[#39ff14]/20' : 'bg-black/5'}`}>
+                <button onClick={() => setActiveTab('content')} className={`px-4 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'content' ? 'border-primary-600 text-primary-600' : 'border-transparent opacity-40 hover:opacity-100'}`}>Description</button>
+                <button onClick={() => setActiveTab('infrastructure')} className={`px-4 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'infrastructure' ? 'border-primary-600 text-primary-600' : 'border-transparent opacity-40 hover:opacity-100'}`}>Infrastructure</button>
             </div>
+        )}
+
+        <div className={`p-8 overflow-y-auto custom-scrollbar flex-grow ${isMatrix ? 'bg-black' : 'bg-white/10'}`}>
+            {activeTab === 'content' ? (
+                <>
+                    <div className={`prose prose-lg max-w-none opacity-95 ${isMatrix ? 'text-[#39ff14] prose-invert' : ''}`}>
+                        <ReactMarkdown 
+                            remarkPlugins={[remarkGfm]} 
+                            rehypePlugins={[rehypeRaw]} 
+                            components={markdownComponents}
+                        >
+                            {processContent(note.content)}
+                        </ReactMarkdown>
+                    </div>
+                </>
+            ) : (
+                <div className="space-y-12 animate-[fadeIn_0.3s_ease-out]">
+                    <div className="p-6 bg-black/5 dark:bg-white/5 rounded-2xl">
+                        <h3 className="text-xs font-black uppercase tracking-[0.3em] mb-6 opacity-60">Timeline Visualization</h3>
+                        {note.projectData && <GanttChart data={note.projectData} />}
+                    </div>
+                    
+                    <div className="p-6 bg-black/5 dark:bg-white/5 rounded-2xl">
+                        <h3 className="text-xs font-black uppercase tracking-[0.3em] mb-6 opacity-60">Architectural Workflow</h3>
+                        {note.projectData?.workflow && onUpdateProjectData && (
+                            <WorkflowEditor 
+                                nodes={note.projectData.workflow.nodes} 
+                                edges={note.projectData.workflow.edges} 
+                                onUpdate={(n, e) => onUpdateProjectData(note.id, { ...note.projectData!, workflow: { nodes: n, edges: e } })}
+                            />
+                        )}
+                    </div>
+                </div>
+            )}
             
-            {note.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-12 pt-6 border-t border-black/5">
+            <div className={`mt-12 pt-6 border-t border-black/5 ${note.tags.length === 0 ? 'hidden' : ''}`}>
+                <div className="flex flex-wrap gap-2">
                     {note.tags.map(tag => {
                         const style = getTagStyle(tag);
                         return (
@@ -128,7 +160,7 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
                         );
                     })}
                 </div>
-            )}
+            </div>
         </div>
       </div>
     </div>
