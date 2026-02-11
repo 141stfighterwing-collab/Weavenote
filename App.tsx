@@ -159,19 +159,8 @@ const App: React.FC = () => {
             processed = await processNoteWithAI(rawText, [], type, username, currentUser?.uid, onStepUpdate);
             tags = [...processed.tags.map(t => t.toLowerCase().replace('#', '')), ...tags];
             if (manualTitle.trim()) processed.title = manualTitle.trim();
-
-            // Automatic Folder Management
-            if (processed.suggestedFolderName && !activeFolderId) {
-                const existingFolder = folders.find(f => f.name.toLowerCase() === processed.suggestedFolderName!.toLowerCase());
-                if (existingFolder) {
-                    targetFolderId = existingFolder.id;
-                } else {
-                    const newFolder: Folder = { id: crypto.randomUUID(), name: processed.suggestedFolderName, order: folders.length };
-                    setFolders(prev => [...prev, newFolder]);
-                    await saveFolder(newFolder, storageOwner);
-                    targetFolderId = newFolder.id;
-                }
-            }
+            
+            // Automatic Folder Management logic removed to satisfy user request
         } else {
             processed = {
                 title: manualTitle.trim() || rawText.split('\n')[0].substring(0, 40) || 'New Note',
@@ -415,7 +404,7 @@ const App: React.FC = () => {
                 {viewMode === 'grid' && (
                     <NoteInput 
                         onAddNote={handleAddNote} onTypeChange={handleTabChange} isProcessing={isProcessing} 
-                        activeType={activeTab} readOnly={!canEdit} isGuest={!currentUser} enableImages={enableImages} 
+                        activeType={activeTab} readOnly={!canEdit} isGuest={!currentUser}
                     />
                 )}
 

@@ -62,10 +62,10 @@ Your Job:
 1. DISTILL: Extract the core ideas and remove noise (nav-text, ad-text, timestamps, etc).
 2. STRUCTURE: Re-format into beautiful, logical Markdown. Use headings, lists, and code blocks as appropriate.
 3. TITLE: Create a punchy, accurate title for the distilled content.
-4. TAXONOMY: Suggest a logical 'category', 'tags' (3-5), and a single-word 'suggestedFolderName' for organization (e.g., 'Work', 'Personal', 'Tech', 'Inspiration').
+4. TAXONOMY: Suggest a logical 'category' and 'tags' (3-5) for organization.
 5. ENRICH: If the input contains fragmented action items, structure them as a checklist.
 
-Return a STRICT JSON object with these keys: "title", "formattedContent", "category", "tags", "suggestedFolderName".
+Return a STRICT JSON object with these keys: "title", "formattedContent", "category", "tags".
 
 Input Content:
 ${text}`;

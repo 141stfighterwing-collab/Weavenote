@@ -29,7 +29,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [isIngesting, setIsIngesting] = useState(false);
 
-  // Project States
+  // Project Engineering States
   const [projectGoals, setProjectGoals] = useState('');
   const [projectObjectives, setProjectObjectives] = useState('');
   const [projectDeliverables, setProjectDeliverables] = useState('');
@@ -38,6 +38,11 @@ const NoteInput: React.FC<NoteInputProps> = ({
   const editorRef = useRef<HTMLDivElement>(null);
   const codeEditorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Enable object resizing in the contentEditable areas
+    document.execCommand('enableObjectResizing', false, 'true');
+  }, []);
 
   const execCommand = (command: string, value: string = '') => {
     if (editorRef.current) {
@@ -69,7 +74,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
     try {
         const text = await parseDocument(file);
         if (editorRef.current) {
-            editorRef.current.innerHTML += `<div style="background:rgba(0,0,0,0.05); padding:10px; border-radius:8px; margin-top:10px;"><strong>Source: ${file.name}</strong><br/>${text}</div>`;
+            editorRef.current.innerHTML += `<div style="background:rgba(0,0,0,0.05); padding:15px; border-radius:12px; border:1px dashed rgba(0,0,0,0.1); margin-top:10px;"><strong>Document: ${file.name}</strong><br/>${text}</div>`;
         }
     } catch (err: any) {
         alert(err.message);
@@ -94,14 +99,14 @@ const NoteInput: React.FC<NoteInputProps> = ({
 
     const extraProjectData = activeType === 'project' ? {
         manualProgress: projectProgress,
-        manualObjectives: projectObjectives.split('\n').filter(o => o.trim()),
-        manualDeliverables: projectDeliverables.split('\n').filter(d => d.trim()),
+        manualObjectives: projectObjectives.split('\n').filter(o => o.trim()).map(o => ({ label: o, status: 'pending' })),
+        manualDeliverables: projectDeliverables.split('\n').filter(d => d.trim()).map(d => ({ label: d, status: 'pending' })),
         isCompleted: projectProgress === 100
     } : undefined;
     
     await onAddNote(content, activeType, [], tags, useAI, title, extraProjectData, setAiStep);
     
-    // Clear
+    // Reset Workspace
     if (editorRef.current) editorRef.current.innerHTML = '';
     if (codeEditorRef.current) codeEditorRef.current.innerHTML = '';
     setTitle(''); setTags([]); setAiStep(null);
@@ -110,10 +115,14 @@ const NoteInput: React.FC<NoteInputProps> = ({
 
   return (
     <div className="rounded-2xl shadow-2xl border p-1 mb-8 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 transition-all duration-300 ring-4 ring-black/5 overflow-visible">
-        {/* Tab Navigator */}
+        {/* Workspace Tab Navigator */}
         <div className="flex gap-1 p-1 mb-1 overflow-x-auto no-scrollbar border-b dark:border-slate-700">
             {(['quick', 'notebook', 'deep', 'code', 'project', 'document'] as NoteType[]).map(type => (
-                <button key={type} onClick={() => onTypeChange?.(type)} className={`flex-1 py-2 text-[10px] font-black rounded-xl transition-all min-w-[85px] uppercase tracking-widest ${activeType === type ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+                <button 
+                    key={type} 
+                    onClick={() => onTypeChange?.(type)} 
+                    className={`flex-1 py-2 text-[10px] font-black rounded-xl transition-all min-w-[85px] uppercase tracking-widest ${activeType === type ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                >
                     {type}
                 </button>
             ))}
@@ -121,7 +130,13 @@ const NoteInput: React.FC<NoteInputProps> = ({
 
       <div className="bg-white dark:bg-slate-800 rounded-lg p-1">
         <div className="flex items-center justify-between border-b dark:border-slate-700">
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={activeType === 'project' ? "Project Identity..." : "Title of this block..."} className="flex-1 px-5 py-4 bg-transparent focus:outline-none font-bold text-lg text-slate-800 dark:text-white" />
+            <input 
+                type="text" 
+                value={title} 
+                onChange={(e) => setTitle(e.target.value)} 
+                placeholder={activeType === 'project' ? "Project Identity Title..." : "Title of this Idea block..."} 
+                className="flex-1 px-5 py-4 bg-transparent focus:outline-none font-bold text-lg text-slate-800 dark:text-white" 
+            />
         </div>
 
         {/* WORKSPACE TOOLBAR */}
@@ -145,17 +160,17 @@ const NoteInput: React.FC<NoteInputProps> = ({
 
             <div className="flex gap-0.5 border-r dark:border-slate-700 pr-2 mr-1">
                 <button onClick={() => execCommand('insertUnorderedList')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase">Bullet</button>
-                <button onClick={() => execCommand('insertText', '- [ ] ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase">Task</button>
+                <button onClick={() => execCommand('insertText', '- [ ] ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-primary-600">Task</button>
             </div>
 
             <div className="flex gap-1 items-center relative">
                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".pdf,.txt,.md" />
-                <button onClick={() => fileInputRef.current?.click()} className={`p-1.5 rounded flex items-center gap-1.5 px-3 text-[10px] font-black uppercase transition-all ${activeType === 'document' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-white dark:hover:bg-slate-700'}`}>
+                <button onClick={() => fileInputRef.current?.click()} className={`p-1.5 rounded flex items-center gap-2 px-3 text-[10px] font-black uppercase transition-all ${activeType === 'document' ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'hover:bg-white dark:hover:bg-slate-700 text-slate-500'}`}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                     {activeType === 'document' && <span>Ingest Document</span>}
                 </button>
-                <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded">😀</button>
-                <button onClick={() => setShowColorPicker(!showColorPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded">🎨</button>
+                <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base">😀</button>
+                <button onClick={() => setShowColorPicker(!showColorPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base">🎨</button>
 
                 {showEmojiPicker && (
                     <div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-2xl z-50 grid grid-cols-4 gap-1 min-w-[140px]">
@@ -177,38 +192,39 @@ const NoteInput: React.FC<NoteInputProps> = ({
             </div>
         </div>
 
-        {/* Tab Specific Content */}
+        {/* Tab-Specific Workspaces */}
         <div className="p-4 space-y-4">
             {activeType === 'project' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-[fadeIn_0.3s_ease-out]">
                     <div className="space-y-4 bg-slate-50 dark:bg-slate-900/40 p-5 rounded-2xl border dark:border-slate-700">
                         <div>
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Objectives / Goals</label>
-                            <textarea value={projectObjectives} onChange={(e) => setProjectObjectives(e.target.value)} placeholder="Primary objectives..." className="w-full h-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs outline-none" />
+                            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Primary Objectives / Goals</label>
+                            <textarea value={projectObjectives} onChange={(e) => setProjectObjectives(e.target.value)} placeholder="What are we trying to achieve?" className="w-full h-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-primary-500/20" />
                         </div>
                         <div>
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Deliverables</label>
-                            <textarea value={projectDeliverables} onChange={(e) => setProjectDeliverables(e.target.value)} placeholder="Key deliverables..." className="w-full h-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs outline-none" />
+                            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Key Deliverables</label>
+                            <textarea value={projectDeliverables} onChange={(e) => setProjectDeliverables(e.target.value)} placeholder="Specific items to be produced..." className="w-full h-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-primary-500/20" />
                         </div>
                     </div>
                     <div className="space-y-4 bg-slate-50 dark:bg-slate-900/40 p-5 rounded-2xl border dark:border-slate-700 flex flex-col justify-center text-center">
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Manual Progress Strategy</label>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Manual Progress Monitor</label>
                         <div className="flex justify-between items-center mb-2 font-black text-xs px-2">
-                            <span className="text-slate-500">Completion</span>
-                            <span className="text-emerald-500">{projectProgress}%</span>
+                            <span className="text-slate-500">Milestone %</span>
+                            <span className="text-emerald-500 text-lg">{projectProgress}%</span>
                         </div>
-                        <input type="range" min="0" max="100" value={projectProgress} onChange={(e) => setProjectProgress(parseInt(e.target.value))} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+                        <input type="range" min="0" max="100" value={projectProgress} onChange={(e) => setProjectProgress(parseInt(e.target.value))} className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500 shadow-inner" />
+                        <p className="text-[9px] text-slate-400 mt-4 italic">Adjust to reflect real-world completion before synthesis.</p>
                     </div>
                 </div>
             )}
 
-            <div className={`flex flex-col md:flex-row gap-4 h-[400px]`}>
+            <div className={`flex flex-col md:flex-row gap-4 h-[450px]`}>
                 <div className="flex-1 flex flex-col min-w-0">
-                    {activeType === 'code' && <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Description</label>}
+                    {activeType === 'code' && <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Logic Description</label>}
                     <div 
                         ref={editorRef} contentEditable onPaste={handlePaste}
-                        className="flex-1 p-6 focus:outline-none text-base whitespace-pre-wrap leading-relaxed empty:before:content-[attr(placeholder)] empty:before:text-slate-400 overflow-y-auto custom-scrollbar border-2 border-transparent focus:border-primary-100 rounded-2xl bg-slate-50/50 dark:bg-slate-900/20 resize-y"
-                        placeholder="Paste messy fragments or ingest a document... (Screenshot paste supported)"
+                        className="flex-1 p-6 focus:outline-none text-base whitespace-pre-wrap leading-relaxed empty:before:content-[attr(placeholder)] empty:before:text-slate-400 overflow-y-auto custom-scrollbar border-2 border-transparent focus:border-primary-100 rounded-2xl bg-slate-50/50 dark:bg-slate-900/20 resize-y shadow-inner"
+                        placeholder={activeType === 'document' ? "Drag document into portal or paste messy logs here... (Screenshot paste supported)" : "Describe your idea... Paste fragments..."}
                     />
                 </div>
 
@@ -218,18 +234,19 @@ const NoteInput: React.FC<NoteInputProps> = ({
                         <div 
                             ref={codeEditorRef} contentEditable
                             className="flex-1 p-6 focus:outline-none text-sm font-mono whitespace-pre bg-black text-[#39ff14] selection:bg-[#39ff14]/30 overflow-y-auto custom-scrollbar rounded-2xl border border-[#39ff14]/20 shadow-2xl resize-y"
-                            placeholder="// Paste raw source code here..."
+                            placeholder="// Paste raw source code here... High-contrast view active."
                         />
                     </div>
                 )}
             </div>
         </div>
 
+        {/* Footer Actions */}
         <div className="px-5 pb-3">
             <div className="flex flex-wrap gap-1.5 p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border dark:border-slate-700 min-h-[48px] items-center">
                 {tags.map(tag => (
-                    <span key={tag} style={getTagStyle(tag)} className="px-3 py-1 rounded-lg text-[9px] font-black uppercase flex items-center gap-2">
-                        #{tag} <button type="button" onClick={() => setTags(tags.filter(t => t !== tag))}>✕</button>
+                    <span key={tag} style={getTagStyle(tag)} className="px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
+                        #{tag} <button type="button" onClick={() => setTags(tags.filter(t => t !== tag))} className="hover:text-red-500">✕</button>
                     </span>
                 ))}
                 <input 
@@ -242,15 +259,15 @@ const NoteInput: React.FC<NoteInputProps> = ({
         
         <div className="flex items-center justify-between p-4 border-t dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 rounded-b-2xl">
             <div className={`text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 ${aiStep ? 'text-primary-600 animate-pulse' : 'text-slate-400'}`}>
-                {aiStep ? `✨ ${aiStep}` : "Engine: Idle Ready"}
+                {aiStep ? `✨ ${aiStep}` : "Engine: Intelligence Idle"}
             </div>
             <div className="flex gap-3">
-                <button onClick={() => handleAction(false)} disabled={isProcessing} className="px-6 py-2 rounded-full font-bold text-[10px] bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 uppercase tracking-widest border border-slate-200 dark:border-slate-600 hover:shadow-md transition-all">Quick Save</button>
+                <button onClick={() => handleAction(false)} disabled={isProcessing} className="px-6 py-2 rounded-full font-bold text-[10px] bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 uppercase tracking-widest border border-slate-200 dark:border-slate-600 hover:shadow-md transition-all active:scale-95">Save Raw</button>
                 <button 
                   onClick={() => handleAction(true)} disabled={isProcessing || isGuest} 
                   className={`px-8 py-2 rounded-full font-black text-[10px] transition-all shadow-xl uppercase tracking-widest relative overflow-hidden group ${isGuest ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-primary-600 via-indigo-600 to-indigo-800 text-white hover:brightness-110 active:scale-95'}`}
                 >
-                  {isProcessing ? 'Synthesizing...' : '✨ Neural Synthesis'}
+                  {isProcessing ? 'Neural Syncing...' : '✨ Synthesis'}
                 </button>
             </div>
         </div>
