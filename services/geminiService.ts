@@ -53,24 +53,24 @@ export const processNoteWithAI = async (text: string, existingCategories: string
   try {
     const ai = getAI();
     
-    onStepUpdate?.("Neural Link Active...");
+    onStepUpdate?.("Initializing Neural Synthesis...");
     
-    const prompt = `Act as a Knowledge Synthesis Architect. 
-The input text is a messy copy-paste (possibly containing logs, timestamps, web nav-text, or technical noise).
+    const prompt = `Act as an Expert Knowledge Architect.
+The input below is a messy copy-paste (possibly containing web artifacts, chat fragments, or technical logs).
 
-Objective:
-1. SCRUB NOISE: Delete headers, footers, ad-text, and repeating metadata (like timestamps or log prefixes).
-2. ORGANIZE: Reconstruct fragments into a high-fidelity Markdown Note.
-3. TITLE: Create a formal, professional title.
-4. TAXONOMY: Suggest a logical Category and 3-5 Tags.
-5. IF ACTIONABLE: Convert fragments into a checklist.
+Your Job:
+1. DISTILL: Extract the core ideas and remove noise (nav-text, ad-text, timestamps, etc).
+2. STRUCTURE: Re-format into beautiful, logical Markdown. Use headings, lists, and code blocks as appropriate.
+3. TITLE: Create a punchy, accurate title for the distilled content.
+4. TAXONOMY: Suggest a logical 'category', 'tags' (3-5), and a single-word 'suggestedFolderName' for organization (e.g., 'Work', 'Personal', 'Tech', 'Inspiration').
+5. ENRICH: If the input contains fragmented action items, structure them as a checklist.
 
-Return STRICT JSON: {"title": "", "formattedContent": "", "category": "", "tags": []}.
+Return a STRICT JSON object with these keys: "title", "formattedContent", "category", "tags", "suggestedFolderName".
 
-Input Text:
+Input Content:
 ${text}`;
     
-    onStepUpdate?.("Scrubbing Technical Noise...");
+    onStepUpdate?.("Scrubbing Fragments & Noise...");
     
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview', 
@@ -81,7 +81,7 @@ ${text}`;
       }
     });
 
-    onStepUpdate?.("Finalizing Structure...");
+    onStepUpdate?.("Architecting Final Structure...");
 
     const parsed = extractJsonResponse(response.text || "{}") as ProcessedNoteData;
     incrementUsage(userId);

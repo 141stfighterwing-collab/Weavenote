@@ -114,10 +114,13 @@ const NoteCard: React.FC<NoteCardProps> = ({
       onDragStart={handleDragStart}
       onDragEnd={() => setIsDragging(false)}
       onClick={() => onExpand(note)}
-      className={`relative group p-6 rounded-2xl shadow-lg transition-all ${NOTE_COLORS[note.color]} min-h-[280px] flex flex-col cursor-pointer border border-black/5 hover:shadow-xl hover:-translate-y-1 ${isDragging ? 'opacity-40 scale-95' : 'opacity-100'} ${isFinished ? 'ring-2 ring-emerald-500/50' : ''} ${isMatrix ? 'font-mono' : ''}`}
+      className={`relative group p-6 rounded-2xl shadow-lg transition-all ${NOTE_COLORS[note.color]} min-h-[280px] flex flex-col cursor-pointer border border-black/5 hover:shadow-xl hover:-translate-y-1 ${isDragging ? 'opacity-40 scale-95' : 'opacity-100'} ${isFinished ? 'ring-2 ring-emerald-500/50' : ''} ${isMatrix ? 'font-mono' : ''} ${note.isSynthesized ? 'ring-2 ring-primary-400 ring-offset-2 dark:ring-offset-slate-800' : ''}`}
     >
       <div className="flex justify-between items-start mb-4 border-b border-black/5 pb-2">
-        <h3 className={`text-xl font-black leading-tight line-clamp-2 ${isFinished ? 'opacity-60 line-through' : ''}`}>{note.title}</h3>
+        <div className="flex-1 min-w-0 pr-2">
+            <h3 className={`text-xl font-black leading-tight line-clamp-2 ${isFinished ? 'opacity-60 line-through' : ''}`}>{note.title}</h3>
+            {note.isSynthesized && <span className="text-[8px] font-black uppercase tracking-[0.2em] text-primary-600 block mt-0.5">✨ Synthesized Idea</span>}
+        </div>
         {folderName && (
             <div className="flex items-center gap-1.5 px-2 py-1 bg-black/5 rounded-lg border border-black/5 text-[9px] font-black uppercase tracking-widest text-slate-500 shrink-0">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>

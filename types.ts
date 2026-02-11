@@ -68,6 +68,7 @@ export interface Note {
   userId?: string; // Owner ID for Firebase
   isDeleted?: boolean;
   deletedAt?: number;
+  isSynthesized?: boolean;
 }
 
 export enum NoteColor {
@@ -117,6 +118,7 @@ export interface ProcessedNoteData {
   formattedContent: string;
   category: string;
   tags: string[];
+  suggestedFolderName?: string;
   projectData?: ProjectData;
 }
 

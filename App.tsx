@@ -139,7 +139,7 @@ const App: React.FC = () => {
     manualObjectives?: string[],
     manualDeliverables?: string[],
     manualMilestones?: ProjectMilestone[]
-  }): Promise<Note | undefined> => {
+  }, onStepUpdate?: (step: string) => void): Promise<Note | undefined> => {
     if (!canEdit) return;
     if (useAI && !currentUser) useAI = false;
 
@@ -152,11 +152,26 @@ const App: React.FC = () => {
             if (!tags.includes(today)) tags.push(today);
         }
 
+        let targetFolderId = activeFolderId || undefined;
+
         if (useAI) {
             const username = currentUser?.username || 'Guest';
-            processed = await processNoteWithAI(rawText, [], type, username, currentUser?.uid);
+            processed = await processNoteWithAI(rawText, [], type, username, currentUser?.uid, onStepUpdate);
             tags = [...processed.tags.map(t => t.toLowerCase().replace('#', '')), ...tags];
             if (manualTitle.trim()) processed.title = manualTitle.trim();
+
+            // Automatic Folder Management
+            if (processed.suggestedFolderName && !activeFolderId) {
+                const existingFolder = folders.find(f => f.name.toLowerCase() === processed.suggestedFolderName!.toLowerCase());
+                if (existingFolder) {
+                    targetFolderId = existingFolder.id;
+                } else {
+                    const newFolder: Folder = { id: crypto.randomUUID(), name: processed.suggestedFolderName, order: folders.length };
+                    setFolders(prev => [...prev, newFolder]);
+                    await saveFolder(newFolder, storageOwner);
+                    targetFolderId = newFolder.id;
+                }
+            }
         } else {
             processed = {
                 title: manualTitle.trim() || rawText.split('\n')[0].substring(0, 40) || 'New Note',
@@ -181,8 +196,9 @@ const App: React.FC = () => {
             id: crypto.randomUUID(), title: processed.title, content: processed.formattedContent, rawContent: rawText,
             category: processed.category, tags: Array.from(new Set(tags.filter(t => t.trim().length > 0))), 
             color: type === 'notebook' ? NoteColor.Slate : NoteColor.Yellow, createdAt: Date.now(), type: type,
-            attachments: attachments || [], accessCount: 0, folderId: activeFolderId || undefined,
-            projectData: processed.projectData, userId: storageOwner || undefined, isDeleted: false
+            attachments: attachments || [], accessCount: 0, folderId: targetFolderId,
+            projectData: processed.projectData, userId: storageOwner || undefined, isDeleted: false,
+            isSynthesized: useAI
         };
 
         setNotes(prev => [newNote, ...prev]);
@@ -424,7 +440,7 @@ const App: React.FC = () => {
                     <div className="mt-4">
                         {viewMode === 'mindmap' ? (<div className="h-[600px] border rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/50"><MindMap notes={activeNotes} onNoteClick={(id) => { const n = activeNotes.find(n => n.id === id); if (n) { handleExpandNote(n); setViewMode('grid'); } }} /></div>) : (
                             <>
-                                {activeTab === 'deep' ? (<div className="space-y-3">{filteredNotes.map(note => (<div key={note.id} onClick={() => handleExpandNote(note)} className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center hover:shadow-lg hover:border-primary-400 dark:hover:border-primary-500 cursor-pointer transition-all animate-[fadeIn_0.2s_ease-out]"><div className="min-w-0 pr-4"><h3 className="font-bold text-lg text-slate-800 dark:text-white truncate">{note.title}</h3><p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mt-1">{note.content.substring(0, 180)}</p><div className="flex gap-2 mt-2">{note.tags.slice(0, 3).map(tag => (<span key={tag} className="text-[10px] text-primary-600 dark:text-primary-400 font-bold">#{tag}</span>))}</div></div><div className="flex flex-col items-end gap-2 shrink-0"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(note.createdAt).toLocaleDateString()}</span><div className="p-2 rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg></div></div></div>))}</div>) : (
+                                {activeTab === 'deep' ? (<div className="space-y-3">{filteredNotes.map(note => (<div key={note.id} onClick={() => handleExpandNote(note)} className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center hover:shadow-lg hover:border-primary-400 dark:hover:border-primary-500 cursor-pointer transition-all animate-[fadeIn_0.2s_ease-out]"><div className="min-w-0 pr-4"><div className="flex items-center gap-2 mb-1"><h3 className="font-bold text-lg text-slate-800 dark:text-white truncate">{note.title}</h3>{note.isSynthesized && <span className="px-1.5 py-0.5 bg-primary-600 text-white text-[8px] font-black uppercase rounded">Synthesized</span>}</div><p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mt-1">{note.content.substring(0, 180)}</p><div className="flex gap-2 mt-2">{note.tags.slice(0, 3).map(tag => (<span key={tag} className="text-[10px] text-primary-600 dark:text-primary-400 font-bold">#{tag}</span>))}</div></div><div className="flex flex-col items-end gap-2 shrink-0"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(note.createdAt).toLocaleDateString()}</span><div className="p-2 rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg></div></div></div>))}</div>) : (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">{filteredNotes.map(note => (
                                       <NoteCard 
                                         key={note.id} 
