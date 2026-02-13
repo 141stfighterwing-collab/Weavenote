@@ -71,7 +71,6 @@ const NoteInput: React.FC<NoteInputProps> = ({
     try {
         const text = await parseDocument(file);
         if (editorRef.current) {
-            // Append with a clear visual boundary for the AI to identify as source document text
             const docHtml = `
               <div style="margin: 15px 0; border: 2px solid rgba(var(--color-primary-500), 0.3); border-radius: 12px; background: rgba(var(--color-primary-50), 0.1); padding: 15px; font-family: inherit;">
                 <p style="margin: 0 0 10px 0; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: rgb(var(--color-primary-600));">
@@ -97,7 +96,6 @@ const NoteInput: React.FC<NoteInputProps> = ({
     const htmlContent = editorRef.current?.innerHTML || '';
     const code = codeEditorRef.current?.innerText || '';
     
-    // 1. Process Images into Attachments Array
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlContent;
     const imgElements = tempDiv.querySelectorAll('img');
@@ -107,14 +105,12 @@ const NoteInput: React.FC<NoteInputProps> = ({
       if (img.src.startsWith('data:image')) {
         const currentIdx = extractedImages.length;
         extractedImages.push(img.src);
-        // Replace the bulky <img> tag with a clean Markdown placeholder
         const mdPlaceholder = `\n\n![Screenshot ${currentIdx + 1}](attachment:${currentIdx})\n\n`;
         const textNode = document.createTextNode(mdPlaceholder);
         img.parentNode?.replaceChild(textNode, img);
       }
     });
     
-    // 2. Extract cleaned text/content
     let finalContent = tempDiv.innerText || tempDiv.textContent || '';
     
     if (activeType === 'code' && code.trim()) {
@@ -152,29 +148,33 @@ const NoteInput: React.FC<NoteInputProps> = ({
 
       <div className="bg-white dark:bg-slate-800 rounded-lg p-1">
         <div className="flex items-center justify-between border-b dark:border-slate-700">
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={activeType === 'project' ? "Project Identity Title..." : "Title of this Idea block..."} className="flex-1 px-5 py-4 bg-transparent focus:outline-none font-bold text-lg text-slate-800 dark:text-white" />
+            <input 
+              type="text" value={title} onChange={(e) => setTitle(e.target.value)} 
+              placeholder={activeType === 'project' ? "Project Identity Title..." : "Title of this Idea block..."} 
+              className="flex-1 px-5 py-4 bg-transparent focus:outline-none font-bold text-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500" 
+            />
         </div>
 
         <div className="flex flex-wrap items-center gap-1 p-2 bg-slate-50 dark:bg-slate-900/50 border-b dark:border-slate-700 relative">
             <div className="flex gap-0.5 border-r dark:border-slate-700 pr-2 mr-1">
-                <select onChange={(e) => execCommand('fontName', e.target.value)} className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded px-1.5 py-1 text-[10px] font-bold outline-none max-w-[85px]">
+                <select onChange={(e) => execCommand('fontName', e.target.value)} className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded px-1.5 py-1 text-[10px] font-bold outline-none max-w-[85px] text-slate-900 dark:text-slate-100">
                     <option value="">Font</option>
                     {FONTS.map(f => <option key={f} value={f}>{f}</option>)}
                 </select>
-                <select onChange={(e) => execCommand('fontSize', e.target.value)} className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded px-1.5 py-1 text-[10px] font-bold outline-none">
+                <select onChange={(e) => execCommand('fontSize', e.target.value)} className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded px-1.5 py-1 text-[10px] font-bold outline-none text-slate-900 dark:text-slate-100">
                     <option value="">Size</option>
                     {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
             </div>
 
-            <div className="flex gap-0.5 border-r dark:border-slate-700 pr-2 mr-1">
+            <div className="flex gap-0.5 border-r dark:border-slate-700 pr-2 mr-1 text-slate-600 dark:text-slate-300">
                 <button onClick={() => execCommand('bold')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded font-black text-xs px-2.5">B</button>
                 <button onClick={() => execCommand('italic')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded italic text-xs px-2.5">/</button>
                 <button onClick={() => execCommand('underline')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded underline text-xs px-2.5">U</button>
             </div>
 
             <div className="flex gap-0.5 border-r dark:border-slate-700 pr-2 mr-1">
-                <button onClick={() => execCommand('insertUnorderedList')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase">Bullet</button>
+                <button onClick={() => execCommand('insertUnorderedList')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-slate-600 dark:text-slate-300">Bullet</button>
                 <button onClick={() => execCommand('insertText', '- [ ] ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-primary-600">Task</button>
             </div>
 
@@ -217,11 +217,11 @@ const NoteInput: React.FC<NoteInputProps> = ({
                     <div className="space-y-4 bg-slate-50 dark:bg-slate-900/40 p-5 rounded-2xl border dark:border-slate-700">
                         <div>
                             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Primary Objectives / Goals</label>
-                            <textarea value={projectObjectives} onChange={(e) => setProjectObjectives(e.target.value)} placeholder="What are we trying to achieve?" className="w-full h-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-primary-500/20" />
+                            <textarea value={projectObjectives} onChange={(e) => setProjectObjectives(e.target.value)} placeholder="What are we trying to achieve?" className="w-full h-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-900 dark:text-white" />
                         </div>
                         <div>
                             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Key Deliverables</label>
-                            <textarea value={projectDeliverables} onChange={(e) => setProjectDeliverables(e.target.value)} placeholder="Specific items to be produced..." className="w-full h-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-primary-500/20" />
+                            <textarea value={projectDeliverables} onChange={(e) => setProjectDeliverables(e.target.value)} placeholder="Specific items to be produced..." className="w-full h-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-900 dark:text-white" />
                         </div>
                     </div>
                     <div className="space-y-4 bg-slate-50 dark:bg-slate-900/40 p-5 rounded-2xl border dark:border-slate-700 flex flex-col justify-center text-center">
@@ -240,7 +240,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 <div className="flex-1 flex flex-col min-w-0">
                     <div 
                         ref={editorRef} contentEditable onPaste={handlePaste}
-                        className="flex-1 p-6 focus:outline-none text-base whitespace-pre-wrap leading-relaxed empty:before:content-[attr(placeholder)] empty:before:text-slate-400 overflow-y-auto custom-scrollbar border-2 border-transparent focus:border-primary-100 rounded-2xl bg-slate-50/50 dark:bg-slate-900/20 resize-y shadow-inner"
+                        className="flex-1 p-6 focus:outline-none text-base whitespace-pre-wrap leading-relaxed empty:before:content-[attr(placeholder)] empty:before:text-slate-400 dark:empty:before:text-slate-500 overflow-y-auto custom-scrollbar border-2 border-transparent focus:border-primary-100 rounded-2xl bg-slate-50/50 dark:bg-slate-900/40 text-slate-900 dark:text-white resize-y shadow-inner"
                         placeholder={activeType === 'document' ? "Drag document into portal or paste messy logs here... (Screenshot paste supported)" : "Describe your idea... Paste fragments..."}
                     />
                 </div>
@@ -268,7 +268,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 <input 
                     type="text" value={tagInput} onChange={e => setTagInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const val = tagInput.trim().toLowerCase().replace('#',''); if (val && !tags.includes(val)) { setTags([...tags, val]); setTagInput(''); } } }}
-                    placeholder="Hashtags..." className="bg-transparent outline-none text-[10px] font-bold text-slate-400 min-w-[120px] flex-1"
+                    placeholder="Hashtags..." className="bg-transparent outline-none text-[10px] font-bold text-slate-600 dark:text-slate-400 min-w-[120px] flex-1"
                 />
             </div>
         </div>
