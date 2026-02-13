@@ -1,10 +1,9 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Use the dynamic version property from the library to ensure the worker matches exactly.
-const version = pdfjsLib.version || '4.10.38';
-
+// Use a reliable worker source that matches the library version
+const version = '4.10.38';
 // @ts-ignore
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
 
 export const parseDocument = async (file: File): Promise<string> => {
   try {
@@ -19,10 +18,10 @@ export const parseDocument = async (file: File): Promise<string> => {
       return await parseText(file);
     }
     else {
-      throw new Error(`Unsupported file type: ${file.type}. Please upload PDF, TXT, or MD.`);
+      throw new Error(`Unsupported file type: ${file.type}. Please use PDF, TXT, or MD.`);
     }
   } catch (error: any) {
-    console.error("Document Parsing Error:", error);
+    console.error("Document Ingestion Error:", error);
     throw new Error(error.message || "Failed to parse document.");
   }
 };
@@ -40,47 +39,48 @@ const parsePDF = async (file: File): Promise<string> => {
   const arrayBuffer = await file.arrayBuffer();
   const loadingTask = pdfjsLib.getDocument({ 
     data: arrayBuffer,
-    disableRange: true,
-    disableStream: true
+    useSystemFonts: true,
+    isEvalSupported: false
   });
   
   const pdf = await loadingTask.promise;
   let fullText = "";
+  
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const textContent = await page.getTextContent();
     
-    const items = textContent.items
-      .map((item: any) => {
-        let str = item.str || "";
-        // Clean characters that look like [] or weird boxes
-        str = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F\uFFFD\u25A1\u25FB-\u25FE]/g, "");
-        str = str.replace(/\[\s*\]/g, "");
-        
-        return {
-          text: str,
-          y: item.transform[5],
-          x: item.transform[4]
-        };
-      })
-      .filter(item => item.text.trim().length > 0);
-
+    // Group items by their vertical position (Y coordinate) to reconstruct lines
+    const items: any[] = textContent.items;
     const lines: Record<number, any[]> = {};
-    items.forEach(item => {
-      const y = Math.round(item.y);
+    
+    items.forEach((item: any) => {
+      if (!item.str || item.str.trim() === "") return;
+      
+      // The transform array contains [scaleX, skewY, skewX, scaleY, translateX, translateY]
+      const y = Math.round(item.transform[5]);
       if (!lines[y]) lines[y] = [];
       lines[y].push(item);
     });
 
+    // Sort Y coordinates descending (top of page to bottom)
     const sortedY = Object.keys(lines).map(Number).sort((a, b) => b - a);
+    
     let pageText = "";
     sortedY.forEach(y => {
-      const lineItems = lines[y].sort((a, b) => a.x - b.x);
-      const lineStr = lineItems.map(item => item.text).join(" ").trim();
-      if (lineStr) pageText += lineStr + "\n";
+      // Sort items on the same line by their horizontal position (X coordinate)
+      const lineItems = lines[y].sort((a, b) => a.transform[4] - b.transform[4]);
+      const lineStr = lineItems.map(item => item.str).join(" ");
+      pageText += lineStr + "\n";
     });
 
     fullText += pageText + "\n";
   }
-  return fullText.trim();
+
+  const result = fullText.trim();
+  if (!result) {
+    throw new Error("This PDF appears to be a scan (image-only). Please paste a screenshot of the content instead so the Vision Engine can OCR it.");
+  }
+  
+  return result;
 };
