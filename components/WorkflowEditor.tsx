@@ -87,7 +87,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ nodes, edges, onUpdate,
         .join("g")
         .attr("class", "node")
         .style("cursor", readOnly ? "default" : "pointer")
-        .call(d3.drag<SVGGElement, any>()
+        .call(d3.drag<any, any>()
             .on("start", dragstarted)
             .on("drag", dragged)
             .on("end", dragended));
@@ -99,18 +99,18 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ nodes, edges, onUpdate,
         .attr("x", -60)
         .attr("y", -30)
         .attr("rx", 8)
-        .attr("fill", d => {
+        .attr("fill", (d: any) => {
             if (d.status === 'done') return '#dcfce7'; // green-100
             if (d.status === 'in_progress') return '#dbeafe'; // blue-100
             return '#f1f5f9'; // slate-100
         })
-        .attr("stroke", d => {
+        .attr("stroke", (d: any) => {
             if (d.status === 'done') return '#16a34a'; // green-600
             if (d.status === 'in_progress') return '#2563eb'; // blue-600
             return '#94a3b8'; // slate-400
         })
         .attr("stroke-width", 2)
-        .on("click", (e, d) => handleNodeClick(d.id));
+        .on("click", (e, d: any) => handleNodeClick(d.id));
 
     // Status Indicator Dot
     nodeGroup.append("circle")

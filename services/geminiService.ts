@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { ProcessedNoteData, NoteType } from "../types";
 import { incrementUserAIUsage } from "./authService";
 import { logTraffic } from "./trafficService";
@@ -73,11 +73,11 @@ ${text}`;
     onStepUpdate?.("Scrubbing Fragments & Noise...");
     
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview', 
+      model: 'gemini-3.1-pro-preview', 
       contents: prompt,
       config: { 
         responseMimeType: 'application/json',
-        thinkingConfig: { thinkingBudget: 4000 } 
+        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH } 
       }
     });
 

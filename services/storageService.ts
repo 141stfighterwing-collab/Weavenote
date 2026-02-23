@@ -52,7 +52,7 @@ export const loadNotes = async (userId: string | null): Promise<Note[]> => {
 
 export const saveNote = async (note: Note, userId: string | null) => {
     if (!userId) {
-        const notes = await loadNotes(null).catch(() => []);
+        const notes: Note[] = await loadNotes(null).catch(() => []);
         const idx = notes.findIndex(n => n.id === note.id);
         if (idx >= 0) notes[idx] = note; else notes.push(note);
         sessionStorage.setItem(GUEST_KEY, JSON.stringify(notes));
@@ -95,7 +95,7 @@ export const loadFolders = async (userId: string | null): Promise<Folder[]> => {
 
 export const saveFolder = async (folder: Folder, userId: string | null) => {
     if (!userId) {
-        const folders = await loadFolders(null).catch(() => []);
+        const folders: Folder[] = await loadFolders(null).catch(() => []);
         const idx = folders.findIndex(f => f.id === folder.id);
         if (idx >= 0) folders[idx] = folder; else folders.push(folder);
         sessionStorage.setItem(GUEST_FOLDERS_KEY, JSON.stringify(folders));
@@ -120,7 +120,8 @@ export const syncAllNotes = async (notes: Note[], userId: string) => {
     if (!db || !userId) return;
     const batch = writeBatch(db);
     notes.slice(0, 490).forEach(note => {
-        batch.set(doc(db, 'notes', note.id), sanitizeForFirestore({ ...note, userId }));
+        const docRef = doc(db!, 'notes', note.id);
+        batch.set(docRef, sanitizeForFirestore({ ...note, userId }));
     });
     await batch.commit();
 };

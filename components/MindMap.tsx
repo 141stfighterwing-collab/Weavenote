@@ -197,14 +197,14 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
       )
       .force("charge", d3.forceManyBody().strength(d => -100 - ((d as GraphNode).degree * 50))) 
       .force("center", d3.forceCenter(width / 2, height / 2).strength(0.05))
-      .force("collide", d3.forceCollide().radius(d => d.val + 15)) 
+      .force("collide", d3.forceCollide().radius(d => (d as GraphNode).val + 15)) 
       .alphaDecay(0.04);
 
     const link = g.append("g").selectAll("line").data(links).join("line").attr("class", d => `link-${d.connectionType}`);
 
     const nodeGroup = g.append("g").selectAll("g").data(nodes).join("g")
       .attr("class", "node-group")
-      .call(d3.drag<SVGGElement, GraphNode>().on("start", dragstarted).on("drag", dragged).on("end", dragended));
+      .call(d3.drag<any, GraphNode>().on("start", dragstarted).on("drag", dragged).on("end", dragended));
 
     nodeGroup.append("circle")
       .attr("r", d => d.val)

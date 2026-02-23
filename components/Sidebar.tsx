@@ -82,7 +82,7 @@ const Calendar: React.FC<{ activeDate: Date | null; onDateClick: (d: Date | null
                 </div>
             </div>
             <div className="grid grid-cols-7 gap-1 text-center mb-1">
-                {days.map(day => <div key={day} className="text-[9px] font-bold text-slate-400">{day}</div>)}
+                {days.map((day, i) => <div key={`${day}-${i}`} className="text-[9px] font-bold text-slate-400">{day}</div>)}
             </div>
             <div className="grid grid-cols-7 gap-1">
                 {renderDays()}
