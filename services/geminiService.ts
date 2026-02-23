@@ -50,12 +50,15 @@ const extractJsonResponse = (text: string): any => {
 };
 
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string, userId?: string, onStepUpdate?: (step: string) => void): Promise<ProcessedNoteData> => {
-  try {
-    const ai = getAI();
-    
-    onStepUpdate?.("Initializing Neural Synthesis...");
-    
-    const prompt = `Act as an Expert Knowledge Architect.
+  const models = ['gemini-3.1-pro-preview', 'gemini-1.5-flash'];
+  let lastError: any = null;
+
+  for (const modelName of models) {
+    try {
+      const ai = getAI();
+      onStepUpdate?.(`Neural Synthesis (${modelName})...`);
+      
+      const prompt = `Act as an Expert Knowledge Architect.
 The input below is a messy copy-paste (possibly containing web artifacts, chat fragments, or technical logs).
 
 Your Job:
@@ -69,29 +72,32 @@ Return a STRICT JSON object with these keys: "title", "formattedContent", "categ
 
 Input Content:
 ${text}`;
-    
-    onStepUpdate?.("Scrubbing Fragments & Noise...");
-    
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.1-pro-preview', 
-      contents: prompt,
-      config: { 
-        responseMimeType: 'application/json',
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH } 
+      
+      const response = await ai.models.generateContent({
+        model: modelName, 
+        contents: prompt,
+        config: { 
+          responseMimeType: 'application/json'
+        }
+      });
+
+      const parsed = extractJsonResponse(response.text || "{}") as ProcessedNoteData;
+      incrementUsage(userId);
+      logTraffic('POST', `gemini/${modelName}`, 200, text.length);
+      return parsed;
+    } catch (error: any) {
+      lastError = error;
+      console.warn(`Model ${modelName} failed:`, error);
+      logTraffic('POST', `gemini/${modelName}`, 500, text.length);
+      // If it's a network error, don't bother retrying with another model
+      if (error.message?.includes("PROTOCOL_ERROR") || error.message?.toLowerCase().includes("failed to fetch")) {
+          break;
       }
-    });
-
-    onStepUpdate?.("Architecting Final Structure...");
-
-    const parsed = extractJsonResponse(response.text || "{}") as ProcessedNoteData;
-    incrementUsage(userId);
-    logTraffic('POST', 'gemini-3-pro/organize', 200, text.length);
-    return parsed;
-  } catch (error: any) {
-    logError('PROCESS_NOTE', error);
-    logTraffic('POST', 'gemini-3-pro/organize', 500, text.length);
-    throw error;
+    }
   }
+
+  logError('PROCESS_NOTE', lastError);
+  throw lastError;
 };
 
 export interface DiagnosticLog {
@@ -104,22 +110,27 @@ export const runConnectivityTest = async () => {
   const logs: DiagnosticLog[] = [];
   const addLog = (message: string, type: DiagnosticLog['type'] = 'info') => logs.push({ timestamp: Date.now(), message, type });
 
-  const origin = window.location.origin;
   const apiKey = process.env.GEMINI_API_KEY || "";
-
-  addLog("--- SECURITY HANDSHAKE AUDIT ---");
   
+  addLog("--- NEURAL ENGINE DIAGNOSTICS ---");
+  
+  if (!apiKey) {
+      addLog("CRITICAL: No API Key detected in environment.", "error");
+      return { success: false, message: "Key Missing", logs };
+  }
+
+  addLog(`Key detected: ${apiKey.substring(0, 6)}...${apiKey.substring(apiKey.length - 4)}`, "info");
+
   if (apiKey.trim().startsWith("{")) {
-      addLog("CRITICAL: Detected Service Account JSON as GEMINI_API_KEY.", "error");
-      addLog("ACTION: Delete the JSON and use only the string 'AIza...'", "warn");
+      addLog("CRITICAL: Detected Service Account JSON instead of API Key string.", "error");
       return { success: false, message: "Credential Type Mismatch", logs };
   }
 
   try {
     const ai = getAI();
-    addLog("Testing Edge Handshake with gemini-3-flash...");
+    addLog("Testing handshake with gemini-1.5-flash...");
     const response = await ai.models.generateContent({ 
-        model: 'gemini-3-flash-preview', 
+        model: 'gemini-1.5-flash', 
         contents: 'ping',
         config: { maxOutputTokens: 2 }
     });
@@ -130,11 +141,12 @@ export const runConnectivityTest = async () => {
     }
   } catch (e: any) {
     const msg = e.message || String(e);
-    if (msg.includes("PROTOCOL_ERROR") || msg.toLowerCase().includes("failed to fetch")) {
-        addLog("PROTOCOL ERROR (RESTRICTION BLOCK): The connection was reset by Google Edge.", "error");
-        addLog(`RESOLUTION: In Google Cloud -> Credentials, set restrictions to 'None' or add '${origin}/*' to 'HTTP Referrers'.`, "info");
-    }
     addLog(`ENGINE ERROR: ${msg}`, "error");
+    
+    if (msg.includes("PROTOCOL_ERROR") || msg.toLowerCase().includes("failed to fetch")) {
+        addLog("Network Error: The request was blocked or reset by the browser/network layer.", "warn");
+        addLog("Check for: Ad-blockers, VPNs, or Firewall settings that might intercept Google API traffic.", "info");
+    }
   }
 
   return { success: false, message: "Handshake Failed", logs };
