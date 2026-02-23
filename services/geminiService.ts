@@ -50,7 +50,7 @@ const extractJsonResponse = (text: string): any => {
 };
 
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string, userId?: string, onStepUpdate?: (step: string) => void): Promise<ProcessedNoteData> => {
-  const models = ['gemini-3.1-pro-preview', 'gemini-1.5-flash'];
+  const models = ['gemini-3.1-pro-preview', 'gemini-3-flash-preview'];
   let lastError: any = null;
 
   for (const modelName of models) {
@@ -128,9 +128,9 @@ export const runConnectivityTest = async () => {
 
   try {
     const ai = getAI();
-    addLog("Testing handshake with gemini-1.5-flash...");
+    addLog("Testing handshake with gemini-3-flash-preview...");
     const response = await ai.models.generateContent({ 
-        model: 'gemini-1.5-flash', 
+        model: 'gemini-3-flash-preview', 
         contents: 'ping',
         config: { maxOutputTokens: 2 }
     });
