@@ -24,9 +24,13 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
   const [objectives, setObjectives] = useState('');
   const [deliverables, setDeliverables] = useState('');
   const [manualProgress, setManualProgress] = useState(0);
+  const [showColorPicker, setShowColorPicker] = useState(false);
   
   const editorRef = useRef<HTMLDivElement>(null);
   const isGuest = currentUser === 'Guest';
+
+  const COLORS = ["#000000", "#ef4444", "#f97316", "#f59e0b", "#10b981", "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6", "#d946ef"];
+  const BG_COLORS = ["#fef08a", "#bbf7d0", "#bae6fd", "#fbcfe8", "#e9d5ff", "#fed7aa", "#cbd5e1"];
 
   useEffect(() => {
     if (note) {
@@ -180,6 +184,22 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
                         <button type="button" onClick={() => execCommand('bold')} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs font-black text-slate-600 dark:text-slate-300">B</button>
                         <button type="button" onClick={() => execCommand('italic')} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs italic text-slate-600 dark:text-slate-300">I</button>
                         <button type="button" onClick={() => execCommand('underline')} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs underline text-slate-600 dark:text-slate-300">U</button>
+                        <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 mx-1" />
+                        <div className="relative">
+                            <button type="button" onClick={() => setShowColorPicker(!showColorPicker)} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs text-slate-600 dark:text-slate-300">🎨</button>
+                            {showColorPicker && (
+                                <div className="absolute top-full left-0 mt-1 p-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-2xl z-50 min-w-[200px]">
+                                    <div className="text-[9px] font-black uppercase text-slate-400 mb-2">Text Color</div>
+                                    <div className="flex flex-wrap gap-1 mb-3">
+                                        {COLORS.map(c => <button key={c} type="button" onClick={() => { execCommand('foreColor', c); setShowColorPicker(false); }} className="w-5 h-5 rounded-full" style={{backgroundColor: c}} />)}
+                                    </div>
+                                    <div className="text-[9px] font-black uppercase text-slate-400 mb-2">Highlight</div>
+                                    <div className="flex flex-wrap gap-1">
+                                        {BG_COLORS.map(c => <button key={c} type="button" onClick={() => { execCommand('hiliteColor', c); setShowColorPicker(false); }} className="w-5 h-5 rounded" style={{backgroundColor: c}} />)}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <div
                       ref={editorRef}

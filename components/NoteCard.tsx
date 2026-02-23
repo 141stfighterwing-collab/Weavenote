@@ -19,6 +19,7 @@ interface NoteCardProps {
   onRemoveTag: (noteId: string, tag: string) => void;
   onMoveToFolder?: (noteId: string, folderId: string | undefined) => void;
   onToggleComplete?: (id: string) => void;
+  onUpdateColors?: (id: string, textColor: string | undefined, backgroundColor: string | undefined) => void;
 }
 
 // Global helper for neon tag styles
@@ -54,12 +55,16 @@ export const getTagStyle = (tag: string, isActive: boolean = false) => {
 
 const NoteCard: React.FC<NoteCardProps> = ({ 
   note, folders = [], onDelete, onTagClick, onEdit, onExpand, 
-  readOnly = false, onToggleCheckbox, onToggleComplete, onMoveToFolder, onChangeColor 
+  readOnly = false, onToggleCheckbox, onToggleComplete, onMoveToFolder, onChangeColor, onUpdateColors
 }) => {
   const checkboxCounter = useRef(0);
   checkboxCounter.current = 0;
   const [isDragging, setIsDragging] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showCustomColorPicker, setShowCustomColorPicker] = useState(false);
+
+  const COLORS = ["#000000", "#ffffff", "#ef4444", "#f97316", "#f59e0b", "#10b981", "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6", "#d946ef"];
+  const BG_COLORS = ["#fef08a", "#bbf7d0", "#bae6fd", "#fbcfe8", "#e9d5ff", "#fed7aa", "#cbd5e1", "#ffffff", "#000000"];
 
   const folderName = useMemo(() => {
     if (!note.folderId || !folders) return null;
@@ -108,13 +113,19 @@ const NoteCard: React.FC<NoteCardProps> = ({
   const isFinished = note.projectData?.isCompleted === true || calculateProgress === 100;
   const isMatrix = note.color === 'matrix';
 
+  const cardStyle: React.CSSProperties = {
+    backgroundColor: note.backgroundColor || undefined,
+    color: note.textColor || undefined,
+  };
+
   return (
     <div
       draggable={!readOnly}
       onDragStart={handleDragStart}
       onDragEnd={() => setIsDragging(false)}
       onClick={() => onExpand(note)}
-      className={`relative group p-6 rounded-2xl shadow-lg transition-all ${NOTE_COLORS[note.color]} min-h-[280px] flex flex-col cursor-pointer border border-black/5 hover:shadow-xl hover:-translate-y-1 ${isDragging ? 'opacity-40 scale-95' : 'opacity-100'} ${isFinished ? 'ring-2 ring-emerald-500/50' : ''} ${isMatrix ? 'font-mono' : ''} ${note.isSynthesized ? 'ring-2 ring-primary-400 ring-offset-2 dark:ring-offset-slate-800' : ''}`}
+      style={cardStyle}
+      className={`relative group p-6 rounded-2xl shadow-lg transition-all ${!note.backgroundColor ? NOTE_COLORS[note.color] : ''} min-h-[280px] flex flex-col cursor-pointer border border-black/5 hover:shadow-xl hover:-translate-y-1 ${isDragging ? 'opacity-40 scale-95' : 'opacity-100'} ${isFinished ? 'ring-2 ring-emerald-500/50' : ''} ${isMatrix ? 'font-mono' : ''} ${note.isSynthesized ? 'ring-2 ring-primary-400 ring-offset-2 dark:ring-offset-slate-800' : ''}`}
     >
       <div className="flex justify-between items-start mb-4 border-b border-black/5 pb-2">
         <div className="flex-1 min-w-0 pr-2">
@@ -177,14 +188,66 @@ const NoteCard: React.FC<NoteCardProps> = ({
 
         <div className="flex items-center justify-end gap-2 pt-4 border-t border-black/5">
             <div className="flex items-center gap-1 shrink-0 relative">
-            <button onClick={(e) => { e.stopPropagation(); setShowColorPicker(!showColorPicker); }} className={`p-2 rounded-xl shadow-sm hover:scale-110 transition-transform ${isMatrix ? 'bg-[#39ff14]/10 text-[#39ff14]' : 'bg-white/50 text-slate-600'}`}>🎨</button>
-            {showColorPicker && (
-                <div className="absolute bottom-full right-0 mb-3 p-3 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border dark:border-slate-700 flex flex-wrap gap-1.5 w-44 z-50">
-                {Object.values(NoteColor).map((c) => (
-                    <button key={c} onClick={(e) => { e.stopPropagation(); onChangeColor(note.id, c); setShowColorPicker(false); }} className={`w-7 h-7 rounded-lg border transition-transform hover:scale-110 ${c === 'matrix' ? 'bg-black border-[#39ff14]' : `bg-${c}-200`}`} title={c} />
-                ))}
-                </div>
-            )}
+            <div className="relative">
+                <button onClick={(e) => { e.stopPropagation(); setShowColorPicker(!showColorPicker); setShowCustomColorPicker(false); }} className={`p-2 rounded-xl shadow-sm hover:scale-110 transition-transform ${isMatrix ? 'bg-[#39ff14]/10 text-[#39ff14]' : 'bg-white/50 text-slate-600'}`}>🎨</button>
+                {showColorPicker && (
+                    <div className="absolute bottom-full right-0 mb-3 p-3 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border dark:border-slate-700 flex flex-col gap-3 w-44 z-50">
+                        <div className="flex flex-wrap gap-1.5">
+                            {Object.values(NoteColor).map((c) => (
+                                <button key={c} onClick={(e) => { e.stopPropagation(); onChangeColor(note.id, c); onUpdateColors?.(note.id, undefined, undefined); setShowColorPicker(false); }} className={`w-7 h-7 rounded-lg border transition-transform hover:scale-110 ${c === 'matrix' ? 'bg-black border-[#39ff14]' : `bg-${c}-200`}`} title={c} />
+                            ))}
+                        </div>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); setShowCustomColorPicker(true); setShowColorPicker(false); }}
+                            className="text-[10px] font-black uppercase tracking-widest py-2 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                        >
+                            Custom Colors
+                        </button>
+                    </div>
+                )}
+                {showCustomColorPicker && (
+                    <div className="absolute bottom-full right-0 mb-3 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border dark:border-slate-700 flex flex-col gap-4 w-56 z-50">
+                        <div>
+                            <div className="text-[9px] font-black uppercase text-slate-400 mb-2">Text Color</div>
+                            <div className="flex flex-wrap gap-1.5">
+                                {COLORS.map(c => (
+                                    <button 
+                                        key={c} 
+                                        onClick={(e) => { e.stopPropagation(); onUpdateColors?.(note.id, c, note.backgroundColor); }} 
+                                        className={`w-6 h-6 rounded-full border border-black/10 ${note.textColor === c ? 'ring-2 ring-primary-500' : ''}`} 
+                                        style={{backgroundColor: c}} 
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                        <div>
+                            <div className="text-[9px] font-black uppercase text-slate-400 mb-2">Background Color</div>
+                            <div className="flex flex-wrap gap-1.5">
+                                {BG_COLORS.map(c => (
+                                    <button 
+                                        key={c} 
+                                        onClick={(e) => { e.stopPropagation(); onUpdateColors?.(note.id, note.textColor, c); }} 
+                                        className={`w-6 h-6 rounded-lg border border-black/10 ${note.backgroundColor === c ? 'ring-2 ring-primary-500' : ''}`} 
+                                        style={{backgroundColor: c}} 
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onUpdateColors?.(note.id, undefined, undefined); setShowCustomColorPicker(false); }}
+                            className="text-[9px] font-black uppercase tracking-widest py-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        >
+                            Reset to Default
+                        </button>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); setShowCustomColorPicker(false); }}
+                            className="text-[9px] font-black uppercase tracking-widest py-2 bg-slate-900 text-white rounded-lg"
+                        >
+                            Done
+                        </button>
+                    </div>
+                )}
+            </div>
             <button onClick={(e) => { e.stopPropagation(); onEdit(note); }} className={`p-2 rounded-xl shadow-sm hover:scale-110 transition-transform ${isMatrix ? 'bg-[#39ff14]/10 text-[#39ff14]' : 'bg-white/50 text-slate-600'}`}>✏️</button>
             <button onClick={(e) => { e.stopPropagation(); onDelete(note.id); }} className="p-2 bg-rose-500/20 text-rose-700 rounded-xl shadow-sm hover:scale-110 transition-transform">🗑️</button>
             </div>

@@ -45,6 +45,11 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
   const isMatrix = note.color === 'matrix' || note.type === 'code';
   const isCompleted = note.projectData?.isCompleted;
 
+  const modalStyle: React.CSSProperties = {
+    backgroundColor: note.backgroundColor || undefined,
+    color: note.textColor || undefined,
+  };
+
   const markdownComponents = {
       p: ({ children }: any) => <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>,
       input: (props: any) => {
@@ -82,7 +87,8 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]" onClick={onClose}>
       <div 
         ref={containerRef}
-        className={`relative w-full max-w-5xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden ${isMatrix ? 'bg-black text-[#39ff14] font-mono' : colorClass + ' font-sans'}`}
+        style={modalStyle}
+        className={`relative w-full max-w-5xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden ${isMatrix ? 'bg-black text-[#39ff14] font-mono' : (!note.backgroundColor ? colorClass : '') + ' font-sans'}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className={`flex justify-between items-start p-6 pb-4 border-b border-black/5 ${isMatrix ? 'bg-black border-[#39ff14]/20' : 'bg-black/5'}`}>

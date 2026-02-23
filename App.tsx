@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Note, NoteColor, NoteType, ViewMode, Theme, Folder, User, ProjectData, ProjectMilestone } from './types';
+import { Note, NoteColor, NoteType, ViewMode, Theme, Folder, User, ProjectData, ProjectMilestone, ProjectItem } from './types';
 import { processNoteWithAI, getDailyUsage } from './services/geminiService';
 import { 
     loadNotes, saveNote, deleteNote, 
@@ -136,8 +136,8 @@ const App: React.FC = () => {
   const handleAddNote = async (rawText: string, type: NoteType, attachments: string[] = [], forcedTags: string[] = [], useAI: boolean = true, manualTitle: string = '', extraProjectData?: { 
     manualProgress?: number, 
     isCompleted?: boolean,
-    manualObjectives?: string[],
-    manualDeliverables?: string[],
+    manualObjectives?: ProjectItem[],
+    manualDeliverables?: ProjectItem[],
     manualMilestones?: ProjectMilestone[]
   }, onStepUpdate?: (step: string) => void): Promise<Note | undefined> => {
     if (!canEdit) return;
@@ -327,6 +327,16 @@ const App: React.FC = () => {
       await deleteFolder(id, storageOwner);
   };
 
+  const handleUpdateColors = async (id: string, textColor: string | undefined, backgroundColor: string | undefined) => {
+      if (!canEdit) return;
+      const target = notes.find(n => n.id === id);
+      if (!target) return;
+      const updated = { ...target, textColor, backgroundColor };
+      setNotes(prev => prev.map(n => n.id === id ? updated : n));
+      if (expandedNote?.id === id) setExpandedNote(updated);
+      await saveNote(updated, storageOwner);
+  };
+
   const handleToggleProjectCompletion = async (noteId: string) => {
       if (!canEdit) return;
       const target = notes.find(n => n.id === noteId);
@@ -441,6 +451,7 @@ const App: React.FC = () => {
                                           setNotes(prev => prev.map(n => n.id === id ? { ...n, color: c } : n)); 
                                           if (storageOwner) await saveNote({ ...notes.find(n => n.id === id)!, color: c }, storageOwner); 
                                         }} 
+                                        onUpdateColors={handleUpdateColors}
                                         onEdit={setEditingNote} 
                                         onExpand={handleExpandNote} 
                                         readOnly={!canEdit} 

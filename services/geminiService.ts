@@ -7,16 +7,16 @@ export const DAILY_REQUEST_LIMIT = 800;
 
 /**
  * Factory for the AI instance. 
- * Ensure process.env.API_KEY is the plain string (AIza...), not a JSON object.
+ * Ensure process.env.GEMINI_API_KEY is the plain string (AIza...), not a JSON object.
  */
 const getAI = () => {
-    const apiKey = process.env.API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey === "" || apiKey === "undefined") {
-        throw new Error("API_KEY_MISSING");
+        throw new Error("GEMINI_API_KEY_MISSING");
     }
     // Validation for common mistake: pasting Service Account JSON
     if (apiKey.trim().startsWith("{")) {
-        throw new Error("API_KEY_FORMAT_ERROR: Detected JSON object instead of API Key string.");
+        throw new Error("GEMINI_API_KEY_FORMAT_ERROR: Detected JSON object instead of API Key string.");
     }
     return new GoogleGenAI({ apiKey });
 };
@@ -105,12 +105,12 @@ export const runConnectivityTest = async () => {
   const addLog = (message: string, type: DiagnosticLog['type'] = 'info') => logs.push({ timestamp: Date.now(), message, type });
 
   const origin = window.location.origin;
-  const apiKey = process.env.API_KEY || "";
+  const apiKey = process.env.GEMINI_API_KEY || "";
 
   addLog("--- SECURITY HANDSHAKE AUDIT ---");
   
   if (apiKey.trim().startsWith("{")) {
-      addLog("CRITICAL: Detected Service Account JSON as API_KEY.", "error");
+      addLog("CRITICAL: Detected Service Account JSON as GEMINI_API_KEY.", "error");
       addLog("ACTION: Delete the JSON and use only the string 'AIza...'", "warn");
       return { success: false, message: "Credential Type Mismatch", logs };
   }

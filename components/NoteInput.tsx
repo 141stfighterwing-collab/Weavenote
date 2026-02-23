@@ -111,7 +111,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
       }
     });
     
-    let finalContent = tempDiv.innerText || tempDiv.textContent || '';
+    let finalContent = htmlContent;
     
     if (activeType === 'code' && code.trim()) {
         finalContent = `${finalContent}\n\n\`\`\`\n${code}\n\`\`\``;
@@ -240,8 +240,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 <div className="flex-1 flex flex-col min-w-0">
                     <div 
                         ref={editorRef} contentEditable onPaste={handlePaste}
-                        className="flex-1 p-6 focus:outline-none text-base whitespace-pre-wrap leading-relaxed empty:before:content-[attr(placeholder)] empty:before:text-slate-400 dark:empty:before:text-slate-500 overflow-y-auto custom-scrollbar border-2 border-transparent focus:border-primary-100 rounded-2xl bg-slate-50/50 dark:bg-slate-900/40 text-slate-900 dark:text-white resize-y shadow-inner"
-                        placeholder={activeType === 'document' ? "Drag document into portal or paste messy logs here... (Screenshot paste supported)" : "Describe your idea... Paste fragments..."}
+                        className="flex-1 p-6 focus:outline-none text-base whitespace-pre-wrap leading-relaxed empty:before:content-['Describe_your_idea..._Paste_fragments...'] empty:before:text-slate-400 dark:empty:before:text-slate-500 overflow-y-auto custom-scrollbar border-2 border-transparent focus:border-primary-100 rounded-2xl bg-slate-50/50 dark:bg-slate-900/40 text-slate-900 dark:text-white resize-y shadow-inner"
                     />
                 </div>
 
@@ -250,8 +249,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Source Snippet (Black Box)</label>
                         <div 
                             ref={codeEditorRef} contentEditable
-                            className="flex-1 p-6 focus:outline-none text-sm font-mono whitespace-pre bg-black text-[#39ff14] selection:bg-[#39ff14]/30 overflow-y-auto custom-scrollbar rounded-2xl border border-[#39ff14]/20 shadow-2xl resize-y"
-                            placeholder="// Paste raw source code here... High-contrast view active."
+                            className="flex-1 p-6 focus:outline-none text-sm font-mono whitespace-pre bg-black text-[#39ff14] selection:bg-[#39ff14]/30 overflow-y-auto custom-scrollbar rounded-2xl border border-[#39ff14]/20 shadow-2xl resize-y empty:before:content-['//_Paste_raw_source_code_here..._High-contrast_view_active.'] empty:before:text-[#39ff14]/50"
                         />
                     </div>
                 )}

@@ -69,6 +69,8 @@ export interface Note {
   isDeleted?: boolean;
   deletedAt?: number;
   isSynthesized?: boolean;
+  textColor?: string;
+  backgroundColor?: string;
 }
 
 export enum NoteColor {

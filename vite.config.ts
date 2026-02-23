@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       // Ensure the key is never "undefined" or empty string if present in the environment
-      'process.env.API_KEY': JSON.stringify(env.API_KEY || env.VITE_API_KEY || ""),
+      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY || ""),
       'process.env.VITE_FIREBASE_API_KEY': JSON.stringify(env.VITE_FIREBASE_API_KEY || ""),
       'process.env.VITE_FIREBASE_PROJECT_ID': JSON.stringify(env.VITE_FIREBASE_PROJECT_ID || ""),
       'process.env.ADMIN_SETUP_PASS': JSON.stringify(env.ADMIN_SETUP_PASS || "")
