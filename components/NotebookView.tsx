@@ -3,6 +3,8 @@ import { Note, Folder } from '../types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
+import { customSanitizeSchema } from '../services/security';
 
 interface NotebookViewProps {
   notes: Note[];
@@ -474,7 +476,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
                   <div className={`prose prose-lg max-w-none prose-slate w-full ${isFullscreen ? 'prose-xl' : ''}`}>
                     <ReactMarkdown 
                       remarkPlugins={[remarkGfm]} 
-                      rehypePlugins={[rehypeRaw]}
+                      rehypePlugins={[rehypeRaw, [rehypeSanitize, customSanitizeSchema]]}
                       components={markdownComponents}
                     >
                         {selectedNote.content}
