@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Note, ProjectData, ProjectPhase, ProjectMilestone, ProjectItem } from '../types';
 import { processNoteWithAI } from '../services/geminiService';
-import { getTagStyle } from './NoteCard';
+import { getTagStyle } from '../utils/styleUtils';
 
 interface EditNoteModalProps {
   note: Note | null;

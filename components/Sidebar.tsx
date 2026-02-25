@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Note, Folder } from '../types';
-import { getTagStyle } from './NoteCard';
+import { getTagStyle } from '../utils/styleUtils';
 
 interface SidebarProps {
   notes: Note[];
