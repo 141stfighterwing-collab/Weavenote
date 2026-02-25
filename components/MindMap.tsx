@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { Note } from '../types';
+import { getWords } from '../utils/textUtils';
 
 interface MindMapProps {
   notes: Note[];
@@ -26,15 +27,6 @@ interface GraphLink extends d3.SimulationLinkDatum<GraphNode> {
   connectionType: 'tag' | 'strong' | 'weak';
   weight: number;
 }
-
-const STOP_WORDS = new Set(['the', 'is', 'at', 'which', 'on', 'and', 'a', 'an', 'in', 'it', 'to', 'for', 'of', 'with', 'as', 'by', 'from', 'that', 'but', 'or', 'not', 'are', 'be', 'this', 'will', 'can', 'if', 'has', 'have', 'had', 'was', 'were', 'been']);
-
-const getWords = (text: string) => {
-    return text.toLowerCase()
-        .replace(/[^\w\s]/g, '') 
-        .split(/\s+/)
-        .filter(w => w.length > 3 && !STOP_WORDS.has(w)); 
-};
 
 const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -107,21 +99,21 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
       });
     });
 
-    // C. Similarity (Implicit connections)
+    // C. Similarity (Implicit connections) - Optimized with pre-calculation
+    const noteWordSets = notes.map(note => new Set([...getWords(note.title), ...getWords(note.category)]));
+
     for (let i = 0; i < notes.length; i++) {
-        const noteA = notes[i];
-        const wordsA = new Set([...getWords(noteA.title), ...getWords(noteA.category)]); 
+        const wordsA = noteWordSets[i];
         for (let j = i + 1; j < notes.length; j++) {
-            const noteB = notes[j];
-            const wordsB = new Set([...getWords(noteB.title), ...getWords(noteB.category)]);
+            const wordsB = noteWordSets[j];
             
             let matches = 0;
             wordsA.forEach(w => { if (wordsB.has(w)) matches++; });
             
             if (matches >= 4) {
-              rawLinks.push({ source: noteA.id, target: noteB.id, connectionType: 'strong', weight: matches });
+              rawLinks.push({ source: notes[i].id, target: notes[j].id, connectionType: 'strong', weight: matches });
             } else if (matches >= 2) {
-              rawLinks.push({ source: noteA.id, target: noteB.id, connectionType: 'weak', weight: matches });
+              rawLinks.push({ source: notes[i].id, target: notes[j].id, connectionType: 'weak', weight: matches });
             }
         }
     }
