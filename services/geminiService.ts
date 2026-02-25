@@ -36,17 +36,34 @@ const logError = (context: string, error: any) => {
 };
 
 const extractJsonResponse = (text: string): any => {
-    try {
-        return JSON.parse(text);
-    } catch (e) {
-        const start = text.indexOf('{');
-        const end = text.lastIndexOf('}');
-        if (start !== -1 && end !== -1 && end > start) {
-            const jsonStr = text.substring(start, end + 1);
-            try { return JSON.parse(jsonStr); } catch { throw e; }
+    let fullTextError: any = null;
+
+    // If it starts with '{', it's likely pure JSON, which is the fastest case for JSON.parse.
+    if (text.startsWith('{')) {
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            // If it failed, it might have trailing non-JSON text; fall through to extraction.
+            fullTextError = e;
         }
-        throw e;
     }
+
+    // Try to extract JSON from the text, handling markdown blocks or preamble/postamble.
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+
+    if (start !== -1 && end !== -1 && end > start) {
+        const jsonStr = text.substring(start, end + 1);
+        try {
+            return JSON.parse(jsonStr);
+        } catch (e) {
+            // Fall through to the final attempt.
+        }
+    }
+
+    // Final attempt: throw the original error if we have it, otherwise parse again to throw.
+    if (fullTextError) throw fullTextError;
+    return JSON.parse(text);
 };
 
 export const processNoteWithAI = async (text: string, existingCategories: string[], noteType: NoteType, username: string, userId?: string, onStepUpdate?: (step: string) => void): Promise<ProcessedNoteData> => {
