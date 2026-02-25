@@ -3,6 +3,8 @@ import { Note, NOTE_COLORS, NoteColor, Folder, ProjectItem } from '../types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
+import { customSanitizeSchema } from '../services/security';
 
 interface NoteCardProps {
   note: Note;
@@ -160,7 +162,7 @@ const NoteCard: React.FC<NoteCardProps> = ({
       <div className={`prose prose-sm max-w-none flex-grow text-sm ${note.type === 'project' ? 'line-clamp-4' : 'line-clamp-[8]'} overflow-hidden mb-4 mt-1 ${isMatrix ? 'text-[#39ff14]' : 'opacity-90'} whitespace-pre-wrap`}>
          <ReactMarkdown 
            remarkPlugins={[remarkGfm]} 
-           rehypePlugins={[rehypeRaw]}
+           rehypePlugins={[rehypeRaw, [rehypeSanitize, customSanitizeSchema]]}
            components={markdownComponents}
          >
            {note.content}

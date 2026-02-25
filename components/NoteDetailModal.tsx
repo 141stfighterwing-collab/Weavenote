@@ -2,6 +2,8 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
+import { customSanitizeSchema } from '../services/security';
 import { Note, NOTE_COLORS, ProjectData, Folder } from '../types';
 import { getTagStyle } from './NoteCard';
 import GanttChart from './GanttChart';
@@ -124,7 +126,7 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
                     <div className={`prose prose-lg max-w-none opacity-95 ${isMatrix ? 'text-[#39ff14] prose-invert' : ''}`}>
                         <ReactMarkdown 
                             remarkPlugins={[remarkGfm]} 
-                            rehypePlugins={[rehypeRaw]} 
+                            rehypePlugins={[rehypeRaw, [rehypeSanitize, customSanitizeSchema]]}
                             components={markdownComponents}
                         >
                             {processContent(note.content)}
