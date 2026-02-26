@@ -9,6 +9,9 @@ import { logTraffic } from './trafficService';
 const GUEST_KEY = 'ideaweaver_guest_session';
 const GUEST_FOLDERS_KEY = 'ideaweaver_guest_folders';
 
+let guestNotesCache: Note[] | null = null;
+let guestFoldersCache: Folder[] | null = null;
+
 const sanitizeInput = (val: any): any => {
     if (typeof val === 'string') {
         return val
@@ -33,8 +36,10 @@ const sanitizeForFirestore = <T>(data: T): T => {
 
 export const loadNotes = async (userId: string | null): Promise<Note[]> => {
     if (!userId) {
+        if (guestNotesCache) return [...guestNotesCache];
         const stored = sessionStorage.getItem(GUEST_KEY);
-        return stored ? JSON.parse(stored) : [];
+        guestNotesCache = stored ? JSON.parse(stored) : [];
+        return [...guestNotesCache!];
     }
     if (!db) return [];
     try {
@@ -55,6 +60,7 @@ export const saveNote = async (note: Note, userId: string | null) => {
         const notes: Note[] = await loadNotes(null).catch(() => []);
         const idx = notes.findIndex(n => n.id === note.id);
         if (idx >= 0) notes[idx] = note; else notes.push(note);
+        guestNotesCache = notes;
         sessionStorage.setItem(GUEST_KEY, JSON.stringify(notes));
         return;
     }
@@ -74,7 +80,8 @@ export const saveNote = async (note: Note, userId: string | null) => {
 export const deleteNote = async (noteId: string, userId: string | null) => {
     if (!userId) {
         const notes = await loadNotes(null).catch(() => []);
-        sessionStorage.setItem(GUEST_KEY, JSON.stringify(notes.filter(n => n.id !== noteId)));
+        guestNotesCache = notes.filter(n => n.id !== noteId);
+        sessionStorage.setItem(GUEST_KEY, JSON.stringify(guestNotesCache));
         return;
     }
     if (!db) return;
@@ -83,7 +90,12 @@ export const deleteNote = async (noteId: string, userId: string | null) => {
 };
 
 export const loadFolders = async (userId: string | null): Promise<Folder[]> => {
-    if (!userId) return JSON.parse(sessionStorage.getItem(GUEST_FOLDERS_KEY) || '[]');
+    if (!userId) {
+        if (guestFoldersCache) return [...guestFoldersCache];
+        const stored = sessionStorage.getItem(GUEST_FOLDERS_KEY);
+        guestFoldersCache = stored ? JSON.parse(stored) : [];
+        return [...guestFoldersCache!];
+    }
     if (!db) return [];
     try {
         const snapshot = await getDocs(query(collection(db, 'folders'), where('userId', '==', userId)));
@@ -98,6 +110,7 @@ export const saveFolder = async (folder: Folder, userId: string | null) => {
         const folders: Folder[] = await loadFolders(null).catch(() => []);
         const idx = folders.findIndex(f => f.id === folder.id);
         if (idx >= 0) folders[idx] = folder; else folders.push(folder);
+        guestFoldersCache = folders;
         sessionStorage.setItem(GUEST_FOLDERS_KEY, JSON.stringify(folders));
         return;
     }
@@ -109,7 +122,8 @@ export const saveFolder = async (folder: Folder, userId: string | null) => {
 export const deleteFolder = async (folderId: string, userId: string | null) => {
     if (!userId) {
         const folders = await loadFolders(null).catch(() => []);
-        sessionStorage.setItem(GUEST_FOLDERS_KEY, JSON.stringify(folders.filter(f => f.id !== folderId)));
+        guestFoldersCache = folders.filter(f => f.id !== folderId);
+        sessionStorage.setItem(GUEST_FOLDERS_KEY, JSON.stringify(guestFoldersCache));
         return;
     }
     if (!db) return;
