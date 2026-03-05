@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.2.0] - 2026-03-05
+
+### Added
+- Left-sidebar **Quick References** panel with collapsible workflow templates and one-click **Use Template** insertion into the editor.
+- Built-in **BEC Incident Response** workflow template to provide a ready-to-use security playbook example.
+- Template creation UX for custom title, note type selection, and line-by-line workflow steps.
+
+### Changed
+- Note composer now accepts selected templates from the sidebar and pre-fills title/content immediately.
+- Added persistent quick-reference storage in browser localStorage (`ideaweaver_quick_templates`).
+
+---
+
 ## [1.1.0] - 2026-03-05
 
 ### Added
@@ -29,4 +42,4 @@ This project now uses **Semantic Versioning (SemVer)**:
 - **MINOR** version for backward-compatible features.
 - **PATCH** version for backward-compatible bug fixes.
 
-Current version: **1.1.0**.
+Current version: **1.2.0**.
