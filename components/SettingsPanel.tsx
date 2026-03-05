@@ -5,6 +5,7 @@ import {
     getSystemLogs, SystemLogEntry, setAccountStatus
 } from '../services/authService';
 import { runConnectivityTest, getAIUsageLogs, DAILY_REQUEST_LIMIT, getDailyUsage, DiagnosticLog } from '../services/geminiService';
+import { exportDatabase } from '../services/storageService';
 import { Theme, User, Note, UserRole, UserStatus } from '../types';
 
 interface SettingsPanelProps {
@@ -365,6 +366,31 @@ service cloud.firestore {
                   >
                     Copy Rules
                   </button>
+                </div>
+
+                <div className="mt-8 p-5 bg-slate-900/40 border border-slate-700/60 rounded-xl">
+                  <h5 className="text-xs font-black text-white uppercase tracking-widest mb-2">Database Export</h5>
+                  <p className="text-[11px] text-slate-400 mb-4">Download a full notes database backup in multiple file types.</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => exportDatabase(notes, 'json', currentUser?.uid)}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest"
+                    >
+                      Download JSON
+                    </button>
+                    <button
+                      onClick={() => exportDatabase(notes, 'sql', currentUser?.uid)}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest"
+                    >
+                      Download SQL
+                    </button>
+                    <button
+                      onClick={() => exportDatabase(notes, 'csv', currentUser?.uid)}
+                      className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest"
+                    >
+                      Download CSV
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
