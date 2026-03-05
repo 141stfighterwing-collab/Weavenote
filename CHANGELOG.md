@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.3.0] - 2026-03-05
+
+### Added
+- Added a new **Performance** button in Mindmap view to boost Web Weaver neural link rendering throughput on capable hardware.
+- Performance mode now persists between sessions using localStorage (`ideaweaver_neural_performance`).
+
+### Changed
+- Neural map force simulation and link styling now tune dynamically when performance mode is enabled for denser, faster stabilization in large graphs.
+
+---
+
 ## [1.2.1] - 2026-03-05
 
 ### Fixed
@@ -53,4 +64,4 @@ This project now uses **Semantic Versioning (SemVer)**:
 - **MINOR** version for backward-compatible features.
 - **PATCH** version for backward-compatible bug fixes.
 
-Current version: **1.2.1**.
+Current version: **1.3.0**.

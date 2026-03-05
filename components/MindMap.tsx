@@ -6,6 +6,7 @@ import { getWords } from '../utils/textUtils';
 interface MindMapProps {
   notes: Note[];
   onNoteClick: (noteId: string) => void;
+  performanceMode?: boolean;
 }
 
 interface GraphNode extends d3.SimulationNodeDatum {
@@ -28,7 +29,7 @@ interface GraphLink extends d3.SimulationLinkDatum<GraphNode> {
   weight: number;
 }
 
-const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
+const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick, performanceMode = false }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -163,9 +164,9 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
     svg.attr("viewBox", [0, 0, width, height]).attr("class", "w-full h-full cursor-move");
     const defs = svg.append("defs");
     defs.append("style").text(`
-      .link-tag { stroke: #cbd5e1; stroke-width: 1px; opacity: 0.2; }
-      .link-strong { stroke: #6366f1; stroke-width: 2px; opacity: 0.4; }
-      .link-weak { stroke: #94a3b8; stroke-width: 0.8px; opacity: 0.1; }
+      .link-tag { stroke: #cbd5e1; stroke-width: ${performanceMode ? "1.2px" : "1px"}; opacity: ${performanceMode ? "0.28" : "0.2"}; }
+      .link-strong { stroke: #6366f1; stroke-width: ${performanceMode ? "2.4px" : "2px"}; opacity: ${performanceMode ? "0.5" : "0.4"}; }
+      .link-weak { stroke: #94a3b8; stroke-width: ${performanceMode ? "1px" : "0.8px"}; opacity: ${performanceMode ? "0.2" : "0.1"}; }
       .node-group text { pointer-events: none; transition: opacity 0.2s; }
     `);
 
@@ -187,10 +188,11 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
             return 0.1;
         })
       )
-      .force("charge", d3.forceManyBody().strength(d => -100 - ((d as GraphNode).degree * 50))) 
+      .force("charge", d3.forceManyBody().strength(d => (performanceMode ? -140 : -100) - ((d as GraphNode).degree * (performanceMode ? 60 : 50)))) 
       .force("center", d3.forceCenter(width / 2, height / 2).strength(0.05))
       .force("collide", d3.forceCollide().radius(d => (d as GraphNode).val + 15)) 
-      .alphaDecay(0.04);
+      .alphaDecay(performanceMode ? 0.02 : 0.04)
+      .velocityDecay(performanceMode ? 0.22 : 0.35);
 
     const link = g.append("g").selectAll("line").data(links).join("line").attr("class", d => `link-${d.connectionType}`);
 
@@ -237,7 +239,7 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
     }
 
     return () => { simulation.stop(); };
-  }, [notes, onNoteClick]);
+  }, [notes, onNoteClick, performanceMode]);
 
   return (
     <div ref={containerRef} className={`w-full h-full relative overflow-hidden ${isFullscreen ? 'fixed inset-0 z-[100] bg-slate-50 dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700'}`}>
@@ -245,13 +247,14 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
         <p className="font-bold mb-1 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-indigo-500"></span> Neural Map</p>
         <p className="opacity-70">• Connections pruned (Max 4)</p>
         <p className="opacity-70">• Tighter clustering</p>
+        <p className="opacity-70">• Hardware boost: {performanceMode ? "enabled" : "off"}</p>
       </div>
       <div className="absolute top-4 right-4 z-10 flex gap-2">
         <button onClick={toggleFullscreen} className="p-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm hover:bg-white dark:hover:bg-slate-700 transition-all font-bold text-xs">
            {isFullscreen ? "Exit Fullscreen" : "Fullscreen View"}
         </button>
       </div>
-      <svg ref={svgRef} className="w-full h-full"></svg>
+      <svg ref={svgRef} className="w-full h-full" style={{ transform: performanceMode ? "translateZ(0)" : undefined, willChange: performanceMode ? "transform" : undefined, shapeRendering: performanceMode ? "geometricPrecision" : "auto" }}></svg>
     </div>
   );
 };
