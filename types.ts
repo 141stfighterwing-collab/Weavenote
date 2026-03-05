@@ -124,6 +124,14 @@ export interface ProcessedNoteData {
   projectData?: ProjectData;
 }
 
+export interface QuickReferenceTemplate {
+  id: string;
+  title: string;
+  type: NoteType;
+  workflowSteps: string[];
+  content: string;
+}
+
 // Hierarchical roles for NIST/SOC2 compliance
 export type Permission = 'read' | 'edit';
 export type UserStatus = 'active' | 'suspended' | 'pending' | 'banned';

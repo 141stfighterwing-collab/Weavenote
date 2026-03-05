@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { NoteType, NoteColor, ProjectData } from '../types';
+import { NoteType, NoteColor, ProjectData, QuickReferenceTemplate } from '../types';
 import { parseDocument } from '../services/documentParser';
 import { getTagStyle } from '../utils/styleUtils';
 
@@ -10,6 +10,8 @@ interface NoteInputProps {
   activeType: NoteType;
   readOnly?: boolean;
   isGuest?: boolean;
+  selectedTemplate?: QuickReferenceTemplate | null;
+  onTemplateApplied?: () => void;
 }
 
 const FONTS = ["Inter", "System-ui", "Serif", "Fira Code", "Arial", "Georgia", "Verdana", "Courier New"];
@@ -19,7 +21,7 @@ const COLORS = ["#000000", "#ef4444", "#f97316", "#f59e0b", "#10b981", "#06b6d4"
 const BG_COLORS = ["#fef08a", "#bbf7d0", "#bae6fd", "#fbcfe8", "#e9d5ff", "#fed7aa", "#cbd5e1"];
 
 const NoteInput: React.FC<NoteInputProps> = ({ 
-    onAddNote, onTypeChange, isProcessing, activeType, readOnly = false, isGuest = true 
+    onAddNote, onTypeChange, isProcessing, activeType, readOnly = false, isGuest = true, selectedTemplate = null, onTemplateApplied 
 }) => {
   const [title, setTitle] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -40,6 +42,15 @@ const NoteInput: React.FC<NoteInputProps> = ({
   useEffect(() => {
     document.execCommand('enableObjectResizing', false, 'true');
   }, []);
+
+  useEffect(() => {
+    if (!selectedTemplate || !editorRef.current) return;
+    setTitle(selectedTemplate.title);
+    editorRef.current.innerText = selectedTemplate.content;
+    const generatedTags = Array.from(new Set(['template', ...selectedTemplate.title.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean).slice(0, 3)]));
+    setTags(generatedTags);
+    onTemplateApplied?.();
+  }, [selectedTemplate, onTemplateApplied]);
 
   const execCommand = (command: string, value: string = '') => {
     if (editorRef.current) {
