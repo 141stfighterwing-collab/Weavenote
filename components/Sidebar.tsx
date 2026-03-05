@@ -136,6 +136,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [newTemplateTitle, setNewTemplateTitle] = useState('');
   const [newTemplateType, setNewTemplateType] = useState<NoteType>('quick');
   const [newTemplateSteps, setNewTemplateSteps] = useState('');
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [editingTemplateTitle, setEditingTemplateTitle] = useState('');
+  const [editingTemplateType, setEditingTemplateType] = useState<NoteType>('quick');
+  const [editingTemplateSteps, setEditingTemplateSteps] = useState('');
 
   const popularTags = useMemo(() => {
     const stats: Record<string, number> = {};
@@ -220,6 +224,46 @@ const Sidebar: React.FC<SidebarProps> = ({
     setShowTemplateForm(false);
   };
 
+  const handleStartEditTemplate = (template: QuickReferenceTemplate) => {
+    setEditingTemplateId(template.id);
+    setEditingTemplateTitle(template.title);
+    setEditingTemplateType(template.type);
+    setEditingTemplateSteps(template.workflowSteps.join('\n'));
+    setExpandedTemplates(prev => new Set(prev).add(template.id));
+  };
+
+  const handleCancelTemplateEdit = () => {
+    setEditingTemplateId(null);
+    setEditingTemplateTitle('');
+    setEditingTemplateType('quick');
+    setEditingTemplateSteps('');
+  };
+
+  const handleSaveTemplateEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTemplateId) return;
+
+    const trimmedTitle = editingTemplateTitle.trim();
+    const workflowSteps = editingTemplateSteps.split('\n').map(step => step.trim()).filter(Boolean);
+    if (!trimmedTitle || workflowSteps.length === 0) return;
+
+    const content = `# ${trimmedTitle}\n\n${workflowSteps.map((step, index) => `${index + 1}. ${step}`).join('\n')}\n\n## Notes\n- Owner:\n- Status:\n- Follow-up:`;
+
+    const nextTemplates = templates.map(template => {
+      if (template.id !== editingTemplateId) return template;
+      return {
+        ...template,
+        title: trimmedTitle,
+        type: editingTemplateType,
+        workflowSteps,
+        content
+      };
+    });
+
+    persistTemplates(nextTemplates);
+    handleCancelTemplateEdit();
+  };
+
   return (
     <aside className={`w-full lg:w-72 flex-shrink-0 space-y-6 ${className}`}>
       
@@ -247,6 +291,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className="space-y-2">
           {templates.map(template => {
             const isExpanded = expandedTemplates.has(template.id);
+            const isEditing = editingTemplateId === template.id;
             return (
               <div key={template.id} className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                 <button onClick={() => toggleTemplateExpansion(template.id)} className="w-full px-3 py-2 text-left text-xs font-bold flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/40 text-slate-700 dark:text-slate-200">
@@ -258,10 +303,29 @@ const Sidebar: React.FC<SidebarProps> = ({
 
                 {isExpanded && (
                   <div className="px-3 pb-3 pt-1 bg-slate-50/70 dark:bg-slate-900/40">
-                    <ol className="space-y-1 mb-3">
-                      {template.workflowSteps.map((step, index) => <li key={`${template.id}-${index}`} className="text-[11px] text-slate-500 dark:text-slate-300">{index + 1}. {step}</li>)}
-                    </ol>
-                    <button onClick={() => onApplyTemplate(template)} className="w-full px-3 py-1.5 rounded bg-primary-600 text-white text-[10px] font-black uppercase tracking-widest">Use Template</button>
+                    {isEditing ? (
+                      <form onSubmit={handleSaveTemplateEdit} className="space-y-2">
+                        <input value={editingTemplateTitle} onChange={(e) => setEditingTemplateTitle(e.target.value)} placeholder="Template title" className="w-full px-2 py-1.5 text-sm border rounded dark:bg-slate-700 dark:border-slate-600 outline-none focus:ring-1 focus:ring-primary-500" />
+                        <select value={editingTemplateType} onChange={(e) => setEditingTemplateType(e.target.value as NoteType)} className="w-full px-2 py-1.5 text-sm border rounded dark:bg-slate-700 dark:border-slate-600 outline-none focus:ring-1 focus:ring-primary-500">
+                          {(['quick', 'notebook', 'deep', 'code', 'project', 'document'] as NoteType[]).map(type => <option key={`${template.id}-${type}`} value={type}>{type}</option>)}
+                        </select>
+                        <textarea value={editingTemplateSteps} onChange={(e) => setEditingTemplateSteps(e.target.value)} placeholder="One workflow step per line" className="w-full h-24 px-2 py-1.5 text-xs border rounded dark:bg-slate-700 dark:border-slate-600 outline-none focus:ring-1 focus:ring-primary-500" />
+                        <div className="grid grid-cols-2 gap-2">
+                          <button type="button" onClick={handleCancelTemplateEdit} className="px-3 py-1.5 rounded border border-slate-300 dark:border-slate-600 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-200">Cancel</button>
+                          <button type="submit" className="px-3 py-1.5 rounded bg-primary-600 text-white text-[10px] font-black uppercase tracking-widest">Save</button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <ol className="space-y-1 mb-3">
+                          {template.workflowSteps.map((step, index) => <li key={`${template.id}-${index}`} className="text-[11px] text-slate-500 dark:text-slate-300">{index + 1}. {step}</li>)}
+                        </ol>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button onClick={() => onApplyTemplate(template)} className="px-3 py-1.5 rounded bg-primary-600 text-white text-[10px] font-black uppercase tracking-widest">Use Template</button>
+                          <button onClick={() => handleStartEditTemplate(template)} className="px-3 py-1.5 rounded border border-slate-300 dark:border-slate-600 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-200">Edit</button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
