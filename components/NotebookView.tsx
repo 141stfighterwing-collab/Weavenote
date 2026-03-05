@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import { customSanitizeSchema } from '../services/security';
+import { normalizeNoteContentImages } from '../utils/noteContent';
 
 interface NotebookViewProps {
   notes: Note[];
@@ -479,7 +480,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
                       rehypePlugins={[rehypeRaw, [rehypeSanitize, customSanitizeSchema]]}
                       components={markdownComponents}
                     >
-                        {selectedNote.content}
+                        {normalizeNoteContentImages(selectedNote.content)}
                     </ReactMarkdown>
                   </div>
 

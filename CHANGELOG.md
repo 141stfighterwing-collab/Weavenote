@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.2.1] - 2026-03-05
+
+### Fixed
+- Selected/open note views now reliably render sanitized inline images (including `data:` image sources) when present in note content.
+- Compact note cards continue to suppress inline image rendering for cleaner previews.
+
+### Documentation
+- Added repository-scoped `AGENTS.md` workflow and versioning guidance for agent-based maintenance.
+
+---
+
 ## [1.2.0] - 2026-03-05
 
 ### Added
@@ -42,4 +53,4 @@ This project now uses **Semantic Versioning (SemVer)**:
 - **MINOR** version for backward-compatible features.
 - **PATCH** version for backward-compatible bug fixes.
 
-Current version: **1.2.0**.
+Current version: **1.2.1**.

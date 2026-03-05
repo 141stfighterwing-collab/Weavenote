@@ -8,6 +8,7 @@ import { Note, NOTE_COLORS, ProjectData, Folder } from '../types';
 import { getTagStyle } from '../utils/styleUtils';
 import GanttChart from './GanttChart';
 import WorkflowEditor from './WorkflowEditor';
+import { normalizeNoteContentImages } from '../utils/noteContent';
 
 interface NoteDetailModalProps {
   note: Note | null;
@@ -25,7 +26,8 @@ interface NoteDetailModalProps {
 
 const processContent = (text: string) => {
     if (!text) return "";
-    return text.replace(/([^\S]|^)(https?:\/\/[^\s]+)(?=[^\S]|$)/g, '$1[$2]($2)');
+    const withImages = normalizeNoteContentImages(text);
+    return withImages.replace(/([^\S]|^)(https?:\/\/[^\s]+)(?=[^\S]|$)/g, '$1[$2]($2)');
 };
 
 const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ 
