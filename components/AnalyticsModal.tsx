@@ -47,6 +47,41 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
     return [...notes].sort((a, b) => (b.accessCount || 0) - (a.accessCount || 0)).slice(0, 5).filter(n => (n.accessCount || 0) > 0);
   }, [notes]);
 
+  const cadenceStats = useMemo(() => {
+    const now = Date.now();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const weekThreshold = now - (7 * oneDayMs);
+    const monthThreshold = now - (30 * oneDayMs);
+
+    let last7Days = 0;
+    let last30Days = 0;
+
+    const words = notes.reduce((sum, note) => {
+      if (note.createdAt >= weekThreshold) last7Days += 1;
+      if (note.createdAt >= monthThreshold) last30Days += 1;
+      return sum + note.rawContent.trim().split(/\s+/).filter(Boolean).length;
+    }, 0);
+
+    const taggedNotes = notes.filter(note => note.tags.length > 0).length;
+    const tagCoverage = notes.length > 0 ? Math.round((taggedNotes / notes.length) * 100) : 0;
+    const averageWords = notes.length > 0 ? Math.round(words / notes.length) : 0;
+
+    const dayMap = new Map<string, number>();
+    notes.forEach(note => {
+      const dayLabel = new Date(note.createdAt).toLocaleDateString('en-US', { weekday: 'short' });
+      dayMap.set(dayLabel, (dayMap.get(dayLabel) || 0) + 1);
+    });
+    const bestDayEntry = Array.from(dayMap.entries()).sort(([, a], [, b]) => b - a)[0];
+
+    return {
+      last7Days,
+      last30Days,
+      averageWords,
+      tagCoverage,
+      bestDay: bestDayEntry ? `${bestDayEntry[0]} (${bestDayEntry[1]})` : 'N/A',
+    };
+  }, [notes]);
+
   const typeCounts = useMemo(() => {
     const counts: Record<NoteType, number> = {
         quick: 0, notebook: 0, deep: 0, code: 0, project: 0, contact: 0, document: 0
@@ -382,6 +417,24 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
                  <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm text-center transform hover:-translate-y-1 transition-transform opacity-80">
                     <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{tagStats.length}</p>
                     <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Nodes</p>
+                </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-xl border border-slate-200 dark:border-slate-700 mb-8">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">Growth Signals</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    {[
+                        { label: 'Last 7 Days', value: cadenceStats.last7Days, tone: 'text-blue-600 dark:text-blue-400' },
+                        { label: 'Last 30 Days', value: cadenceStats.last30Days, tone: 'text-indigo-600 dark:text-indigo-400' },
+                        { label: 'Avg Words / Note', value: cadenceStats.averageWords, tone: 'text-green-600 dark:text-green-400' },
+                        { label: 'Tag Coverage', value: `${cadenceStats.tagCoverage}%`, tone: 'text-amber-600 dark:text-amber-400' },
+                        { label: 'Peak Day', value: cadenceStats.bestDay, tone: 'text-purple-600 dark:text-purple-400' }
+                    ].map(metric => (
+                        <div key={metric.label} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 px-4 py-3">
+                            <p className="text-[10px] uppercase font-black tracking-widest text-slate-400">{metric.label}</p>
+                            <p className={`mt-2 text-lg font-black ${metric.tone}`}>{metric.value}</p>
+                        </div>
+                    ))}
                 </div>
             </div>
 

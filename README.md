@@ -12,7 +12,7 @@ AI-powered note workspace for capture, synthesis, project planning, and knowledg
 
 WeaveNote follows **Semantic Versioning (SemVer)**.
 
-- **Current app version:** `1.3.0` (from `package.json`)
+- **Current app version:** `1.4.0` (from `package.json`)
 - **Changelog:** see [`CHANGELOG.md`](./CHANGELOG.md)
 
 Version format:
