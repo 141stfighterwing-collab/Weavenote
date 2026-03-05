@@ -6,6 +6,7 @@ import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import { customSanitizeSchema } from '../services/security';
 import { getTagStyle } from '../utils/styleUtils';
+import { stripImagesFromNoteContent } from '../utils/noteContent';
 
 interface NoteCardProps {
   note: Note;
@@ -135,7 +136,7 @@ const NoteCard: React.FC<NoteCardProps> = ({
            rehypePlugins={[rehypeRaw, [rehypeSanitize, customSanitizeSchema]]}
            components={markdownComponents}
          >
-           {note.content}
+           {stripImagesFromNoteContent(note.content)}
          </ReactMarkdown>
       </div>
 
