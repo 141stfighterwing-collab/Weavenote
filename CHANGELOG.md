@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.4.0] - 2026-03-05
+
+### Added
+- Expanded the User Analytics tab with a new **Growth Signals** panel that tracks weekly/monthly activity, average note length, tag coverage, and peak writing day.
+
+---
+
 ## [1.3.0] - 2026-03-05
 
 ### Added
