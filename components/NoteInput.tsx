@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NoteType, NoteColor, ProjectData } from '../types';
 import { parseDocument } from '../services/documentParser';
-import { getTagStyle } from './NoteCard';
+import { getTagStyle } from '../utils/styleUtils';
 
 interface NoteInputProps {
   onAddNote: (text: string, type: NoteType, attachments?: string[], forcedTags?: string[], useAI?: boolean, manualTitle?: string, extraProjectData?: any, onStepUpdate?: (step: string) => void) => Promise<any>;

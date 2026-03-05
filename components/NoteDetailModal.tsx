@@ -5,7 +5,7 @@ import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import { customSanitizeSchema } from '../services/security';
 import { Note, NOTE_COLORS, ProjectData, Folder } from '../types';
-import { getTagStyle } from './NoteCard';
+import { getTagStyle } from '../utils/styleUtils';
 import GanttChart from './GanttChart';
 import WorkflowEditor from './WorkflowEditor';
 
