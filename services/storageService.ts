@@ -148,3 +148,71 @@ export const exportDataToFile = (notes: Note[]) => {
     link.setAttribute("download", `WeaveNote_Backup.json`);
     link.click();
 };
+
+type DatabaseExportFormat = 'json' | 'sql' | 'csv';
+
+const triggerFileDownload = (filename: string, content: string, contentType: string) => {
+    const blob = new Blob([content], { type: contentType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+};
+
+const escapeSqlString = (value: string): string => value.replace(/'/g, "''");
+
+export const exportDatabase = (notes: Note[], format: DatabaseExportFormat, userId?: string | null) => {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+    if (format === 'json') {
+        const payload = {
+            exportedAt: new Date().toISOString(),
+            totalNotes: notes.length,
+            userId: userId || 'guest',
+            notes
+        };
+        triggerFileDownload(`WeaveNote_Database_${timestamp}.json`, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
+        return;
+    }
+
+    if (format === 'csv') {
+        const header = ['id', 'title', 'content', 'createdAt', 'folderId', 'userId'];
+        const rows = notes.map(note => [
+            note.id,
+            note.title,
+            note.content,
+            String(note.createdAt),
+            note.folderId || '',
+            note.userId || userId || ''
+        ].map(field => `"${String(field).replace(/"/g, '""')}"`).join(','));
+
+        triggerFileDownload(
+            `WeaveNote_Database_${timestamp}.csv`,
+            [header.join(','), ...rows].join('\n'),
+            'text/csv;charset=utf-8'
+        );
+        return;
+    }
+
+    const sqlHeader = [
+        '-- WeaveNote SQL export',
+        `-- Exported at: ${new Date().toISOString()}`,
+        'CREATE TABLE IF NOT EXISTS notes (',
+        '  id TEXT PRIMARY KEY,',
+        '  title TEXT NOT NULL,',
+        '  content TEXT NOT NULL,',
+        '  createdAt BIGINT NOT NULL,',
+        '  folderId TEXT,',
+        '  userId TEXT',
+        ');',
+        ''
+    ].join('\n');
+
+    const inserts = notes.map(note => (
+        `INSERT INTO notes (id, title, content, createdAt, folderId, userId) VALUES ('${escapeSqlString(note.id)}', '${escapeSqlString(note.title)}', '${escapeSqlString(note.content)}', ${note.createdAt}, ${note.folderId ? `'${escapeSqlString(note.folderId)}'` : 'NULL'}, ${note.userId || userId ? `'${escapeSqlString(note.userId || userId || '')}'` : 'NULL'});`
+    ));
+
+    triggerFileDownload(`WeaveNote_Database_${timestamp}.sql`, [sqlHeader, ...inserts].join('\n'), 'application/sql;charset=utf-8');
+};
