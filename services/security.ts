@@ -9,10 +9,15 @@ import { defaultSchema } from 'rehype-sanitize';
  */
 export const customSanitizeSchema = {
   ...defaultSchema,
-  tagNames: [...(defaultSchema?.tagNames || []), 'mark', 'input'],
+  tagNames: [...(defaultSchema?.tagNames || []), 'mark', 'input', 'img'],
+  protocols: {
+    ...(defaultSchema?.protocols || {}),
+    src: ['http', 'https', 'data']
+  },
   attributes: {
     ...defaultSchema?.attributes,
     mark: ['style'],
-    input: ['type', 'disabled', 'checked']
+    input: ['type', 'disabled', 'checked'],
+    img: ['src', 'alt', 'title', 'width', 'height']
   }
 };
