@@ -51,6 +51,7 @@ const App: React.FC = () => {
   const [reducedMotion, setReducedMotion] = useState(() => localStorage.getItem('ideaweaver_reducedmotion') === 'true');
   const [enableImages, setEnableImages] = useState(() => localStorage.getItem('ideaweaver_enableimages') === 'true');
   const [showLinkPreviews, setShowLinkPreviews] = useState(() => localStorage.getItem('ideaweaver_linkpreviews') === 'true');
+  const [neuralPerformanceMode, setNeuralPerformanceMode] = useState(() => localStorage.getItem('ideaweaver_neural_performance') === 'true');
 
   const extractHashtags = (text: string): string[] => {
     const matches = text.match(/#(\w+)/g);
@@ -78,6 +79,11 @@ const App: React.FC = () => {
       });
       return () => unsubscribe();
   }, []);
+
+
+  useEffect(() => {
+    localStorage.setItem('ideaweaver_neural_performance', neuralPerformanceMode.toString());
+  }, [neuralPerformanceMode]);
 
   const canEdit = currentUser ? currentUser.permission === 'edit' : true; 
   const storageOwner = currentUser ? currentUser.uid : null;
@@ -385,9 +391,20 @@ const App: React.FC = () => {
             <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2"><Logo className="w-8 h-8 text-primary-600" /><h1 className="text-xl font-bold hidden sm:block text-slate-800 dark:text-white">WeaveNote</h1></div>
                 <div className="flex items-center gap-4 flex-1 justify-end">
-                    <div className="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1 mr-2">
-                        <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600' : 'text-slate-400'}`}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></button>
-                        <button onClick={() => setViewMode('mindmap')} className={`p-1.5 rounded-md transition-all ${viewMode === 'mindmap' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600' : 'text-slate-400'}`}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 9V3"></path><path d="M12 21v-6"></path><path d="M9 12H3"></path><path d="M21 12h-6"></path></svg></button>
+                    <div className="flex items-center gap-2 mr-2">
+                        <div className="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
+                            <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600' : 'text-slate-400'}`}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></button>
+                            <button onClick={() => setViewMode('mindmap')} className={`p-1.5 rounded-md transition-all ${viewMode === 'mindmap' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600' : 'text-slate-400'}`}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 9V3"></path><path d="M12 21v-6"></path><path d="M9 12H3"></path><path d="M21 12h-6"></path></svg></button>
+                        </div>
+                        {viewMode === 'mindmap' && (
+                          <button
+                            onClick={() => setNeuralPerformanceMode(prev => !prev)}
+                            className={`px-2.5 py-1.5 rounded-md border text-[10px] font-black uppercase tracking-widest transition-all ${neuralPerformanceMode ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-700' : 'bg-white text-slate-500 border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600'}`}
+                            title="Boost rendering throughput for neural links"
+                          >
+                            {neuralPerformanceMode ? 'Performance ON' : 'Performance'}
+                          </button>
+                        )}
                     </div>
                     <button onClick={() => setShowAnalytics(true)} className="flex items-center gap-1 text-sm font-bold text-slate-600 hover:text-primary-600 dark:text-slate-300">📊 Analytics</button>
                     <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full text-sm outline-none w-full max-w-xs dark:text-white border border-transparent focus:border-primary-400 transition-all" />
@@ -440,7 +457,7 @@ const App: React.FC = () => {
                     )}
 
                     <div className="mt-4">
-                        {viewMode === 'mindmap' ? (<div className="h-[600px] border rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/50"><MindMap notes={activeNotes} onNoteClick={(id) => { const n = activeNotes.find(n => n.id === id); if (n) { handleExpandNote(n); setViewMode('grid'); } }} /></div>) : (
+                        {viewMode === 'mindmap' ? (<div className="h-[600px] border rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/50"><MindMap notes={activeNotes} performanceMode={neuralPerformanceMode} onNoteClick={(id) => { const n = activeNotes.find(n => n.id === id); if (n) { handleExpandNote(n); setViewMode('grid'); } }} /></div>) : (
                             <>
                                 {activeTab === 'deep' ? (<div className="space-y-3">{filteredNotes.map(note => (<div key={note.id} onClick={() => handleExpandNote(note)} className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center hover:shadow-lg hover:border-primary-400 dark:hover:border-primary-500 cursor-pointer transition-all animate-[fadeIn_0.2s_ease-out]"><div className="min-w-0 pr-4"><div className="flex items-center gap-2 mb-1"><h3 className="font-bold text-lg text-slate-800 dark:text-white truncate">{note.title}</h3>{note.isSynthesized && <span className="px-1.5 py-0.5 bg-primary-600 text-white text-[8px] font-black uppercase rounded">Synthesized</span>}</div><p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mt-1">{note.content.substring(0, 180)}</p><div className="flex gap-2 mt-2">{note.tags.slice(0, 3).map(tag => (<span key={tag} className="text-[10px] text-primary-600 dark:text-primary-400 font-bold">#{tag}</span>))}</div></div><div className="flex flex-col items-end gap-2 shrink-0"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(note.createdAt).toLocaleDateString()}</span><div className="p-2 rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg></div></div></div>))}</div>) : (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">{filteredNotes.map(note => (

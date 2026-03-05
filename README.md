@@ -12,7 +12,7 @@ AI-powered note workspace for capture, synthesis, project planning, and knowledg
 
 WeaveNote follows **Semantic Versioning (SemVer)**.
 
-- **Current app version:** `1.2.1` (from `package.json`)
+- **Current app version:** `1.3.0` (from `package.json`)
 - **Changelog:** see [`CHANGELOG.md`](./CHANGELOG.md)
 
 Version format:
@@ -177,7 +177,7 @@ If you are using an AI coding agent:
 ## Core Views / Modes
 
 - **Grid View**: card-based note browsing
-- **Mindmap View**: graph-style relationship visualization
+- **Mindmap View**: graph-style relationship visualization with a toggleable Performance button for higher-throughput neural link rendering
 - **Notebook View**: long-form drafting and editing
 
 ## Tabs (Note Types)
