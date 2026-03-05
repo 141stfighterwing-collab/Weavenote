@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Note, Folder } from '../types';
+import { Note, Folder, NoteType, QuickReferenceTemplate } from '../types';
 import { getTagStyle } from '../utils/styleUtils';
 
 interface SidebarProps {
@@ -16,8 +16,26 @@ interface SidebarProps {
   activeFolderId: string | null;
   activeDate: Date | null;
   onDateClick: (date: Date | null) => void;
+  onApplyTemplate: (template: QuickReferenceTemplate) => void;
   className?: string;
 }
+
+const DEFAULT_TEMPLATES: QuickReferenceTemplate[] = [
+  {
+    id: 'bec-response-template',
+    title: 'BEC Incident Response',
+    type: 'quick',
+    workflowSteps: [
+      'Create incident ticket and assign owner',
+      'Grab email headers + original message artifacts',
+      'Check spoof indicators (SPF, DKIM, DMARC, lookalike sender)',
+      'Block sender/domain + search for related emails in tenant',
+      'Contain impacted accounts and reset credentials if needed',
+      'Document timeline and notify stakeholders'
+    ],
+    content: `# BEC Incident Workflow\n\n1. Create incident ticket and assign owner\n2. Grab email headers + original message artifacts\n3. Check spoof indicators (SPF, DKIM, DMARC, lookalike sender)\n4. Block sender/domain + search for related emails in tenant\n5. Contain impacted accounts and reset credentials if needed\n6. Document timeline and notify stakeholders\n\n## Notes\n- Ticket:\n- Impact:\n- IOC / Domains:\n- Next update:`
+  }
+];
 
 const Calendar: React.FC<{ activeDate: Date | null; onDateClick: (d: Date | null) => void; notes: Note[] }> = ({ activeDate, onDateClick, notes }) => {
     const [viewDate, setViewDate] = useState(new Date());
@@ -97,12 +115,27 @@ const Calendar: React.FC<{ activeDate: Date | null; onDateClick: (d: Date | null
 const Sidebar: React.FC<SidebarProps> = ({ 
     notes, folders, onTagClick, onNoteClick, onFolderClick, 
     onCreateFolder, onDeleteFolder, onReorderFolders, onMoveNote,
-    activeTag, activeFolderId, activeDate, onDateClick, className = "" 
+    activeTag, activeFolderId, activeDate, onDateClick, onApplyTemplate, className = "" 
 }) => {
   const [newFolderName, setNewFolderName] = useState('');
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<QuickReferenceTemplate[]>(() => {
+    const saved = localStorage.getItem('ideaweaver_quick_templates');
+    if (!saved) return DEFAULT_TEMPLATES;
+    try {
+      const parsed = JSON.parse(saved) as QuickReferenceTemplate[];
+      return parsed.length > 0 ? parsed : DEFAULT_TEMPLATES;
+    } catch {
+      return DEFAULT_TEMPLATES;
+    }
+  });
+  const [expandedTemplates, setExpandedTemplates] = useState<Set<string>>(new Set([DEFAULT_TEMPLATES[0].id]));
+  const [showTemplateForm, setShowTemplateForm] = useState(false);
+  const [newTemplateTitle, setNewTemplateTitle] = useState('');
+  const [newTemplateType, setNewTemplateType] = useState<NoteType>('quick');
+  const [newTemplateSteps, setNewTemplateSteps] = useState('');
 
   const popularTags = useMemo(() => {
     const stats: Record<string, number> = {};
@@ -150,10 +183,92 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
+  const persistTemplates = (nextTemplates: QuickReferenceTemplate[]) => {
+    setTemplates(nextTemplates);
+    localStorage.setItem('ideaweaver_quick_templates', JSON.stringify(nextTemplates));
+  };
+
+  const toggleTemplateExpansion = (id: string) => {
+    setExpandedTemplates(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleCreateTemplate = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedTitle = newTemplateTitle.trim();
+    const workflowSteps = newTemplateSteps.split('\n').map(step => step.trim()).filter(Boolean);
+    if (!trimmedTitle || workflowSteps.length === 0) return;
+
+    const content = `# ${trimmedTitle}\n\n${workflowSteps.map((step, index) => `${index + 1}. ${step}`).join('\n')}\n\n## Notes\n- Owner:\n- Status:\n- Follow-up:`;
+    const template: QuickReferenceTemplate = {
+      id: crypto.randomUUID(),
+      title: trimmedTitle,
+      type: newTemplateType,
+      workflowSteps,
+      content
+    };
+
+    persistTemplates([template, ...templates]);
+    setExpandedTemplates(prev => new Set(prev).add(template.id));
+    setNewTemplateTitle('');
+    setNewTemplateSteps('');
+    setNewTemplateType('quick');
+    setShowTemplateForm(false);
+  };
+
   return (
     <aside className={`w-full lg:w-72 flex-shrink-0 space-y-6 ${className}`}>
       
       <Calendar activeDate={activeDate} onDateClick={onDateClick} notes={notes} />
+
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
+        <div className="flex justify-between items-center mb-4 border-b border-slate-50 dark:border-slate-700 pb-2">
+          <h3 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 text-xs uppercase tracking-wider">⚡ Quick References</h3>
+          <button onClick={() => setShowTemplateForm(prev => !prev)} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors" title="Add Template">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+        </div>
+
+        {showTemplateForm && (
+          <form onSubmit={handleCreateTemplate} className="space-y-2 mb-3">
+            <input value={newTemplateTitle} onChange={(e) => setNewTemplateTitle(e.target.value)} placeholder="Template title" className="w-full px-2 py-1.5 text-sm border rounded dark:bg-slate-700 dark:border-slate-600 outline-none focus:ring-1 focus:ring-primary-500" />
+            <select value={newTemplateType} onChange={(e) => setNewTemplateType(e.target.value as NoteType)} className="w-full px-2 py-1.5 text-sm border rounded dark:bg-slate-700 dark:border-slate-600 outline-none focus:ring-1 focus:ring-primary-500">
+              {(['quick', 'notebook', 'deep', 'code', 'project', 'document'] as NoteType[]).map(type => <option key={type} value={type}>{type}</option>)}
+            </select>
+            <textarea value={newTemplateSteps} onChange={(e) => setNewTemplateSteps(e.target.value)} placeholder="One workflow step per line" className="w-full h-24 px-2 py-1.5 text-xs border rounded dark:bg-slate-700 dark:border-slate-600 outline-none focus:ring-1 focus:ring-primary-500" />
+            <button type="submit" className="w-full px-3 py-1.5 rounded bg-primary-600 text-white text-[11px] font-bold uppercase tracking-widest">Save Template</button>
+          </form>
+        )}
+
+        <div className="space-y-2">
+          {templates.map(template => {
+            const isExpanded = expandedTemplates.has(template.id);
+            return (
+              <div key={template.id} className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                <button onClick={() => toggleTemplateExpansion(template.id)} className="w-full px-3 py-2 text-left text-xs font-bold flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/40 text-slate-700 dark:text-slate-200">
+                  <span className="truncate pr-2">{template.title}</span>
+                  <span className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="m9 18 6-6-6-6"/></svg>
+                  </span>
+                </button>
+
+                {isExpanded && (
+                  <div className="px-3 pb-3 pt-1 bg-slate-50/70 dark:bg-slate-900/40">
+                    <ol className="space-y-1 mb-3">
+                      {template.workflowSteps.map((step, index) => <li key={`${template.id}-${index}`} className="text-[11px] text-slate-500 dark:text-slate-300">{index + 1}. {step}</li>)}
+                    </ol>
+                    <button onClick={() => onApplyTemplate(template)} className="w-full px-3 py-1.5 rounded bg-primary-600 text-white text-[10px] font-black uppercase tracking-widest">Use Template</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
           <div className="flex justify-between items-center mb-4 border-b border-slate-50 dark:border-slate-700 pb-2">

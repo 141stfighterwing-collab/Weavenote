@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Note, NoteColor, NoteType, ViewMode, Theme, Folder, User, ProjectData, ProjectMilestone, ProjectItem } from './types';
+import { Note, NoteColor, NoteType, ViewMode, Theme, Folder, User, ProjectData, ProjectMilestone, ProjectItem, QuickReferenceTemplate } from './types';
 import { processNoteWithAI, getDailyUsage } from './services/geminiService';
 import { 
     loadNotes, saveNote, deleteNote, 
@@ -44,6 +44,7 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<QuickReferenceTemplate | null>(null);
   
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('ideaweaver_darkmode') !== 'false');
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('ideaweaver_theme') as Theme) || 'default');
@@ -415,6 +416,8 @@ const App: React.FC = () => {
                     <NoteInput 
                         onAddNote={handleAddNote} onTypeChange={handleTabChange} isProcessing={isProcessing} 
                         activeType={activeTab} readOnly={!canEdit} isGuest={!currentUser}
+                        selectedTemplate={selectedTemplate}
+                        onTemplateApplied={() => setSelectedTemplate(null)}
                     />
                 )}
 
@@ -472,7 +475,7 @@ const App: React.FC = () => {
                 )}
             </div>
 
-            <Sidebar className="order-1 lg:order-1" notes={activeNotes} folders={folders} onTagClick={(t) => setActiveTagFilter(t === activeTagFilter ? null : t)} activeTag={activeTagFilter} onNoteClick={handleExpandNote} onFolderClick={setActiveFolderId} onCreateFolder={handleCreateFolder} onDateClick={(d) => setActiveDateFilter(d)} onDeleteFolder={handleDeleteFolder} onReorderFolders={() => {}} onMoveNote={handleMoveNote} activeFolderId={activeFolderId} activeDate={activeDateFilter} />
+            <Sidebar className="order-1 lg:order-1" notes={activeNotes} folders={folders} onTagClick={(t) => setActiveTagFilter(t === activeTagFilter ? null : t)} activeTag={activeTagFilter} onNoteClick={handleExpandNote} onFolderClick={setActiveFolderId} onCreateFolder={handleCreateFolder} onDateClick={(d) => setActiveDateFilter(d)} onDeleteFolder={handleDeleteFolder} onReorderFolders={() => {}} onMoveNote={handleMoveNote} activeFolderId={activeFolderId} activeDate={activeDateFilter} onApplyTemplate={(template) => { setSelectedTemplate(template); handleTabChange(template.type); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
             <RightSidebar className="hidden xl:block order-3 lg:order-3" notes={activeNotes} onNoteClick={handleExpandNote} />
         </main>
         
