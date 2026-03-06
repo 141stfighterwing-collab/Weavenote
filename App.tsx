@@ -21,6 +21,7 @@ import RightSidebar from './components/RightSidebar';
 import TrashModal from './components/TrashModal';
 import { NotebookView } from './components/NotebookView';
 import { Logo } from './components/Logo';
+import { toggleTaskCheckboxAtIndex } from './utils/noteContent';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -240,25 +241,14 @@ const App: React.FC = () => {
       if (!canEdit) return;
       const targetNote = notes.find(n => n.id === noteId);
       if (!targetNote) return;
-      const regex = /\[([ xX]?)\]/g;
-      let currentIdx = 0;
-      let newContent = targetNote.content;
-      let match;
-      while ((match = regex.exec(targetNote.content)) !== null) {
-          if (currentIdx === checkboxIndex) {
-              const isChecked = match[1].trim().length > 0;
-              const newStatus = isChecked ? '[ ]' : '[x]';
-              newContent = targetNote.content.substring(0, match.index) + newStatus + targetNote.content.substring(match.index + match[0].length);
-              break;
-          }
-          currentIdx++;
-      }
-      if (newContent !== targetNote.content) {
-          const updatedNote = { ...targetNote, content: newContent };
-          setNotes(prev => prev.map(n => n.id === noteId ? updatedNote : n));
-          if (expandedNote?.id === noteId) setExpandedNote(updatedNote);
-          await saveNote(updatedNote, storageOwner);
-      }
+
+      const newContent = toggleTaskCheckboxAtIndex(targetNote.content, checkboxIndex);
+      if (newContent === null || newContent === targetNote.content) return;
+
+      const updatedNote = { ...targetNote, content: newContent };
+      setNotes(prev => prev.map(n => n.id === noteId ? updatedNote : n));
+      if (expandedNote?.id === noteId) setExpandedNote(updatedNote);
+      await saveNote(updatedNote, storageOwner);
   };
 
   const handleAddTag = async (noteId: string, tag: string) => {

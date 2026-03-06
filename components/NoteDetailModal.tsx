@@ -44,6 +44,8 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
   }, [note, folders]);
 
   if (!isOpen || !note) return null;
+
+  checkboxCounter.current = 0;
   
   const colorClass = NOTE_COLORS[note.color];
   const isMatrix = note.color === 'matrix' || note.type === 'code';

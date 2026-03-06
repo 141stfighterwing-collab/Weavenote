@@ -37,6 +37,7 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
   
   const namingInputRef = useRef<HTMLInputElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
+  const checkboxCounter = useRef(0);
 
   const sortedNotes = useMemo(() => {
     return [...notes]
@@ -198,10 +199,21 @@ export const NotebookView: React.FC<NotebookViewProps> = ({
     { name: 'Orange', value: '#fed7aa' }
   ];
 
+  checkboxCounter.current = 0;
+
   const markdownComponents = {
       input: (props: any) => {
-          if (props.type === 'checkbox') {
-              return <input type="checkbox" checked={props.checked} readOnly className="mt-1 h-4 w-4 rounded text-primary-600 focus:ring-primary-500" />;
+          if (props.type === 'checkbox' && selectedNote) {
+              const index = checkboxCounter.current++;
+              return (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onToggleCheckbox(selectedNote.id, index); }}
+                  className="inline-flex items-center justify-center mr-2 transform active:scale-75 transition-transform text-sm align-middle"
+                  title={props.checked ? 'Completed' : 'Mark Complete'}
+                >
+                  {props.checked ? '✅' : '⬜'}
+                </button>
+              );
           }
           return <input {...props} />;
       },

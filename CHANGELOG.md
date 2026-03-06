@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.4.1] - 2026-03-06
+
+### Fixed
+- Hardened task checkbox toggling so only valid markdown task list markers are toggled, improving data integrity and avoiding accidental bracket replacements in normal text.
+- Fixed checkbox index synchronization across detail and notebook views so multiple checkboxes toggle the correct item consistently.
+
+---
+
 ## [1.4.0] - 2026-03-05
 
 ### Added
@@ -71,4 +79,4 @@ This project now uses **Semantic Versioning (SemVer)**:
 - **MINOR** version for backward-compatible features.
 - **PATCH** version for backward-compatible bug fixes.
 
-Current version: **1.3.0**.
+Current version: **1.4.1**.
