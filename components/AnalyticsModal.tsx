@@ -59,7 +59,7 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
     const words = notes.reduce((sum, note) => {
       if (note.createdAt >= weekThreshold) last7Days += 1;
       if (note.createdAt >= monthThreshold) last30Days += 1;
-      return sum + note.rawContent.trim().split(/\s+/).filter(Boolean).length;
+      return sum + (note.wordCount !== undefined ? note.wordCount : (note.rawContent || "").trim().split(/\s+/).filter(Boolean).length);
     }, 0);
 
     const taggedNotes = notes.filter(note => note.tags.length > 0).length;

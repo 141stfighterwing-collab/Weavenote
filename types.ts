@@ -71,6 +71,7 @@ export interface Note {
   isSynthesized?: boolean;
   textColor?: string;
   backgroundColor?: string;
+  wordCount?: number;
 }
 
 export enum NoteColor {
