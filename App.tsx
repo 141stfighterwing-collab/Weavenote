@@ -195,7 +195,8 @@ const App: React.FC = () => {
             color: type === 'notebook' ? NoteColor.Slate : NoteColor.Yellow, createdAt: Date.now(), type: type,
             attachments: attachments || [], accessCount: 0, folderId: targetFolderId,
             projectData: processed.projectData, userId: storageOwner || undefined, isDeleted: false,
-            isSynthesized: useAI
+            isSynthesized: useAI,
+            wordCount: (rawText || processed.formattedContent || "").trim().split(/\s+/).filter(Boolean).length
         };
 
         setNotes(prev => [newNote, ...prev]);
@@ -220,7 +221,8 @@ const App: React.FC = () => {
           content, 
           ...(category ? { category } : {}), 
           tags: mergedTags,
-          ...(projectData ? { projectData } : {})
+          ...(projectData ? { projectData } : {}),
+          wordCount: (target.rawContent || content || "").trim().split(/\s+/).filter(Boolean).length
       };
       setNotes(prev => prev.map(n => n.id === id ? updated : n));
       if (expandedNote?.id === id) setExpandedNote(updated);
