@@ -140,13 +140,42 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
 
   const persona: Persona = useMemo(() => {
     if (notes.length === 0) return { title: "The Blank Canvas", emoji: "🎨", description: "Ready to start creating ideas.", color: "bg-slate-100 text-slate-600" };
-    const allTags = notes.flatMap(n => n.tags.map(t => t.toLowerCase()));
+
+    const tagCounts: Record<string, number> = {};
+    for (let i = 0; i < notes.length; i++) {
+        const tags = notes[i].tags;
+        for (let j = 0; j < tags.length; j++) {
+            const lower = tags[j].toLowerCase();
+            tagCounts[lower] = (tagCounts[lower] || 0) + 1;
+        }
+    }
+
     const personas = [
         { id: 'cyber', title: "Cybersecurity Specialist", emoji: "🛡️", description: "Securing networks and hunting threats.", color: "bg-slate-800 text-green-400 border-green-500", keywords: ['security', 'cyber', 'hack', 'firewall', 'auth', 'token', 'exploit', 'vuln', 'cve', 'pentest', 'crypto', 'phish', 'malware'] },
         { id: 'dev', title: "Code Wizard", emoji: "💻", description: "Turning coffee into code and fixing bugs.", color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200", keywords: ['code', 'dev', 'git', 'api', 'bug', 'react', 'js', 'ts', 'python', 'java', 'html', 'css', 'frontend', 'backend', 'fullstack', 'deploy', 'repo'] }
     ];
+
     let bestMatch = null, maxScore = 0;
-    personas.forEach(p => { const score = allTags.filter(t => p.keywords.some(k => t.includes(k))).length; if (score > maxScore) { maxScore = score; bestMatch = p; } });
+    const entries = Object.entries(tagCounts);
+    for (let i = 0; i < personas.length; i++) {
+        const p = personas[i];
+        let score = 0;
+        for (let j = 0; j < entries.length; j++) {
+            const tag = entries[j][0];
+            const count = entries[j][1];
+            for (let k = 0; k < p.keywords.length; k++) {
+                if (tag.includes(p.keywords[k])) {
+                    score += count;
+                    break;
+                }
+            }
+        }
+        if (score > maxScore) {
+            maxScore = score;
+            bestMatch = p;
+        }
+    }
+
     if (bestMatch && maxScore > 0) return { title: (bestMatch as any).title, emoji: (bestMatch as any).emoji, description: (bestMatch as any).description, color: (bestMatch as any).color };
     return { title: "The Idea Weaver", emoji: "🕸️", description: "Spinning a web of diverse thoughts.", color: "bg-primary-100 text-primary-800" };
   }, [notes]);
