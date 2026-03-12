@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    container_name: my-vercel-app
+    environment:
+      - NODE_ENV=production
+      - API_KEY=${API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - ADMIN_SETUP_PASS=${ADMIN_SETUP_PASS}
+      - VITE_KEY=${VITE_KEY}
+    ports:
+      - "3100:3000"
+    restart: always
