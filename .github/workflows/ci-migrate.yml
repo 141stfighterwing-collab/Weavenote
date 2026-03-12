@@ -1,0 +1,38 @@
+name: CI - Migration Helper
+
+on:
+  push:
+    paths:
+      - 'scripts/**'
+      - 'migration/**'
+      - 'Dockerfile'
+      - 'package.json'
+      - '.github/workflows/ci-migrate.yml'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Lint / Basic validation (placeholder)
+        run: |
+          node -v
+          npm -v
+          echo "Basic validation complete"
+
+      - name: Build docker image (no socket)
+        run: |
+          docker build -t weavenote-migration-helper:ci .
+
+  # NOTE: The workflow intentionally does NOT mount /var/run/docker.sock or start privileged containers.
+  # To run a migration container that controls Docker you must run it manually in a secure environment.

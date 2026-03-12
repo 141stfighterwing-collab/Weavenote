@@ -1,0 +1,34 @@
+# docker-compose for local testing using docker-socket mode or MONGODB_URI mode
+# Two modes are supported:
+# 1) docker-socket mode: mount /var/run/docker.sock into the migration-helper service. The helper will spin up a temporary MongoDB container using the host docker daemon.
+#    WARNING: mounting the docker socket gives the container root-equivalent control of the host. See README for security guidance.
+# 2) no-socket mode: do not mount the socket and instead set MONGODB_URI environment variable to an existing MongoDB endpoint.
+
+version: '3.8'
+services:
+  migration-helper:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      # When using no-socket mode, set MONGODB_URI to your target MongoDB instance
+      # - MONGODB_URI=mongodb://mongo:27017/weavenote_migration
+    volumes:
+      - ./migration:/usr/src/app/migration:ro
+      - ./scripts:/usr/src/app/scripts:ro
+      # Uncomment the following line to enable docker-socket mode (HIGHLY SENSITIVE)
+      # - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: "no"
+
+  # You may optionally include a local mongo here for testing; the helper can also create a temporary one using the docker socket.
+  # mongodb:
+  #   image: mongo:6
+  #   ports:
+  #     - "27017:27017"
+  #   volumes:
+  #     - mongo-data:/data/db
+
+#volumes:
+#  mongo-data:
+#    driver: local
