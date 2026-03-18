@@ -1,32 +1,113 @@
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+<img width="1200" height="475" alt="WeaveNote Banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# WeaveNote
+<h1 align="center">WeaveNote</h1>
 
-AI-powered note workspace for capture, synthesis, project planning, and knowledge organization.
+<p align="center">
+  <strong>AI-Powered Note Workspace for Capture, Synthesis, Project Planning & Knowledge Organization</strong>
+</p>
 
----
-
-## Table of Contents
-
-1. [Screenshots & Visual Guide](#1-screenshots--visual-guide)
-2. [Versioning](#2-versioning)
-3. [Quick Start](#3-quick-start)
-4. [Docker Deployment](#4-docker-deployment)
-5. [Environment Configuration](#5-environment-configuration)
-6. [Settings Management](#6-settings-management)
-7. [Version Control & Patching](#7-version-control--patching)
-8. [API Reference](#8-api-reference)
-9. [AI Model Configuration](#9-ai-model-configuration)
-10. [Database Architecture](#10-database-architecture)
-11. [Backup & Export](#11-backup--export)
-12. [Security Recommendations](#12-security-recommendations)
-13. [Development Guide](#13-development-guide)
+<p align="center">
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-screenshots">Screenshots</a> •
+  <a href="#-requirements">Requirements</a> •
+  <a href="#-installation">Installation</a> •
+  <a href="#-configuration">Configuration</a> •
+  <a href="#-faq">FAQ</a>
+</p>
 
 ---
 
-## 1) Screenshots & Visual Guide
+## 📋 Table of Contents
+
+1. [About WeaveNote](#-about-weavenote)
+2. [Quick Start](#-quick-start)
+3. [Screenshots](#-screenshots)
+4. [Requirements](#-requirements)
+5. [Installation](#-installation)
+6. [Configuration](#-configuration)
+7. [Docker Deployment](#-docker-deployment)
+8. [API Reference](#-api-reference)
+9. [Database Architecture](#-database-architecture)
+10. [Security](#-security)
+11. [Troubleshooting](#-troubleshooting)
+12. [FAQ](#-faq)
+13. [Development](#-development)
+14. [Support & License](#-support--license)
+
+---
+
+## 🎯 About WeaveNote
+
+WeaveNote is a modern, AI-powered note-taking application designed for professionals, developers, and teams who need more than just basic note storage. Built with a robust PostgreSQL backend and containerized with Docker, WeaveNote offers enterprise-grade reliability with consumer-friendly simplicity.
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| 🤖 **AI Integration** | Powered by Google Gemini for intelligent note synthesis, summarization, and content generation |
+| 🗄️ **PostgreSQL Backend** | Enterprise-grade database with full ACID compliance for reliable data storage |
+| 🐳 **Docker Ready** | One-click deployment with Docker Compose for development and production |
+| 🔐 **Secure by Design** | AES-256-GCM encryption for sensitive data, JWT authentication, and secure password handling |
+| 📊 **Multiple Views** | Grid and Mindmap views for flexible note organization |
+| 🎨 **15+ Themes** | Customizable appearance with dark/light mode support |
+| 📦 **Export Options** | JSON, CSV, and SQL export for data portability |
+| 🔄 **Version Control** | Built-in versioning system with patch tracking and rollback capability |
+| ⚙️ **Admin Dashboard** | Web-based settings management for environment variables and system configuration |
+| ☁️ **Cloud Ready** | Optional Firebase integration for hybrid cloud/on-premise deployment |
+
+---
+
+## 🚀 Quick Start
+
+### Windows Users - One-Click Install
+
+The fastest way to get WeaveNote running on Windows:
+
+1. **Download** the repository (clone or ZIP)
+2. **Double-click** `install-weavenote.bat`
+3. **Follow the prompts** - the installer handles everything!
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│     📁 Weavenote                                                           │
+│     ├── 📄 install-weavenote.bat    ◀── Double-click to start!            │
+│     ├── 📄 install-weavenote.ps1                                           │
+│     └── ...                                                                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### What the Installer Does
+
+| Step | Action | Duration |
+|------|--------|----------|
+| 1 | Checks prerequisites (Docker, ports) | ~10s |
+| 2 | Generates secure default credentials | ~5s |
+| 3 | Creates environment configuration | ~5s |
+| 4 | Pulls/builds Docker images | ~2-5 min |
+| 5 | Initializes PostgreSQL database | ~30s |
+| 6 | Starts all services | ~30s |
+| 7 | Runs health checks | ~15s |
+| 8 | Opens browser to application | Instant |
+
+### Quick Docker Start (All Platforms)
+
+```bash
+# Clone and start
+git clone https://github.com/141stfighterwing-collab/Weavenote.git
+cd Weavenote
+docker-compose up -d --build
+
+# Access the app
+open http://localhost:8080
+```
+
+---
+
+## 📸 Screenshots
 
 ### Main Application Interface
 
@@ -58,20 +139,9 @@ AI-powered note workspace for capture, synthesis, project planning, and knowledg
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Settings Panel - Entry Point
+### Settings Panel
 
-Click the **⚙️ gear icon** in the top-right corner to open the Settings Panel:
-
-```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│  🧶 WeaveNote          [Grid|MindMap]  📊 Analytics  [🔍 Search...]  👤 Login ⚙️│
-│                                                                   ↑          │
-│                                                        Click here to open    │
-│                                                        Settings Panel         │
-└──────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Settings Panel - Full View
+Access by clicking the **⚙️ gear icon** in the top-right corner:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
@@ -92,109 +162,43 @@ Click the **⚙️ gear icon** in the top-right corner to open the Settings Pane
 │  │ 👥 User Base     │   │  │  │default│ocean│forest│sunset│rose│ ...       │  │   │
 │  │ ☁️ Cloud Setup   │   │  │  └────┘ └────┘ └────┘ └────┘ └────┘           │  │   │
 │  │ 📜 System Logs   │   │  └──────────────────────────────────────────────────┘  │   │
-│  │                  │   │                                                        │   │
 │  └──────────────────┘   └────────────────────────────────────────────────────────┘   │
-│                                                                                        │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### ENV Settings Tab (Admin Only)
+### ENV Settings (Admin Only)
+
+Manage API keys, database credentials, and other sensitive settings:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  ⚙️ System Control                                                           [ ✕ ]   │
+│  🔐 Environment Variables - Manage API keys, database credentials, and settings         │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                        │
-│  ┌──────────────────┐   ┌────────────────────────────────────────────────────────┐   │
-│  │ Sidebar          │   │  🔐 Environment Variables                              │   │
-│  │                  │   │  Manage API keys, database credentials, and settings    │   │
-│  │ 🎨 Visuals       │   │                                                        │   │
-│  │ 🛡️ My Security   │   │  [Import .env] [Export .env] [+ Add Variable]          │   │
-│  │ ✨ AI Engine     │   │                                                        │   │
-│  │ 🔍 Diagnostics   │   │  Quick Add:                                            │   │
-│  │                  │   │  [+ GEMINI_API_KEY] [+ POSTGRES_PASSWORD]              │   │
-│  │ ── Admin Only ── │   │  [+ JWT_SECRET] [+ VITE_FIREBASE_API_KEY]              │   │
-│  │ 🔐 ENV Settings ◀│   │                                                        │   │
-│  │ 📦 Versioning    │   │  ┌──────────────────────────────────────────────────┐  │   │
-│  │ 👥 User Base     │   │  │ Key              │ Value        │ Category│ Act │  │   │
-│  │ ☁️ Cloud Setup   │   │  ├──────────────────────────────────────────────────┤  │   │
-│  │ 📜 System Logs   │   │  │ GEMINI_API_KEY   │ •••••••••••• │ API     │📝 🗑️│  │   │
-│  │                  │   │  │ POSTGRES_PASSWORD│ •••••••••••• │ Database│📝 🗑️│  │   │
-│  └──────────────────┘   │  │ JWT_SECRET       │ •••••••••••• │ Security│📝 🗑️│  │   │
-│                         │  └──────────────────────────────────────────────────┘  │   │
-│                         │                                                        │   │
-│                         │  ⚠️ Variables are encrypted and gitignored            │   │
-│                         └────────────────────────────────────────────────────────┘   │
-└────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Add Environment Variable Modal
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Add Variable                                 │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Key                                                            │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │ GEMINI_API_KEY                                            │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│                                                                 │
-│  Value                                                          │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │ AIzaSy...your-api-key-here...                             │  │
-│  │                                                           │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│                                                                 │
-│  Category          │  ☑ Secret (encrypt)                        │
-│  ┌───────────────┐ │                                            │
-│  │ API           ▼│ │                                            │
-│  └───────────────┘ │                                            │
-│                                                                 │
-│  Description (optional)                                         │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │ Google Gemini AI API Key                                  │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│                                                                 │
-│              [Cancel]              [Save]                        │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Versioning Tab
-
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  ⚙️ System Control                                                           [ ✕ ]   │
-├────────────────────────────────────────────────────────────────────────────────────────┤
+│  [Import .env] [Export .env] [+ Add Variable]                                         │
 │                                                                                        │
-│  ┌──────────────────┐   ┌────────────────────────────────────────────────────────┐   │
-│  │ Sidebar          │   │  📦 System Versioning                                  │   │
-│  │                  │   │  Track patches, updates, and system changes             │   │
-│  │ 🎨 Visuals       │   │                                                        │   │
-│  │ 🛡️ My Security   │   │  ┌──────────────────────────────────────────────────┐  │   │
-│  │ ✨ AI Engine     │   │  │  📦 v1.4.1                     Applied: 2024-01-15 │  │   │
-│  │ 🔍 Diagnostics   │   │  │                                                    │  │   │
-│  │                  │   │  │  Added ENV Settings UI, PostgreSQL backend,       │  │   │
-│  │ ── Admin Only ── │   │  │  Docker support, and versioning system.           │  │   │
-│  │ 🔐 ENV Settings  │   │  └──────────────────────────────────────────────────┘  │   │
-│  │ 📦 Versioning ◀  │   │                                                        │   │
-│  │ 👥 User Base     │   │  Version History:                                      │   │
-│  │ ☁️ Cloud Setup   │   │  ┌──────────────────────────────────────────────────┐  │   │
-│  │ 📜 System Logs   │   │  │ v1.4.1 │ Current  │ 2024-01-15                   │  │   │
-│  │                  │   │  │ v1.4.0 │          │ 2024-01-10                   │  │   │
-│  └──────────────────┘   │  │ v1.3.0 │ BREAKING │ 2024-01-05                   │  │   │
-│                         │  └──────────────────────────────────────────────────┘  │   │
-│                         └────────────────────────────────────────────────────────┘   │
+│  Quick Add: [+ GEMINI_API_KEY] [+ POSTGRES_PASSWORD] [+ JWT_SECRET]                  │
+│                                                                                        │
+│  ┌──────────────────────────────────────────────────────────────────────────────────┐ │
+│  │ Key              │ Value            │ Category  │ Secret │ Actions              │ │
+│  ├──────────────────────────────────────────────────────────────────────────────────┤ │
+│  │ GEMINI_API_KEY   │ ••••••••••••     │ API       │ ✓      │ 📝 Edit  🗑️ Delete   │ │
+│  │ POSTGRES_PASSWORD│ ••••••••••••     │ Database  │ ✓      │ 📝 Edit  🗑️ Delete   │ │
+│  │ JWT_SECRET       │ ••••••••••••     │ Security  │ ✓      │ 📝 Edit  🗑️ Delete   │ │
+│  └──────────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                        │
+│  ⚠️ Secret variables are encrypted with AES-256-GCM. The .env file is gitignored.     │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Theme Selection
 
+Choose from 15+ beautiful themes:
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                     Theme Selector                               │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
 │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐       │
 │  │DEFAULT │ │ OCEAN  │ │ FOREST │ │ SUNSET │ │  ROSE  │       │
 │  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘       │
@@ -204,13 +208,13 @@ Click the **⚙️ gear icon** in the top-right corner to open the Settings Pane
 │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐       │
 │  │DRACULA │ │LAVENDER│ │  EARTH │ │ YELLOW │HYPERBLUE│       │
 │  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘       │
-│                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Grid View vs Mindmap View
 
-**Grid View:**
+**Grid View** - Organize notes in a card-based layout:
+
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │  [Grid ████] [MindMap ○○]                                        │
@@ -222,14 +226,11 @@ Click the **⚙️ gear icon** in the top-right corner to open the Settings Pane
 │  │ Discuss Q3... │  │ Milestones:   │  │ New features  │        │
 │  │ #work #meeting│  │ #project      │  │ #ideas        │        │
 │  └───────────────┘  └───────────────┘  └───────────────┘        │
-│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐        │
-│  │ 📝 Code       │  │ 📝 Research   │  │ 📝 Tasks      │        │
-│  │ Snippets      │  │ Notes         │  │               │        │
-│  └───────────────┘  └───────────────┘  └───────────────┘        │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-**Mindmap View:**
+**Mindmap View** - Visualize connections between notes:
+
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │  [Grid ○○] [MindMap ████]   [Performance OFF]                    │
@@ -245,174 +246,246 @@ Click the **⚙️ gear icon** in the top-right corner to open the Settings Pane
 │    │  Note 2 │          │  Note 3 │          │  Note 4 │        │
 │    └────┬────┘          └────┬────┘          └─────────┘        │
 │         │                    │                                  │
-│    ┌────┴────┐               │                                  │
-│    │  Note 5 │          ┌────┴────┐                             │
-│    └─────────┘          │  Note 6 │                             │
-│                         └─────────┘                             │
+│    ┌────┴────┐          ┌────┴────┐                             │
+│    │  Note 5 │          │  Note 6 │                             │
+│    └─────────┘          └─────────┘                             │
 │                                                                  │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### Running Screenshot Tests
+---
 
-Generate actual screenshots using Playwright:
+## 💻 Requirements
+
+### System Requirements
+
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| **OS** | Windows 10, macOS 10.15, Ubuntu 18.04 | Windows 11, macOS 13+, Ubuntu 22.04 |
+| **RAM** | 4 GB | 8 GB+ |
+| **Disk** | 2 GB free | 10 GB+ (for database growth) |
+| **CPU** | 2 cores | 4+ cores |
+
+### Software Requirements
+
+| Software | Required | Version | Notes |
+|----------|----------|---------|-------|
+| **Docker Desktop** | ✅ Yes | 4.0+ | Must be running during installation and use |
+| **PowerShell** | Windows Only | 5.1+ | Built into Windows 10/11 |
+| **Git** | Optional | Any | For cloning repository |
+| **Node.js** | Dev Only | 18+ | Only needed for local development |
+
+### Network Requirements
+
+| Port | Service | Required |
+|------|---------|----------|
+| 8080 | Frontend (Nginx) | Must be available |
+| 3001 | Backend API | Must be available |
+| 5432 | PostgreSQL | Must be available |
+
+### AI Requirements
+
+| Requirement | Details |
+|-------------|---------|
+| **Gemini API Key** | Required for AI features. Get one free at [Google AI Studio](https://makersuite.google.com/app/apikey) |
+| **Daily Quota** | 800 requests/day default (configurable) |
+
+---
+
+## 🛠️ Installation
+
+### Method 1: One-Click Windows Installer (Recommended)
+
+**Best for:** Windows users who want the fastest setup
+
+#### Step-by-Step Instructions
+
+1. **Download WeaveNote**
+   ```
+   Option A: Clone with Git
+   git clone https://github.com/141stfighterwing-collab/Weavenote.git
+
+   Option B: Download ZIP
+   https://github.com/141stfighterwing-collab/Weavenote/archive/refs/heads/main.zip
+   ```
+
+2. **Ensure Docker Desktop is Running**
+   - Open Docker Desktop
+   - Wait for the whale icon in system tray to stop animating
+   - Verify Docker is running: `docker --version`
+
+3. **Run the Installer**
+   - Navigate to the Weavenote folder
+   - Double-click `install-weavenote.bat`
+   - If prompted, click "Run anyway" or allow execution
+
+4. **Follow the Prompts**
+
+   The installer will display progress:
+
+   ```
+   ╔═══════════════════════════════════════════════════════════════════════════╗
+   ║   🧶 WEAVERNOTE DOCKER INSTALLER v1.0.0                                   ║
+   ╚═══════════════════════════════════════════════════════════════════════════╝
+
+   ┌─────────────────────────────────────────────────────────────┐
+   │ Step 1/8 - Checking Prerequisites        Progress: 12%      │
+   └─────────────────────────────────────────────────────────────┘
+
+   [✓] Docker Desktop is installed (Version: 24.0.6)
+   [✓] Docker Compose is installed
+   [✓] Port 8080 is available
+   [✓] Port 3001 is available
+   [✓] Port 5432 is available
+   ```
+
+5. **Configure Environment Variables**
+
+   The installer will prompt for:
+   - **Gemini API Key** (optional, can be added later in Settings)
+   - **Custom ports** (optional, defaults provided)
+
+6. **Complete Installation**
+
+   ```
+   ┌─────────────────────────────────────────────────────────────┐
+   │ Step 8/8 - Running Health Checks         Progress: 100%     │
+   └─────────────────────────────────────────────────────────────┘
+
+   [✓] Frontend is healthy
+   [✓] API is healthy
+   [✓] Database is ready
+
+   🎉 WEAVERNOTE IS NOW RUNNING! 🎉
+
+   📱 Frontend:  http://localhost:8080
+   🔌 API:       http://localhost:3001/api
+   ```
+
+### Method 2: Docker Compose (All Platforms)
+
+**Best for:** Linux/macOS users, or Windows users who prefer command line
 
 ```bash
-# Install Playwright browsers
-npx playwright install chromium
+# 1. Clone the repository
+git clone https://github.com/141stfighterwing-collab/Weavenote.git
+cd Weavenote
 
-# Run screenshot tests
-npm run screenshots
+# 2. Create environment file
+cp .env.example .env
 
-# View the HTML report
-npm run show-report
+# 3. Edit environment variables
+nano .env  # Or use your preferred editor
+
+# 4. Start all services
+docker-compose up -d --build
+
+# 5. Check status
+docker-compose ps
+
+# 6. View logs (optional)
+docker-compose logs -f
 ```
 
-Screenshots will be saved to `screenshots/` directory:
-- `01-homepage.png` - Main application interface
-- `02-settings-button-location.png` - Settings button location
-- `03-settings-panel.png` - Settings panel overview
-- `04-settings-visuals.png` - Visual settings tab
-- `05-settings-env.png` - ENV settings tab (Admin)
-- `06-add-env-variable.png` - Add variable modal
-- `07-versioning.png` - Version control panel
-- And more...
+### Method 3: Development Mode
+
+**Best for:** Developers who want to modify the code
+
+```bash
+# Frontend
+npm install
+npm run dev
+
+# Backend (in another terminal)
+cd backend
+npm install
+npm run dev
+
+# Database (requires local PostgreSQL)
+cd backend
+npx prisma migrate dev
+npx prisma studio  # Opens database GUI
+```
 
 ---
 
-## 2) Versioning
+## ⚙️ Configuration
 
-WeaveNote follows **Semantic Versioning (SemVer)**.
+### Environment Variables
 
-- **Current app version:** `1.4.1` (from `package.json`)
-- **Changelog:** see [`CHANGELOG.md`](./CHANGELOG.md)
+WeaveNote uses environment variables for all configuration. These can be managed through:
 
-Version format:
+1. **`.env` file** - Direct file editing (recommended for initial setup)
+2. **Settings UI** - Admin panel for runtime changes (Admin → ENV Settings)
 
-- `MAJOR` → breaking changes
-- `MINOR` → backwards-compatible feature additions
-- `PATCH` → backwards-compatible fixes
+#### Required Variables
+
+```bash
+# PostgreSQL Database
+POSTGRES_USER=weavenote              # Database username
+POSTGRES_PASSWORD=your_secure_pass   # Database password (CHANGE THIS!)
+POSTGRES_DB=weavenote                # Database name
+
+# Security
+JWT_SECRET=your_jwt_secret_min_32_chars  # JWT signing key (CHANGE THIS!)
+
+# AI Integration
+GEMINI_API_KEY=your_gemini_api_key   # Get from Google AI Studio
+```
+
+#### Optional Variables
+
+```bash
+# Backend API
+API_PORT=3001                        # API server port
+JWT_EXPIRES_IN=7d                    # Token expiration
+CORS_ORIGINS=http://localhost:8080   # Allowed origins
+RATE_LIMIT_WINDOW_MS=900000          # Rate limit window (15 min)
+RATE_LIMIT_MAX=100                   # Max requests per window
+
+# Firebase (optional cloud features)
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+VITE_FIREBASE_MEASUREMENT_ID=
+
+# pgAdmin (optional database admin UI)
+PGADMIN_EMAIL=admin@weavenote.local
+PGADMIN_PASSWORD=admin
+```
+
+### Managing Settings Through UI
+
+1. **Open Settings**: Click the ⚙️ gear icon in the top-right corner
+2. **Navigate to ENV Settings**: Requires admin privileges
+3. **Add/Edit Variables**: Use the form or quick-add buttons
+4. **Import/Export**: Bulk manage settings via .env files
+
+### Default Credentials
+
+After installation, use these default credentials:
+
+| Service | Username | Password |
+|---------|----------|----------|
+| **Web App** | Register new account | N/A |
+| **PostgreSQL** | weavenote | (auto-generated, check .env) |
+| **pgAdmin** | admin@weavenote.local | admin |
+
+⚠️ **Security Warning**: Change all default passwords before production use!
 
 ---
 
-## 3) Quick Start
+## 🐳 Docker Deployment
 
-### 🚀 One-Click Installation (Recommended)
-
-**Windows users can use our automated installer:**
-
-1. **Download and extract** the repository
-2. **Double-click** `install-weavenote.bat`
-3. **Follow the prompts** to configure your environment
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                                                             │
-│     📁 Weavenote                                                           │
-│     ├── 📄 install-weavenote.bat    ◀── Double-click to start!            │
-│     ├── 📄 install-weavenote.ps1                                           │
-│     ├── 📄 INSTALLATION.md         (Detailed installation guide)           │
-│     └── ...                                                                │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-**The installer will:**
-- ✅ Check all prerequisites (Docker, ports, etc.)
-- ✅ Generate secure default credentials
-- ✅ Create environment configuration files
-- ✅ Build and start Docker containers
-- ✅ Initialize the PostgreSQL database
-- ✅ Run health checks and show status
-
-**Installation Preview:**
-
-```
-  ╔═══════════════════════════════════════════════════════════════════════════╗
-  ║   🧶 WEAVERNOTE DOCKER INSTALLER v1.0.0                                   ║
-  ╚═══════════════════════════════════════════════════════════════════════════╝
-
-  ┌─────────────────────────────────────────────────────────────┐
-  │ Step 1/8 - Checking Prerequisites        Progress: 12%      │
-  └─────────────────────────────────────────────────────────────┘
-
-  [✓] Docker Desktop is installed (Version: 24.0.6)
-  [✓] Docker Compose is installed
-  [✓] Port 8080 is available
-  [✓] Port 3001 is available
-  [✓] Port 5432 is available
-
-  ┌─────────────────────────────────────────────────────────────┐
-  │ Step 5/8 - Building Docker Images        Progress: 62%      │
-  └─────────────────────────────────────────────────────────────┘
-
-  Building images [████████████░░░░░░░░] 60%
-
-  ┌─────────────────────────────────────────────────────────────┐
-  │ Step 8/8 - Running Health Checks         Progress: 100%     │
-  └─────────────────────────────────────────────────────────────┘
-
-  [✓] Frontend is healthy
-  [✓] API is healthy
-  [✓] Database is ready
-
-  🎉 WEAVERNOTE IS NOW RUNNING! 🎉
-  
-  📱 Frontend:  http://localhost:8080
-  🔌 API:       http://localhost:3001/api
-```
-
-> 📖 **See [INSTALLATION.md](./INSTALLATION.md) for detailed step-by-step guide with screenshots**
-
----
-
-### Prerequisites
-
-- Docker Desktop (must be running)
-- PowerShell 5.1+ (built into Windows)
-- Git (optional, for cloning)
-
----
-
-### Manual Installation
-
-If you prefer manual setup or are on Linux/macOS:
-
-1. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-2. **Configure environment variables**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-3. **Start development server**
-   ```bash
-   npm run dev
-   ```
-
-4. **Build production bundle**
-   ```bash
-   npm run build
-   ```
-
-5. **Type-check/lint**
-   ```bash
-   npm run lint
-   ```
-
----
-
-## 4) Docker Deployment
-
-### Architecture Overview
+### Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Docker Network                            │
+│                                                                  │
 │  ┌─────────────────────────────────────────────────────────────┐│
 │  │                      Nginx (Port 8080)                       ││
 │  │  ┌─────────────────────┐  ┌────────────────────────────────┐││
@@ -439,37 +512,7 @@ If you prefer manual setup or are on Linux/macOS:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Quick Docker Start
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/141stfighterwing-collab/Weavenote.git
-cd Weavenote
-
-# 2. Copy and configure environment
-cp .env.example .env
-nano .env  # Edit with your settings
-
-# 3. Build and start all services
-docker-compose up -d --build
-
-# 4. Check service status
-docker-compose ps
-
-# 5. View logs
-docker-compose logs -f
-```
-
-### Service Endpoints
-
-| Service | URL | Description |
-|---------|-----|-------------|
-| Frontend | http://localhost:8080 | Main web application |
-| API Health | http://localhost:8080/api/health | Backend health check |
-| PostgreSQL | localhost:5432 | Database (if exposed) |
-| pgAdmin | http://localhost:5050 | Database admin (optional) |
-
-### Docker Commands Reference
+### Common Docker Commands
 
 ```bash
 # Start all services
@@ -478,183 +521,47 @@ docker-compose up -d
 # Stop all services
 docker-compose down
 
-# Rebuild containers
+# Rebuild and restart
 docker-compose up -d --build
 
-# View logs for specific service
-docker-compose logs -f api
-docker-compose logs -f postgres
+# View logs
+docker-compose logs -f            # All services
+docker-compose logs -f api        # API only
+docker-compose logs -f postgres   # Database only
 
-# Execute command in container
-docker-compose exec api sh
-docker-compose exec postgres psql -U weavenote -d weavenote
+# Execute commands in containers
+docker-compose exec api sh        # API container
+docker-compose exec postgres psql -U weavenote -d weavenote  # Database
 
-# Reset everything (including volumes)
+# Database backup
+docker-compose exec postgres pg_dump -U weavenote weavenote > backup.sql
+
+# Database restore
+cat backup.sql | docker-compose exec -T postgres psql -U weavenote weavenote
+
+# Complete reset (WARNING: deletes all data)
 docker-compose down -v
+docker-compose up -d --build
 ```
+
+### Service Endpoints
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| Frontend | http://localhost:8080 | Main web application |
+| API Health | http://localhost:8080/api/health | Backend health check |
+| API Docs | http://localhost:8080/api | API endpoints |
+| PostgreSQL | localhost:5432 | Direct database access |
+| pgAdmin | http://localhost:5050 | Database admin UI (if enabled) |
 
 ---
 
-## 5) Environment Configuration
-
-### Required Environment Variables
-
-```bash
-# PostgreSQL Database
-POSTGRES_USER=weavenote
-POSTGRES_PASSWORD=your_secure_password_here
-POSTGRES_DB=weavenote
-
-# Security
-JWT_SECRET=your_super_secret_jwt_key_min_32_chars
-
-# AI Integration
-GEMINI_API_KEY=your_gemini_api_key_here
-```
-
-### Optional Environment Variables
-
-```bash
-# Backend API
-API_PORT=3001
-JWT_EXPIRES_IN=7d
-CORS_ORIGINS=http://localhost:8080,http://localhost:3000
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX=100
-
-# Firebase (for hybrid mode)
-VITE_FIREBASE_API_KEY=
-VITE_FIREBASE_AUTH_DOMAIN=
-VITE_FIREBASE_PROJECT_ID=
-VITE_FIREBASE_STORAGE_BUCKET=
-VITE_FIREBASE_MESSAGING_SENDER_ID=
-VITE_FIREBASE_APP_ID=
-VITE_FIREBASE_MEASUREMENT_ID=
-
-# pgAdmin (optional database admin)
-PGADMIN_EMAIL=admin@weavenote.local
-PGADMIN_PASSWORD=admin
-```
-
-### Environment File Management
-
-**Important:** The `.env` file is **gitignored** and will never be committed to version control.
-
-You can manage environment variables through:
-
-1. **Direct File Edit** - Edit `.env` file manually
-2. **Settings UI** - Use the in-app Settings panel (Admin → ENV Settings)
-3. **Import/Export** - Import from or export to `.env` files via the UI
-
----
-
-## 6) Settings Management
-
-### Accessing Settings
-
-1. Click the **⚙️ gear icon** in the top-right corner of the application
-2. Navigate to the appropriate tab:
-
-| Tab | Access | Description |
-|-----|--------|-------------|
-| 🎨 Visuals | All Users | Theme and appearance settings |
-| 🛡️ My Security | All Users | Password and account settings |
-| ✨ AI Engine | All Users | AI usage quota and logs |
-| 🔍 Diagnostics | All Users | System health checks |
-| 🔐 ENV Settings | Admin Only | Environment variable management |
-| 📦 Versioning | Admin Only | System version history |
-| 👥 User Base | Admin Only | User management |
-| ☁️ Cloud Setup | Admin Only | Firebase and cloud configuration |
-| 📜 System Logs | Admin Only | Audit logs |
-
-### Environment Variables Settings (Admin)
-
-Navigate to **Settings → ENV Settings** to manage all environment variables through the UI.
-
-#### Features:
-- **Add Variable**: Create new environment variables with categories
-- **Edit Variable**: Modify existing variables (decrypted view)
-- **Delete Variable**: Remove variables (Super Admin only)
-- **Import .env**: Bulk import from `.env` file content
-- **Export .env**: Download all variables as `.env` file
-
-#### Variable Categories:
-
-| Category | Color | Examples |
-|----------|-------|----------|
-| API | Indigo | GEMINI_API_KEY, API_KEY |
-| Database | Emerald | POSTGRES_PASSWORD, DATABASE_URL |
-| Firebase | Amber | VITE_FIREBASE_* |
-| Security | Rose | JWT_SECRET, ENCRYPTION_KEY |
-| General | Gray | APP_NAME, DEBUG |
-
-#### Quick Add Templates:
-
-Click on any quick-add button to pre-fill common keys:
-- `GEMINI_API_KEY` - Google Gemini AI API Key
-- `POSTGRES_PASSWORD` - PostgreSQL Database Password
-- `JWT_SECRET` - JWT Signing Secret
-- `VITE_FIREBASE_API_KEY` - Firebase API Key
-
-### Security Notes
-
-- All secret variables are **encrypted** before storage
-- Values are **masked** (••••••••••••) in list views
-- Only admins can view decrypted values
-- Exported `.env` files should be handled securely
-- Never commit `.env` files to version control
-
----
-
-## 7) Version Control & Patching
-
-### Viewing Version Information
-
-Navigate to **Settings → Versioning** to see:
-- Current system version
-- Patch notes
-- Version history
-- Breaking change flags
-
-### Version History
-
-The system maintains a complete history of all patches and updates:
-- Version number
-- Application date
-- Patch notes
-- Breaking change indicators
-- Rollback capability (Super Admin)
-
-### API Endpoints
-
-```bash
-# Get current version
-GET /api/version
-
-# Get version history (Admin)
-GET /api/version/history
-
-# Apply new version (Super Admin)
-POST /api/version/apply
-{
-  "version": "1.5.0",
-  "patchNotes": "Added new features",
-  "isBreaking": false,
-  "requiresRestart": false
-}
-
-# Rollback to previous version (Super Admin)
-POST /api/version/rollback/1.4.0
-```
-
----
-
-## 8) API Reference
+## 📡 API Reference
 
 ### Authentication
 
 ```bash
-# Register
+# Register new user
 POST /api/auth/register
 {
   "email": "user@example.com",
@@ -685,7 +592,7 @@ Authorization: Bearer <token>
 ### Notes
 
 ```bash
-# List all notes
+# List notes (with filters)
 GET /api/notes?type=quick&folderId=xxx&isDeleted=false
 
 # Get single note
@@ -703,7 +610,7 @@ POST /api/notes
 # Update note
 PUT /api/notes/:id
 
-# Delete note (soft delete)
+# Soft delete note
 DELETE /api/notes/:id
 
 # Permanent delete
@@ -711,12 +618,6 @@ DELETE /api/notes/:id?permanent=true
 
 # Restore deleted note
 POST /api/notes/:id/restore
-
-# Batch sync
-POST /api/notes/sync
-{
-  "notes": [...]
-}
 ```
 
 ### Folders
@@ -757,14 +658,11 @@ GET /api/export/notes/csv
 GET /api/export/notes/sql
 ```
 
-### Settings (Admin)
+### Settings (Admin Only)
 
 ```bash
 # List all settings
 GET /api/settings
-
-# Get single setting
-GET /api/settings/:id
 
 # Create/Update setting
 POST /api/settings
@@ -776,7 +674,7 @@ POST /api/settings
   "description": "Google Gemini API Key"
 }
 
-# Delete setting (Super Admin)
+# Delete setting
 DELETE /api/settings/:id
 
 # Export settings
@@ -786,68 +684,39 @@ POST /api/settings/export
 POST /api/settings/import
 {
   "content": "KEY=value\nKEY2=value2",
-  "category": "general",
-  "isSecret": true
+  "category": "general"
 }
 ```
 
 ---
 
-## 9) AI Model Configuration
+## 🗄️ Database Architecture
 
-WeaveNote uses **Google Gemini** through `@google/genai`.
+### Schema Overview
 
-### Primary Model Routing (Fallback Order):
-
-1. `gemini-3.1-pro-preview`
-2. `gemini-3-flash-preview`
-
-If the first model fails, the app retries with the second. Response format is constrained to JSON for structured note extraction/formatting.
-
-### Setting Up Gemini API Key
-
-1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Create an API key
-3. Add the key in **Settings → ENV Settings**:
-   - Click **+ GEMINI_API_KEY** quick-add button
-   - Paste your API key
-   - Click **Save**
-
-### Daily Usage Limits
-
-- Default limit: 800 requests per day
-- View usage in **Settings → AI Engine**
-- Usage resets daily at midnight
-
----
-
-## 10) Database Architecture
-
-### PostgreSQL Schema
-
-The application uses PostgreSQL with Prisma ORM for robust data management.
-
-#### Core Tables:
+WeaveNote uses PostgreSQL with Prisma ORM for robust, type-safe database operations.
 
 | Table | Description |
 |-------|-------------|
-| `users` | User accounts and authentication |
-| `sessions` | Active login sessions |
-| `audit_logs` | Security audit trail |
-| `notes` | Main note content |
-| `note_tags` | Tag associations |
-| `folders` | Note organization |
-| `templates` | User templates |
-| `system_settings` | Environment variables (encrypted) |
-| `system_versions` | Version history |
+| `users` | User accounts, roles, and authentication data |
+| `sessions` | Active login sessions for JWT management |
+| `audit_logs` | Security audit trail for compliance |
+| `notes` | Main note content with metadata |
+| `note_tags` | Tag associations for organization |
+| `folders` | Hierarchical folder structure |
+| `templates` | User-created templates |
+| `system_settings` | Environment variables (encrypted storage) |
+| `system_versions` | Version history and patch tracking |
 
-#### Key Features:
-- Full ACID compliance
-- Proper indexing for performance
-- Cascading deletes for data integrity
-- Encrypted sensitive data storage
+### Key Features
 
-### Database Backups
+- **Full ACID Compliance**: Ensures data integrity for all operations
+- **Proper Indexing**: Optimized queries for fast note retrieval
+- **Cascading Deletes**: Maintains referential integrity
+- **Encrypted Storage**: Sensitive data protected with AES-256-GCM
+- **Audit Logging**: Track all system changes for compliance
+
+### Backup & Restore
 
 ```bash
 # Create backup
@@ -859,63 +728,246 @@ cat backup_20240101.sql | docker-compose exec -T postgres psql -U weavenote weav
 
 ---
 
-## 11) Backup & Export
+## 🔒 Security
 
-### Export Formats
+### Security Features
 
-Admin export supports:
+| Feature | Implementation |
+|---------|---------------|
+| **Password Hashing** | bcrypt with salt rounds |
+| **Data Encryption** | AES-256-GCM for sensitive settings |
+| **Authentication** | JWT with configurable expiration |
+| **Rate Limiting** | Configurable request throttling |
+| **CORS Protection** | Whitelist-based origin validation |
+| **Input Validation** | Server-side validation on all inputs |
+| **SQL Injection Prevention** | Prisma parameterized queries |
+| **XSS Protection** | Sanitized markdown rendering |
 
-- **JSON** (`WeaveNote_Database_<timestamp>.json`)
-- **CSV** (`WeaveNote_Database_<timestamp>.csv`)
-- **SQL** (`WeaveNote_Database_<timestamp>.sql`)
+### Security Recommendations
 
-### Accessing Export
+1. **Change Default Passwords**
+   - PostgreSQL password
+   - JWT secret (use 32+ random characters)
+   - pgAdmin credentials (if used)
 
-Navigate to **Settings → Cloud Setup → Database Export** and select your preferred format.
+2. **Protect API Keys**
+   - Never commit `.env` files (already gitignored)
+   - Use the Settings UI for secure key management
+   - Rotate keys periodically
 
----
+3. **Network Security**
+   - Don't expose database port (5432) to the internet
+   - Use HTTPS in production
+   - Configure firewall rules
 
-## 12) Security Recommendations
-
-1. **Environment Variables**
-   - Move all keys to environment variables
-   - Never commit `.env` files to version control
-   - Use the Settings UI to manage sensitive keys
-
-2. **Database Security**
-   - Use strong PostgreSQL passwords
-   - Restrict network access to database port
-   - Enable SSL for database connections in production
-
-3. **API Security**
-   - Use strong JWT secrets (32+ characters)
-   - Enable rate limiting
-   - Configure CORS properly
-
-4. **API Key Management**
-   - Rotate Gemini API key periodically
-   - Use API key restrictions in Google Cloud Console
-   - Monitor API usage
-
-5. **Authentication**
-   - Require strong passwords (8+ characters)
-   - Implement session timeout
-   - Enable audit logging
+4. **Regular Maintenance**
+   - Keep Docker images updated
+   - Monitor audit logs
+   - Backup database regularly
 
 ---
 
-## 13) Development Guide
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### Docker Issues
+
+| Problem | Solution |
+|---------|----------|
+| "Docker not found" | Install Docker Desktop and ensure it's running |
+| "Port 8080 already in use" | Stop the conflicting service or change port in docker-compose.yml |
+| "Permission denied" | Run as administrator (Windows) or use sudo (Linux) |
+| "No space left on device" | Run `docker system prune -a` to clean up |
+
+#### Database Issues
+
+| Problem | Solution |
+|---------|----------|
+| "Connection refused" | Wait for PostgreSQL to fully start (30-60 seconds) |
+| "Database doesn't exist" | Run `docker-compose down -v` then `docker-compose up -d --build` |
+| "Authentication failed" | Check credentials in .env file |
+
+#### Application Issues
+
+| Problem | Solution |
+|---------|----------|
+| "AI not working" | Add Gemini API key in Settings → ENV Settings |
+| "Login fails" | Check database connection, verify user exists |
+| "Changes not saving" | Check API logs: `docker-compose logs -f api` |
+
+### Viewing Logs
+
+```bash
+# All services
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f api
+docker-compose logs -f postgres
+docker-compose logs -f frontend
+
+# Last 100 lines
+docker-compose logs --tail=100 api
+```
+
+### Reset Everything
+
+```bash
+# Stop and remove all containers, networks, and volumes
+docker-compose down -v
+
+# Remove all images
+docker-compose down --rmi all
+
+# Start fresh
+docker-compose up -d --build
+```
+
+---
+
+## ❓ FAQ
+
+### General Questions
+
+**Q: What is WeaveNote?**
+
+A: WeaveNote is an AI-powered note-taking application that combines intelligent content synthesis with robust PostgreSQL storage. It's designed for professionals who need more than basic note apps, offering features like AI-powered summarization, multiple view modes, and enterprise-grade data management.
+
+**Q: Is WeaveNote free?**
+
+A: Yes, WeaveNote is open source. AI features require a free Google Gemini API key which has a generous free tier (60 requests/minute, 1500 requests/day).
+
+**Q: Can I use WeaveNote offline?**
+
+A: The Docker deployment runs entirely locally. AI features require internet access to call the Gemini API, but all other features work offline.
+
+**Q: Where is my data stored?**
+
+A: All data is stored in your local PostgreSQL database. Nothing is sent to external servers unless you configure Firebase integration or use AI features.
+
+### Installation Questions
+
+**Q: Do I need to know Docker to use WeaveNote?**
+
+A: No! The Windows one-click installer handles everything automatically. For other platforms, basic Docker Compose commands are provided.
+
+**Q: Can I run WeaveNote on a server?**
+
+A: Yes, WeaveNote is fully containerized and can be deployed on any server with Docker. Configure environment variables for production security.
+
+**Q: How do I update WeaveNote?**
+
+A:
+```bash
+git pull origin main
+docker-compose down
+docker-compose up -d --build
+```
+
+**Q: Can I use a different database?**
+
+A: WeaveNote is optimized for PostgreSQL. While Prisma supports other databases, switching requires schema modifications and is not officially supported.
+
+### Configuration Questions
+
+**Q: How do I get a Gemini API key?**
+
+A:
+1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Sign in with your Google account
+3. Click "Create API Key"
+4. Copy the key and add it in Settings → ENV Settings
+
+**Q: Can I change the ports?**
+
+A: Yes, edit `docker-compose.yml` and change the port mappings:
+```yaml
+services:
+  frontend:
+    ports:
+      - "9000:80"  # Changed from 8080
+```
+
+**Q: How do I add users?**
+
+A: Users can register through the application's login page. Admin users can manage users in Settings → User Base.
+
+**Q: Can I customize themes?**
+
+A: The app includes 15+ built-in themes. For custom themes, you can modify the theme definitions in the source code.
+
+### Technical Questions
+
+**Q: What tech stack does WeaveNote use?**
+
+A:
+- **Frontend**: React 18, TypeScript, Vite
+- **Backend**: Node.js, Express, Prisma ORM
+- **Database**: PostgreSQL 16
+- **Containerization**: Docker, Nginx
+- **AI**: Google Gemini API
+
+**Q: How is sensitive data protected?**
+
+A:
+- Passwords are hashed with bcrypt
+- API keys and secrets are encrypted with AES-256-GCM
+- JWT tokens for session management
+- All sensitive files are gitignored
+
+**Q: Can I contribute to WeaveNote?**
+
+A: Yes! Fork the repository, make your changes, and submit a pull request. See the Development section for local setup instructions.
+
+### Troubleshooting Questions
+
+**Q: The installer says "Port already in use"**
+
+A: Another application is using the required port. Either:
+1. Stop the conflicting application
+2. Change the port in `docker-compose.yml`
+
+**Q: I forgot my password**
+
+A: If you're the admin, you can:
+1. Register a new account
+2. Use the database to reset: `docker-compose exec postgres psql -U weavenote -d weavenote -c "UPDATE users SET password='new_hashed_password' WHERE email='your@email.com';"`
+
+**Q: AI features aren't working**
+
+A: Check:
+1. Gemini API key is set in Settings → ENV Settings
+2. API key is valid (test at Google AI Studio)
+3. You haven't exceeded daily quota
+4. Internet connection is available
+
+**Q: Database is corrupted**
+
+A: Restore from backup or reset:
+```bash
+docker-compose down -v
+docker-compose up -d --build
+```
+
+---
+
+## 👨‍💻 Development
 
 ### Tech Stack
 
-- **Frontend**: React 18 + TypeScript + Vite
-- **Backend**: Node.js + Express + Prisma ORM
-- **Database**: PostgreSQL 16
-- **Styling**: Tailwind-style utility classes
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 18 + TypeScript + Vite |
+| Backend | Node.js + Express + Prisma ORM |
+| Database | PostgreSQL 16 |
+| Containerization | Docker + Docker Compose |
+| Web Server | Nginx (reverse proxy) |
+| AI | Google Gemini API |
 
 ### Project Structure
 
-```text
+```
 Weavenote/
 ├── App.tsx                     # Main app state and routing
 ├── components/
@@ -937,6 +989,8 @@ Weavenote/
 │       └── schema.prisma       # Database schema
 ├── Dockerfile                  # Frontend container
 ├── docker-compose.yml          # Full stack orchestration
+├── install-weavenote.bat       # Windows one-click installer
+├── install-weavenote.ps1       # PowerShell installer script
 └── DOCKER.md                   # Detailed Docker documentation
 ```
 
@@ -944,30 +998,60 @@ Weavenote/
 
 ```bash
 # Frontend development
+npm install
 npm run dev
 
 # Backend development
 cd backend
+npm install
 npm run dev
 
-# Database operations
+# Database management
 cd backend
 npx prisma studio    # Open database GUI
 npx prisma migrate   # Run migrations
+npx prisma generate  # Generate Prisma client
 
 # Docker development
 docker-compose up -d
 docker-compose logs -f
+
+# Run tests
+npm test
+
+# Build for production
+npm run build
 ```
 
 ---
 
-## Support
+## 📞 Support & License
 
-For issues and feature requests, please open an issue on GitHub.
+### Getting Help
+
+- **Issues**: Open an issue on [GitHub Issues](https://github.com/141stfighterwing-collab/Weavenote/issues)
+- **Discussions**: Use [GitHub Discussions](https://github.com/141stfighterwing-collab/Weavenote/discussions) for questions
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
 
-## License
+<p align="center">
+  Made with ❤️ by the WeaveNote Team
+</p>
 
-Add your license here (MIT/Apache-2.0/Proprietary) as needed.
+<p align="center">
+  <a href="#-quick-start">Get Started Now</a> •
+  <a href="#-faq">FAQ</a> •
+  <a href="https://github.com/141stfighterwing-collab/Weavenote/issues">Report Bug</a>
+</p>
