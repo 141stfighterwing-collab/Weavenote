@@ -297,13 +297,86 @@ Version format:
 
 ## 3) Quick Start
 
+### 🚀 One-Click Installation (Recommended)
+
+**Windows users can use our automated installer:**
+
+1. **Download and extract** the repository
+2. **Double-click** `install-weavenote.bat`
+3. **Follow the prompts** to configure your environment
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│     📁 Weavenote                                                           │
+│     ├── 📄 install-weavenote.bat    ◀── Double-click to start!            │
+│     ├── 📄 install-weavenote.ps1                                           │
+│     ├── 📄 INSTALLATION.md         (Detailed installation guide)           │
+│     └── ...                                                                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**The installer will:**
+- ✅ Check all prerequisites (Docker, ports, etc.)
+- ✅ Generate secure default credentials
+- ✅ Create environment configuration files
+- ✅ Build and start Docker containers
+- ✅ Initialize the PostgreSQL database
+- ✅ Run health checks and show status
+
+**Installation Preview:**
+
+```
+  ╔═══════════════════════════════════════════════════════════════════════════╗
+  ║   🧶 WEAVERNOTE DOCKER INSTALLER v1.0.0                                   ║
+  ╚═══════════════════════════════════════════════════════════════════════════╝
+
+  ┌─────────────────────────────────────────────────────────────┐
+  │ Step 1/8 - Checking Prerequisites        Progress: 12%      │
+  └─────────────────────────────────────────────────────────────┘
+
+  [✓] Docker Desktop is installed (Version: 24.0.6)
+  [✓] Docker Compose is installed
+  [✓] Port 8080 is available
+  [✓] Port 3001 is available
+  [✓] Port 5432 is available
+
+  ┌─────────────────────────────────────────────────────────────┐
+  │ Step 5/8 - Building Docker Images        Progress: 62%      │
+  └─────────────────────────────────────────────────────────────┘
+
+  Building images [████████████░░░░░░░░] 60%
+
+  ┌─────────────────────────────────────────────────────────────┐
+  │ Step 8/8 - Running Health Checks         Progress: 100%     │
+  └─────────────────────────────────────────────────────────────┘
+
+  [✓] Frontend is healthy
+  [✓] API is healthy
+  [✓] Database is ready
+
+  🎉 WEAVERNOTE IS NOW RUNNING! 🎉
+  
+  📱 Frontend:  http://localhost:8080
+  🔌 API:       http://localhost:3001/api
+```
+
+> 📖 **See [INSTALLATION.md](./INSTALLATION.md) for detailed step-by-step guide with screenshots**
+
+---
+
 ### Prerequisites
 
-- Node.js 18+
-- npm 9+
-- Docker & Docker Compose (for containerized deployment)
+- Docker Desktop (must be running)
+- PowerShell 5.1+ (built into Windows)
+- Git (optional, for cloning)
 
-### Local Development Setup
+---
+
+### Manual Installation
+
+If you prefer manual setup or are on Linux/macOS:
 
 1. **Install dependencies**
    ```bash
