@@ -66,6 +66,7 @@
 - [Installation](#-installation)
 - [Configuration](#-configuration)
 - [Docker Deployment](#-docker-deployment)
+- [Backup & Migration](#-backup--migration)
 - [API Reference](#-api-reference)
 - [Database Architecture](#-database-architecture)
 - [Security](#-security)
@@ -682,6 +683,234 @@ When deploying to production with a domain:
 - [ ] Enable rate limiting
 - [ ] Configure backup strategy
 - [ ] Review database security settings
+
+---
+
+## 💾 Backup & Migration
+
+WeaveNote includes a comprehensive backup and migration tool for data protection and easy migration from other services.
+
+### Quick Start
+
+**Windows:**
+```bash
+# Double-click backup-migration.bat or run:
+.\backup-migration.bat
+```
+
+**All Platforms:**
+```bash
+powershell -ExecutionPolicy Bypass -File backup-migration.ps1
+```
+
+### Main Menu Options
+
+```
+╔═══════════════════════════════════════════════════════════════════╗
+║   🧶 WEAVERNOTE BACKUP & MIGRATION TOOL v1.0.0                    ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+BACKUP OPTIONS:
+[1] Create Local Backup - SQL, JSON, CSV exports
+[2] Create Cloud Backup - AWS S3, GCS, Azure, Dropbox, SFTP
+
+MIGRATION OPTIONS:
+[3] Migrate from Cloud - Firebase, Supabase, MongoDB, Notion
+
+RESTORE OPTIONS:
+[4] Restore from Backup - Restore from backup files
+
+UTILITIES:
+[5] Pre-flight Checks - Database & disk space verification
+[6] Clean Old Backups - Remove backups older than 30 days
+```
+
+### Backup Features
+
+#### Local Backup
+
+Creates multiple backup formats for maximum compatibility:
+
+| Format | Description | Use Case |
+|--------|-------------|----------|
+| **SQL Dump** | Full PostgreSQL database export | Complete restore |
+| **Custom Dump** | PostgreSQL custom format | Selective restore |
+| **JSON Export** | Notes, folders, tags in JSON | Cross-platform import |
+| **CSV Export** | Notes in spreadsheet format | Analysis, reporting |
+
+```
+Backup Location: ./backups/
+Files Created:
+  • weavenote_backup_20240115_143022.sql
+  • weavenote_backup_20240115_143022.dump
+  • weavenote_export_20240115_143022.json
+  • weavenote_notes_20240115_143022.csv
+  • manifest_20240115_143022.json
+```
+
+#### Cloud Backup Destinations
+
+| Service | Requirements | Notes |
+|---------|--------------|-------|
+| **AWS S3** | AWS CLI configured | Cost-effective long-term storage |
+| **Google Cloud Storage** | gcloud CLI configured | Good for Google Workspace users |
+| **Azure Blob Storage** | Azure CLI configured | Enterprise integration |
+| **Dropbox** | Access token | Easy personal backup |
+| **SFTP/FTP** | Server credentials | Self-hosted option |
+
+### Migration Features
+
+#### Supported Sources
+
+| Source | Method | Requirements |
+|--------|--------|--------------|
+| **Firebase Firestore** | Direct/API | Service Account JSON |
+| **Supabase** | Database/API | Connection string or API key |
+| **MongoDB** | Dump/API | Connection string |
+| **Notion** | API | Integration token |
+| **JSON Import** | File import | Valid JSON format |
+
+#### Firebase Migration
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    FIREBASE MIGRATION SETUP                         │
+├─────────────────────────────────────────────────────────────────────┤
+│  Required:                                                           │
+│  • Firebase Project ID                                               │
+│  • Service Account JSON file                                         │
+│                                                                      │
+│  To get your Service Account JSON:                                  │
+│  1. Go to Firebase Console → Project Settings → Service Accounts    │
+│  2. Click 'Generate new private key'                                 │
+│  3. Save the JSON file securely                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Migration Process:**
+1. Pre-flight checks (database running, disk space)
+2. Connect to Firebase using service account
+3. Export notes, folders, and tags
+4. Transform to WeaveNote schema
+5. Import to local PostgreSQL
+6. Verification and cleanup
+
+#### Supabase Migration
+
+Two migration methods available:
+
+| Method | Speed | Use Case |
+|--------|-------|----------|
+| **Direct Database** | Fast | Recommended when network allows |
+| **API Migration** | Slower | Works through firewalls |
+
+**Direct Database Migration:**
+```
+Required: Supabase Database Connection String
+Format: postgresql://user:password@host:port/database
+```
+
+**API Migration:**
+```
+Required:
+• Supabase Project URL (https://xxxxx.supabase.co)
+• Service Role Key (from Settings → API)
+```
+
+#### JSON Import Format
+
+```json
+{
+  "notes": [
+    {
+      "title": "My Note",
+      "content": "Note content here...",
+      "type": "quick",
+      "tags": ["tag1", "tag2"],
+      "folderId": "optional-folder-id"
+    }
+  ],
+  "folders": [
+    {
+      "name": "My Folder",
+      "order": 1
+    }
+  ]
+}
+```
+
+### Pre-flight Checks
+
+The tool automatically verifies before any operation:
+
+| Check | Description | Action if Failed |
+|-------|-------------|------------------|
+| Docker Status | Is Docker running? | Prompt to start Docker |
+| Container Status | Are containers running? | Attempt to start containers |
+| Database Connection | Can we connect to PostgreSQL? | Show connection error |
+| Disk Space | Is there enough free space? | Offer cleanup suggestions |
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ Checking Disk Space                                                  │
+├─────────────────────────────────────────────────────────────────────┤
+│  Drive: C:\                                                          │
+│  Total Space: 500 GB                                                 │
+│  Free Space: 125 GB                                                  │
+│  Used: 75%                                                           │
+│                                                                      │
+│  [✓] Sufficient disk space available: 125 GB                        │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Restore Process
+
+**WARNING: Restore will replace ALL data in your database!**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ Database Restore                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│  Available backups:                                                  │
+│  [1] weavenote_backup_20240115_143022.sql (12.5 MB)                 │
+│  [2] weavenote_backup_20240114_091500.sql (11.8 MB)                 │
+│  [3] weavenote_backup_20240113_183022.sql (10.2 MB)                 │
+│                                                                      │
+│  Select backup to restore: 1                                         │
+│                                                                      │
+│  ⚠️  WARNING: This will replace ALL data!                           │
+│  Are you sure? (yes/N): yes                                         │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Backup Best Practices
+
+| Practice | Recommendation |
+|----------|---------------|
+| **Frequency** | Daily automated backups for production |
+| **Retention** | Keep 30 days locally, 90+ days in cloud |
+| **Verification** | Test restore process monthly |
+| **Encryption** | Enable for cloud backups containing sensitive data |
+| **Offsite** | Always maintain at least one offsite backup |
+
+### Automated Backup Schedule (Optional)
+
+Create a scheduled task for automated backups:
+
+**Windows Task Scheduler:**
+```powershell
+# Create daily backup task
+$action = New-ScheduledTaskAction -Execute "powershell.exe" `
+    -Argument "-ExecutionPolicy Bypass -File `"$PWD\backup-migration.ps1`" -AutoBackup"
+$trigger = New-ScheduledTaskTrigger -Daily -At 2am
+Register-ScheduledTask -TaskName "WeaveNote Backup" -Action $action -Trigger $trigger
+```
+
+**Linux Cron:**
+```bash
+# Add to crontab (daily at 2am)
+0 2 * * * cd /path/to/weavenote && ./backup-migration.ps1 -AutoBackup
+```
 
 ---
 

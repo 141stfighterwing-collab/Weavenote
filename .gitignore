@@ -8,6 +8,12 @@ coverage
 test-results/
 playwright-report/
 
+# Backup & Migration
+backups/
+temp-migration/
+*.backup
+*.sql.bak
+
 # Production
 build
 dist
