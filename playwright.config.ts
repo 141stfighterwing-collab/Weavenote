@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:8080',
+    baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'on',
     video: 'retain-on-failure',
@@ -20,9 +20,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'docker-compose up',
-    url: 'http://localhost:8080/health',
-    reuseExistingServer: !process.env.CI,
+    command: 'npm run dev',
+    url: 'http://localhost:5173',
+    reuseExistingServer: true,
     timeout: 120000,
   },
 });

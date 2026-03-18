@@ -1,40 +1,79 @@
 <div align="center">
-<img width="1200" height="475" alt="WeaveNote Banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+<img width="1200" height="475" alt="WeaveNote - AI-Powered Note Taking App" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 
-<h1 align="center">WeaveNote</h1>
+<h1 align="center">🧶 WeaveNote</h1>
 
 <p align="center">
   <strong>AI-Powered Note Workspace for Capture, Synthesis, Project Planning & Knowledge Organization</strong>
 </p>
 
 <p align="center">
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-screenshots">Screenshots</a> •
-  <a href="#-requirements">Requirements</a> •
-  <a href="#-installation">Installation</a> •
-  <a href="#-configuration">Configuration</a> •
-  <a href="#-faq">FAQ</a>
+  <em>A modern, self-hosted note-taking application with PostgreSQL backend, Docker deployment, and Google Gemini AI integration</em>
 </p>
+
+<p align="center">
+  <a href="#-quick-start">🚀 Quick Start</a> •
+  <a href="#-screenshots">📸 Screenshots</a> •
+  <a href="#-requirements">💻 Requirements</a> •
+  <a href="#-installation">🛠️ Installation</a> •
+  <a href="#-faq">❓ FAQ</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/141stfighterwing-collab/Weavenote/stargazers">
+    <img src="https://img.shields.io/github/stars/141stfighterwing-collab/Weavenote?style=social" alt="GitHub Stars">
+  </a>
+  <a href="https://github.com/141stfighterwing-collab/Weavenote/forks">
+    <img src="https://img.shields.io/github/forks/141stfighterwing-collab/Weavenote?style=social" alt="GitHub Forks">
+  </a>
+  <a href="https://github.com/141stfighterwing-collab/Weavenote/issues">
+    <img src="https://img.shields.io/github/issues/141stfighterwing-collab/Weavenote" alt="GitHub Issues">
+  </a>
+  <img src="https://img.shields.io/github/license/141stfighterwing-collab/Weavenote" alt="License">
+  <img src="https://img.shields.io/github/v/release/141stfighterwing-collab/Weavenote" alt="Version">
+</p>
+
+<!-- SEO Keywords: note-taking app, AI notes, PostgreSQL notes, Docker notes, self-hosted notes, knowledge management, project planning, Google Gemini AI, React notes app, TypeScript notes -->
+
+</div>
+
+---
+
+## 🏷️ Tags & Topics
+
+<div align="center">
+
+| Category | Tags |
+|----------|------|
+| **Application** | `note-taking` `knowledge-management` `productivity` `project-planning` `note-workspace` |
+| **Technology** | `react` `typescript` `vite` `nodejs` `express` `postgresql` `prisma` |
+| **Deployment** | `docker` `docker-compose` `self-hosted` `containerization` `nginx` |
+| **AI** | `google-gemini` `ai-notes` `ai-assistant` `gemini-api` `artificial-intelligence` |
+| **Features** | `markdown` `themes` `export` `backup` `version-control` `rest-api` |
+
+**Hashtags:** #WeaveNote #NoteTaking #AI #PostgreSQL #Docker #SelfHosted #React #TypeScript #OpenSource #Productivity #KnowledgeManagement #GoogleGemini
+
+</div>
 
 ---
 
 ## 📋 Table of Contents
 
-1. [About WeaveNote](#-about-weavenote)
-2. [Quick Start](#-quick-start)
-3. [Screenshots](#-screenshots)
-4. [Requirements](#-requirements)
-5. [Installation](#-installation)
-6. [Configuration](#-configuration)
-7. [Docker Deployment](#-docker-deployment)
-8. [API Reference](#-api-reference)
-9. [Database Architecture](#-database-architecture)
-10. [Security](#-security)
-11. [Troubleshooting](#-troubleshooting)
-12. [FAQ](#-faq)
-13. [Development](#-development)
-14. [Support & License](#-support--license)
+- [About WeaveNote](#-about-weavenote)
+- [Quick Start](#-quick-start)
+- [Screenshots](#-screenshots)
+- [Requirements](#-requirements)
+- [Installation](#-installation)
+- [Configuration](#-configuration)
+- [Docker Deployment](#-docker-deployment)
+- [API Reference](#-api-reference)
+- [Database Architecture](#-database-architecture)
+- [Security](#-security)
+- [Troubleshooting](#-troubleshooting)
+- [FAQ](#-faq)
+- [Development](#-development)
+- [Credits](#-credits)
+- [Support & License](#-support--license)
 
 ---
 
@@ -42,7 +81,7 @@
 
 WeaveNote is a modern, AI-powered note-taking application designed for professionals, developers, and teams who need more than just basic note storage. Built with a robust PostgreSQL backend and containerized with Docker, WeaveNote offers enterprise-grade reliability with consumer-friendly simplicity.
 
-### Key Features
+### ✨ Key Features
 
 | Feature | Description |
 |---------|-------------|
@@ -56,6 +95,15 @@ WeaveNote is a modern, AI-powered note-taking application designed for professio
 | 🔄 **Version Control** | Built-in versioning system with patch tracking and rollback capability |
 | ⚙️ **Admin Dashboard** | Web-based settings management for environment variables and system configuration |
 | ☁️ **Cloud Ready** | Optional Firebase integration for hybrid cloud/on-premise deployment |
+
+### 🎯 Use Cases
+
+- **📋 Personal Knowledge Base** - Organize thoughts, research, and ideas
+- **💼 Project Management** - Track tasks, milestones, and project documentation
+- **📚 Research Notes** - AI-powered synthesis of complex information
+- **💻 Code Documentation** - Store and organize code snippets with AI explanations
+- **📝 Meeting Notes** - Capture and summarize meeting discussions
+- **📖 Learning Journal** - Track learning progress with AI-generated summaries
 
 ---
 
@@ -111,147 +159,58 @@ open http://localhost:8080
 
 ### Main Application Interface
 
-```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│  🧶 WeaveNote          [Grid|MindMap]  📊 Analytics  [🔍 Search...]  👤 Login ⚙️ │
-├──────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌─────────┐   ┌─────────────────────────────────────────────────────────┐   │
-│  │ Sidebar │   │                    Main Content                        │   │
-│  │         │   │  ┌─────────────────────────────────────────────────┐   │   │
-│  │ Folders │   │  │  Note Input Area                                │   │   │
-│  │ ├─ Work │   │  │  ┌──────────────────────────────────────────┐  │   │   │
-│  │ ├─ Personal│ │  │  │ Enter your note here...                  │  │   │   │
-│  │ └─ Ideas │   │  │  │                                          │  │   │   │
-│  │         │   │  │  └──────────────────────────────────────────┘  │   │   │
-│  │ Tags    │   │  │  [Quick] [Deep] [Code] [Project] [Notebook]   │   │   │
-│  │ #work   │   │  └─────────────────────────────────────────────────┘   │   │
-│  │ #ideas  │   │                                                     │   │
-│  │ #todo   │   │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │   │
-│  │         │   │  │ 📝 Note 1    │  │ 📝 Note 2    │  │ 📝 Note 3    │ │   │
-│  │ Calendar│   │  │              │  │              │  │              │ │   │
-│  │ 📅 Today│   │  │ Content...   │  │ Content...   │  │ Content...   │ │   │
-│  │         │   │  │ #work #idea  │  │ #personal    │  │ #todo        │ │   │
-│  └─────────┘   │  └──────────────┘  └──────────────┘  └──────────────┘ │   │
-│                └─────────────────────────────────────────────────────────┘   │
-├──────────────────────────────────────────────────────────────────────────────┤
-│  🟢 Cloud Sync Active                              Daily AI Usage: 45/800    │
-└──────────────────────────────────────────────────────────────────────────────┘
-```
+<img src="./screenshots/01-homepage.png" alt="WeaveNote Main Interface" width="800">
+
+*The main WeaveNote interface showing the grid view with notes organized in folders and tags.*
 
 ### Settings Panel
 
-Access by clicking the **⚙️ gear icon** in the top-right corner:
+<img src="./screenshots/03-settings-panel.png" alt="Settings Panel" width="800">
 
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  ⚙️ System Control                                                           [ ✕ ]   │
-├────────────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                        │
-│  ┌──────────────────┐   ┌────────────────────────────────────────────────────────┐   │
-│  │ Sidebar          │   │                    Content Area                        │   │
-│  │                  │   │                                                        │   │
-│  │ 🎨 Visuals       │   │  ┌──────────────────────────────────────────────────┐  │   │
-│  │ 🛡️ My Security   │   │  │              Dark Mode                          │  │   │
-│  │ ✨ AI Engine     │   │  │  [━━━━━━━━━━━━━━○──]                             │  │   │
-│  │ 🔍 Diagnostics   │   │  └──────────────────────────────────────────────────┘  │   │
-│  │                  │   │                                                        │   │
-│  │ ── Admin Only ── │   │  ┌──────────────────────────────────────────────────┐  │   │
-│  │ 🔐 ENV Settings  │   │  │              Theme Selector                     │  │   │
-│  │ 📦 Versioning    │   │  │  ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐           │  │   │
-│  │ 👥 User Base     │   │  │  │default│ocean│forest│sunset│rose│ ...       │  │   │
-│  │ ☁️ Cloud Setup   │   │  │  └────┘ └────┘ └────┘ └────┘ └────┘           │  │   │
-│  │ 📜 System Logs   │   │  └──────────────────────────────────────────────────┘  │   │
-│  └──────────────────┘   └────────────────────────────────────────────────────────┘   │
-└────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-### ENV Settings (Admin Only)
-
-Manage API keys, database credentials, and other sensitive settings:
-
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│  🔐 Environment Variables - Manage API keys, database credentials, and settings         │
-├────────────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                        │
-│  [Import .env] [Export .env] [+ Add Variable]                                         │
-│                                                                                        │
-│  Quick Add: [+ GEMINI_API_KEY] [+ POSTGRES_PASSWORD] [+ JWT_SECRET]                  │
-│                                                                                        │
-│  ┌──────────────────────────────────────────────────────────────────────────────────┐ │
-│  │ Key              │ Value            │ Category  │ Secret │ Actions              │ │
-│  ├──────────────────────────────────────────────────────────────────────────────────┤ │
-│  │ GEMINI_API_KEY   │ ••••••••••••     │ API       │ ✓      │ 📝 Edit  🗑️ Delete   │ │
-│  │ POSTGRES_PASSWORD│ ••••••••••••     │ Database  │ ✓      │ 📝 Edit  🗑️ Delete   │ │
-│  │ JWT_SECRET       │ ••••••••••••     │ Security  │ ✓      │ 📝 Edit  🗑️ Delete   │ │
-│  └──────────────────────────────────────────────────────────────────────────────────┘ │
-│                                                                                        │
-│  ⚠️ Secret variables are encrypted with AES-256-GCM. The .env file is gitignored.     │
-└────────────────────────────────────────────────────────────────────────────────────────┘
-```
+*Access settings by clicking the ⚙️ gear icon in the top-right corner.*
 
 ### Theme Selection
 
-Choose from 15+ beautiful themes:
+<img src="./screenshots/07-theme-selector.png" alt="Theme Selector" width="400">
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Theme Selector                               │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐       │
-│  │DEFAULT │ │ OCEAN  │ │ FOREST │ │ SUNSET │ │  ROSE  │       │
-│  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘       │
-│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐       │
-│  │MIDNIGHT│ │ COFFEE │ │  NEON  │ │CYBERPUNK│ │  NORD  │       │
-│  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘       │
-│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐       │
-│  │DRACULA │ │LAVENDER│ │  EARTH │ │ YELLOW │HYPERBLUE│       │
-│  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘       │
-└─────────────────────────────────────────────────────────────────┘
-```
+*Choose from 15+ beautiful themes including Dark Mode, Ocean, Forest, Sunset, and more.*
 
-### Grid View vs Mindmap View
+### Note Types - Different Tabs
 
-**Grid View** - Organize notes in a card-based layout:
+<table>
+  <tr>
+    <td><img src="./screenshots/13-tab-quick.png" alt="Quick Notes" width="400"></td>
+    <td><img src="./screenshots/13-tab-project.png" alt="Project Notes" width="400"></td>
+  </tr>
+  <tr>
+    <td><em>Quick Notes Tab</em></td>
+    <td><em>Project Notes Tab</em></td>
+  </tr>
+</table>
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│  [Grid ████] [MindMap ○○]                                        │
-├──────────────────────────────────────────────────────────────────┤
-│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐        │
-│  │ 📝 Meeting    │  │ 📝 Project    │  │ 📝 Ideas      │        │
-│  │ Notes         │  │ Planning      │  │               │        │
-│  │               │  │               │  │               │        │
-│  │ Discuss Q3... │  │ Milestones:   │  │ New features  │        │
-│  │ #work #meeting│  │ #project      │  │ #ideas        │        │
-│  └───────────────┘  └───────────────┘  └───────────────┘        │
-└──────────────────────────────────────────────────────────────────┘
-```
+### Security Settings
 
-**Mindmap View** - Visualize connections between notes:
+<img src="./screenshots/05-settings-my-security.png" alt="Security Settings" width="800">
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│  [Grid ○○] [MindMap ████]   [Performance OFF]                    │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│                         ┌─────────┐                              │
-│                         │  Note 1 │                              │
-│                         └────┬────┘                              │
-│                              │                                   │
-│         ┌────────────────────┼────────────────────┐             │
-│         │                    │                    │             │
-│    ┌────┴────┐          ┌────┴────┐          ┌────┴────┐        │
-│    │  Note 2 │          │  Note 3 │          │  Note 4 │        │
-│    └────┬────┘          └────┬────┘          └─────────┘        │
-│         │                    │                                  │
-│    ┌────┴────┐          ┌────┴────┐                             │
-│    │  Note 5 │          │  Note 6 │                             │
-│    └─────────┘          └─────────┘                             │
-│                                                                  │
-└──────────────────────────────────────────────────────────────────┘
-```
+*Manage your security settings including password changes and account preferences.*
+
+### AI Engine Configuration
+
+<img src="./screenshots/05-settings-ai-engine.png" alt="AI Engine Settings" width="800">
+
+*Configure AI usage quotas and monitor your daily Gemini API usage.*
+
+### Diagnostics
+
+<img src="./screenshots/05-settings-diagnostics.png" alt="Diagnostics Panel" width="800">
+
+*System health checks and diagnostic information for troubleshooting.*
+
+### Settings Entry Point
+
+<img src="./screenshots/14-settings-entry-point.png" alt="Settings Entry Point" width="800">
+
+*The highlighted settings panel showing where to access all configuration options.*
 
 ---
 
@@ -1021,7 +980,46 @@ npm test
 
 # Build for production
 npm run build
+
+# Generate screenshots
+npm run screenshots
 ```
+
+---
+
+## 🙏 Credits
+
+### Core Development
+
+| Role | Contributor |
+|------|-------------|
+| **Project Creator & Lead Developer** | [141stfighterwing-collab](https://github.com/141stfighterwing-collab) |
+| **Docker & Infrastructure** | [141stfighterwing-collab](https://github.com/141stfighterwing-collab) |
+| **Backend & Database Architecture** | [141stfighterwing-collab](https://github.com/141stfighterwing-collab) |
+| **UI/UX Design & Implementation** | [Shootre](https://github.com/Shootre) |
+
+### Special Thanks
+
+- **Google Gemini Team** - For the powerful AI API that enables intelligent note synthesis
+- **Vercel** - For Vite, the lightning-fast build tool
+- **Prisma Team** - For the excellent ORM that makes database operations a breeze
+- **Docker Team** - For containerization technology that simplifies deployment
+- **Open Source Community** - For the countless libraries and tools that made this project possible
+
+### Built With
+
+- [React](https://reactjs.org/) - UI Library
+- [TypeScript](https://www.typescriptlang.org/) - Type Safety
+- [Vite](https://vitejs.dev/) - Build Tool
+- [Node.js](https://nodejs.org/) - Runtime
+- [Express](https://expressjs.com/) - Web Framework
+- [Prisma](https://www.prisma.io/) - ORM
+- [PostgreSQL](https://www.postgresql.org/) - Database
+- [Docker](https://www.docker.com/) - Containerization
+- [Nginx](https://nginx.org/) - Web Server
+- [Google Gemini](https://ai.google.dev/) - AI API
+- [Tailwind CSS](https://tailwindcss.com/) - Styling
+- [Playwright](https://playwright.dev/) - Testing & Screenshots
 
 ---
 
@@ -1046,12 +1044,25 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-<p align="center">
-  Made with ❤️ by the WeaveNote Team
+<div align="center">
+
+<p>Made with ❤️ by the WeaveNote Team</p>
+
+<p>
+  <a href="#-quick-start">🚀 Get Started Now</a> •
+  <a href="#-faq">❓ FAQ</a> •
+  <a href="https://github.com/141stfighterwing-collab/Weavenote/issues">🐛 Report Bug</a> •
+  <a href="https://github.com/141stfighterwing-collab/Weavenote/issues">✨ Request Feature</a>
 </p>
 
-<p align="center">
-  <a href="#-quick-start">Get Started Now</a> •
-  <a href="#-faq">FAQ</a> •
-  <a href="https://github.com/141stfighterwing-collab/Weavenote/issues">Report Bug</a>
+<p>
+  <strong>Keywords:</strong> note-taking app, AI notes, PostgreSQL notes, Docker notes, self-hosted notes, knowledge management, project planning, Google Gemini AI, React notes app, TypeScript notes, open source notes, markdown notes, dark mode notes, offline notes, encrypted notes
 </p>
+
+<p>
+  <a href="https://github.com/141stfighterwing-collab/Weavenote">
+    <img src="https://img.shields.io/badge/GitHub-WeaveNote-blue?logo=github" alt="GitHub">
+  </a>
+</p>
+
+</div>
