@@ -55,6 +55,11 @@ $DEFAULTS = @{
     
     # CORS
     CORS_ORIGINS = "http://localhost:8080,http://localhost:3000"
+    
+    # Deployment mode
+    USE_NPM = $false
+    DOMAIN = ""
+    USE_SSL = $false
 }
 
 # Required environment variables
@@ -289,6 +294,139 @@ function Test-Prerequisites {
 # =============================================================================
 # ENVIRONMENT SETUP
 # =============================================================================
+
+function Get-DomainConfiguration {
+    Write-Header "Domain & Reverse Proxy Configuration"
+    
+    Write-Host "  ┌─────────────────────────────────────────────────────────────────────┐" -ForegroundColor Cyan
+    Write-Host "  │                     DEPLOYMENT MODE SELECTION                       │" -ForegroundColor Cyan
+    Write-Host "  └─────────────────────────────────────────────────────────────────────┘" -ForegroundColor Cyan
+    Write-Host ""
+    
+    Write-Host "  Choose your deployment scenario:" -ForegroundColor White
+    Write-Host ""
+    Write-Host "  [1] Local Development Only" -ForegroundColor Green
+    Write-Host "      • Access via http://localhost:8080" -ForegroundColor DarkGray
+    Write-Host "      • No domain or SSL needed" -ForegroundColor DarkGray
+    Write-Host "      • All ports exposed locally" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  [2] Production with Nginx Proxy Manager (NPM)" -ForegroundColor Yellow
+    Write-Host "      • Use custom domain (e.g., notes.yourdomain.com)" -ForegroundColor DarkGray
+    Write-Host "      • SSL via Let's Encrypt" -ForegroundColor DarkGray
+    Write-Host "      • Only port 8080 exposed" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  [3] Production with Custom Reverse Proxy" -ForegroundColor Yellow
+    Write-Host "      • Use your own nginx/traefik/caddy" -ForegroundColor DarkGray
+    Write-Host "      • Manual SSL configuration" -ForegroundColor DarkGray
+    Write-Host "      • Custom port mapping" -ForegroundColor DarkGray
+    Write-Host ""
+    
+    $choice = Read-Host "  Select deployment mode (1/2/3)"
+    
+    $config = @{
+        USE_NPM = $false
+        DOMAIN = ""
+        USE_SSL = $false
+        EXPOSE_DB = $false
+        FRONTEND_PORT = $DEFAULTS.FRONTEND_PORT
+        CORS_ORIGINS = $DEFAULTS.CORS_ORIGINS
+    }
+    
+    switch ($choice) {
+        "1" {
+            Write-Success "Local development mode selected"
+            $config.USE_NPM = $false
+            $config.FRONTEND_PORT = $DEFAULTS.FRONTEND_PORT
+            $config.CORS_ORIGINS = "http://localhost:8080,http://localhost:3000"
+        }
+        "2" {
+            Write-Success "Nginx Proxy Manager mode selected"
+            $config.USE_NPM = $true
+            $config.USE_SSL = $true
+            
+            Write-Host ""
+            $domain = Read-Host "  Enter your domain (e.g., notes.yourdomain.com)"
+            while ([string]::IsNullOrWhiteSpace($domain)) {
+                Write-Error "Domain is required for production deployment"
+                $domain = Read-Host "  Enter your domain"
+            }
+            $config.DOMAIN = $domain
+            $config.CORS_ORIGINS = "https://$domain"
+            
+            Write-Host ""
+            Write-Host "  ┌─────────────────────────────────────────────────────────────────────┐" -ForegroundColor Yellow
+            Write-Host "  │ NPM Configuration Instructions:                                     │" -ForegroundColor Yellow
+            Write-Host "  │                                                                     │" -ForegroundColor Yellow
+            Write-Host "  │ 1. Open Nginx Proxy Manager admin panel                            │" -ForegroundColor Yellow
+            Write-Host "  │ 2. Add new Proxy Host with:                                         │" -ForegroundColor Yellow
+            Write-Host "  │    • Domain: $domain".PadRight(59) -ForegroundColor Yellow -NoNewline
+            Write-Host "│" -ForegroundColor Yellow
+            Write-Host "  │    • Forward Host: weavenote-frontend (or host IP)                 │" -ForegroundColor Yellow
+            Write-Host "  │    • Forward Port: 80                                               │" -ForegroundColor Yellow
+            Write-Host "  │ 3. Enable SSL with Let's Encrypt                                    │" -ForegroundColor Yellow
+            Write-Host "  └─────────────────────────────────────────────────────────────────────┘" -ForegroundColor Yellow
+            Write-Host ""
+            
+            $exposeDb = Read-Host "  Expose PostgreSQL port for external tools? (y/N)"
+            $config.EXPOSE_DB = ($exposeDb -eq "y" -or $exposeDb -eq "Y")
+            
+            $customPort = Read-Host "  Custom frontend port? (default: 8080, press Enter to keep)"
+            if (-not [string]::IsNullOrWhiteSpace($customPort)) {
+                $config.FRONTEND_PORT = $customPort
+            } else {
+                $config.FRONTEND_PORT = $DEFAULTS.FRONTEND_PORT
+            }
+        }
+        "3" {
+            Write-Success "Custom reverse proxy mode selected"
+            $config.USE_NPM = $false
+            $config.USE_SSL = $true
+            
+            Write-Host ""
+            $domain = Read-Host "  Enter your domain (e.g., notes.yourdomain.com)"
+            while ([string]::IsNullOrWhiteSpace($domain)) {
+                Write-Error "Domain is required for production deployment"
+                $domain = Read-Host "  Enter your domain"
+            }
+            $config.DOMAIN = $domain
+            $config.CORS_ORIGINS = "https://$domain"
+            
+            Write-Host ""
+            $customPort = Read-Host "  Port for reverse proxy to forward to? (default: 8080)"
+            if (-not [string]::IsNullOrWhiteSpace($customPort)) {
+                $config.FRONTEND_PORT = $customPort
+            } else {
+                $config.FRONTEND_PORT = $DEFAULTS.FRONTEND_PORT
+            }
+            
+            $exposeDb = Read-Host "  Expose PostgreSQL port for external tools? (y/N)"
+            $config.EXPOSE_DB = ($exposeDb -eq "y" -or $exposeDb -eq "Y")
+            
+            Write-Host ""
+            Write-Host "  ┌─────────────────────────────────────────────────────────────────────┐" -ForegroundColor Cyan
+            Write-Host "  │ Port Exposure Summary:                                              │" -ForegroundColor Cyan
+            Write-Host "  │                                                                     │" -ForegroundColor Cyan
+            Write-Host "  │ EXPOSED:                                                            │" -ForegroundColor Cyan
+            Write-Host "  │   • Port $($config.FRONTEND_PORT) - Frontend (for reverse proxy)             │" -ForegroundColor Cyan
+            if ($config.EXPOSE_DB) {
+                Write-Host "  │   • Port 5432 - PostgreSQL (external DB tools)                    │" -ForegroundColor Cyan
+            }
+            Write-Host "  │                                                                     │" -ForegroundColor Cyan
+            Write-Host "  │ NOT EXPOSED (internal Docker network only):                         │" -ForegroundColor Cyan
+            Write-Host "  │   • Port 3001 - API (proxied via frontend nginx)                   │" -ForegroundColor Cyan
+            if (-not $config.EXPOSE_DB) {
+                Write-Host "  │   • Port 5432 - PostgreSQL                                         │" -ForegroundColor Cyan
+            }
+            Write-Host "  └─────────────────────────────────────────────────────────────────────┘" -ForegroundColor Cyan
+        }
+        default {
+            Write-Warning "Invalid selection, defaulting to local development"
+            $config.FRONTEND_PORT = $DEFAULTS.FRONTEND_PORT
+        }
+    }
+    
+    return $config
+}
 
 function Get-EnvironmentVariables {
     Write-Header "Configuring Environment Variables"
@@ -683,7 +821,10 @@ function Test-ServiceHealth {
 # =============================================================================
 
 function Show-InstallationSummary {
-    param([hashtable]$EnvVars)
+    param(
+        [hashtable]$EnvVars,
+        [hashtable]$DeploymentConfig
+    )
     
     Write-Header "Installation Complete!"
     
@@ -694,11 +835,32 @@ function Show-InstallationSummary {
     Write-Host "  └─────────────────────────────────────────────────────────────────────┘" -ForegroundColor Green
     Write-Host ""
     
+    # Show access points based on deployment mode
     Write-Host "  Access Points:" -ForegroundColor Cyan
     Write-Host "  ─────────────────────────────────────────────────────────────────────" -ForegroundColor DarkGray
-    Write-Host "  📱 Frontend:     " -NoNewline; Write-Host "http://localhost:$($EnvVars['FRONTEND_PORT'])" -ForegroundColor White
-    Write-Host "  🔌 API:          " -NoNewline; Write-Host "http://localhost:$($EnvVars['API_PORT'])/api" -ForegroundColor White
-    Write-Host "  🗄️  Database:     " -NoNewline; Write-Host "localhost:$($EnvVars['POSTGRES_PORT'])" -ForegroundColor White
+    
+    if ($DeploymentConfig -and $DeploymentConfig.DOMAIN) {
+        # Production mode with domain
+        Write-Host "  🌐 Domain:       " -NoNewline; Write-Host "https://$($DeploymentConfig.DOMAIN)" -ForegroundColor White
+        Write-Host "  📱 Local:        " -NoNewline; Write-Host "http://localhost:$($EnvVars['FRONTEND_PORT'])" -ForegroundColor DarkGray
+        Write-Host ""
+        Write-Host "  ┌─────────────────────────────────────────────────────────────────────┐" -ForegroundColor Yellow
+        Write-Host "  │ ⚠️  NPM/REVERSE PROXY SETUP REQUIRED:                               │" -ForegroundColor Yellow
+        Write-Host "  │                                                                     │" -ForegroundColor Yellow
+        Write-Host "  │  1. Open your reverse proxy admin panel                            │" -ForegroundColor Yellow
+        Write-Host "  │  2. Create proxy host for: $($DeploymentConfig.DOMAIN)".PadRight(60) -ForegroundColor Yellow -NoNewline
+        Write-Host "│" -ForegroundColor Yellow
+        Write-Host "  │  3. Forward to: localhost:$($EnvVars['FRONTEND_PORT'])".PadRight(60) -ForegroundColor Yellow -NoNewline
+        Write-Host "│" -ForegroundColor Yellow
+        Write-Host "  │  4. Enable SSL/HTTPS                                              │" -ForegroundColor Yellow
+        Write-Host "  └─────────────────────────────────────────────────────────────────────┘" -ForegroundColor Yellow
+    }
+    else {
+        # Local development mode
+        Write-Host "  📱 Frontend:     " -NoNewline; Write-Host "http://localhost:$($EnvVars['FRONTEND_PORT'])" -ForegroundColor White
+        Write-Host "  🔌 API:          " -NoNewline; Write-Host "http://localhost:$($EnvVars['FRONTEND_PORT'])/api" -ForegroundColor White
+        Write-Host "  🗄️  Database:     " -NoNewline; Write-Host "localhost:5432" -ForegroundColor White
+    }
     Write-Host ""
     
     Write-Host "  Credentials:" -ForegroundColor Cyan
@@ -706,6 +868,19 @@ function Show-InstallationSummary {
     Write-Host "  👤 Database User:     " -NoNewline; Write-Host $EnvVars['POSTGRES_USER'] -ForegroundColor White
     Write-Host "  🔐 Database Password: " -NoNewline; Write-Host "******** (saved in .env)" -ForegroundColor Yellow
     Write-Host "  🗄️  Database Name:    " -NoNewline; Write-Host $EnvVars['POSTGRES_DB'] -ForegroundColor White
+    Write-Host ""
+    
+    # Port exposure summary
+    Write-Host "  Port Exposure:" -ForegroundColor Cyan
+    Write-Host "  ─────────────────────────────────────────────────────────────────────" -ForegroundColor DarkGray
+    Write-Host "  ✅ Port $($EnvVars['FRONTEND_PORT']) - Frontend (EXPOSED)" -ForegroundColor Green
+    Write-Host "  🔒 Port 3001 - API (internal only, proxied via frontend)" -ForegroundColor DarkGray
+    if ($DeploymentConfig -and $DeploymentConfig.EXPOSE_DB) {
+        Write-Host "  ⚠️  Port 5432 - PostgreSQL (EXPOSED for external tools)" -ForegroundColor Yellow
+    }
+    else {
+        Write-Host "  🔒 Port 5432 - PostgreSQL (internal only)" -ForegroundColor DarkGray
+    }
     Write-Host ""
     
     Write-Host "  Quick Commands:" -ForegroundColor Cyan
@@ -797,7 +972,7 @@ function Invoke-Cleanup {
 # =============================================================================
 
 function Main {
-    $totalSteps = 8
+    $totalSteps = 9
     $currentStep = 0
     
     Clear-Host
@@ -825,17 +1000,32 @@ function Main {
             exit 1
         }
         
-        # Step 2: Configure environment
+        # Step 2: Configure deployment mode
+        $currentStep++
+        Write-Step -Step $currentStep -Total $totalSteps -Message "Configuring Deployment Mode"
+        
+        $deploymentConfig = Get-DomainConfiguration
+        
+        # Step 3: Configure environment
         $currentStep++
         Write-Step -Step $currentStep -Total $totalSteps -Message "Configuring Environment"
         
         $envVars = Get-EnvironmentVariables
         
+        # Apply deployment configuration
+        $envVars["FRONTEND_PORT"] = $deploymentConfig.FRONTEND_PORT
+        $envVars["CORS_ORIGINS"] = $deploymentConfig.CORS_ORIGINS
+        
+        if ($deploymentConfig.DOMAIN) {
+            $envVars["DOMAIN"] = $deploymentConfig.DOMAIN
+            $envVars["USE_SSL"] = $deploymentConfig.USE_SSL
+        }
+        
         # Add admin defaults
         $envVars["ADMIN_EMAIL"] = $DEFAULTS.ADMIN_EMAIL
         $envVars["ADMIN_USERNAME"] = $DEFAULTS.ADMIN_USERNAME
         
-        # Step 3: Create .env file
+        # Step 4: Create .env file
         $currentStep++
         Write-Step -Step $currentStep -Total $totalSteps -Message "Creating Configuration Files"
         
@@ -849,17 +1039,18 @@ DATABASE_URL=postgresql://$($envVars['POSTGRES_USER']):$($envVars['POSTGRES_PASS
 JWT_SECRET=$($envVars['JWT_SECRET'])
 GEMINI_API_KEY=$($envVars['GEMINI_API_KEY'])
 ENCRYPTION_KEY=$($envVars['ENCRYPTION_KEY'])
+CORS_ORIGINS=$($envVars['CORS_ORIGINS'])
 "@
         $backendEnv | Out-File -FilePath "backend/.env" -Encoding UTF8 -Force
         Write-Success "Backend environment file created"
         
-        # Step 4: Stop existing containers
+        # Step 5: Stop existing containers
         $currentStep++
         Write-Step -Step $currentStep -Total $totalSteps -Message "Cleaning Up Existing Containers"
         
         Stop-ExistingContainers
         
-        # Step 5: Build Docker images
+        # Step 6: Build Docker images
         $currentStep++
         Write-Step -Step $currentStep -Total $totalSteps -Message "Building Docker Images"
         
@@ -867,7 +1058,7 @@ ENCRYPTION_KEY=$($envVars['ENCRYPTION_KEY'])
             throw "Failed to build Docker images"
         }
         
-        # Step 6: Start containers
+        # Step 7: Start containers
         $currentStep++
         Write-Step -Step $currentStep -Total $totalSteps -Message "Starting Docker Containers"
         
@@ -875,7 +1066,7 @@ ENCRYPTION_KEY=$($envVars['ENCRYPTION_KEY'])
             throw "Failed to start Docker containers"
         }
         
-        # Step 7: Initialize database
+        # Step 8: Initialize database
         $currentStep++
         Write-Step -Step $currentStep -Total $totalSteps -Message "Initializing Database"
         
@@ -896,7 +1087,7 @@ ENCRYPTION_KEY=$($envVars['ENCRYPTION_KEY'])
         Show-DockerStatus
         
         # Show summary
-        Show-InstallationSummary -EnvVars $envVars
+        Show-InstallationSummary -EnvVars $envVars -DeploymentConfig $deploymentConfig
         
         # Ask to show logs
         Write-Host ""

@@ -513,6 +513,176 @@ docker-compose up -d --build
 | PostgreSQL | localhost:5432 | Direct database access |
 | pgAdmin | http://localhost:5050 | Database admin UI (if enabled) |
 
+### Network Architecture & Port Exposure
+
+Understanding which ports need to be exposed and which services communicate internally:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           DOCKER NETWORK (weavenote_default)                     │
+│                                                                                   │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │                        INTERNAL COMMUNICATION                           │    │
+│  │                                                                          │    │
+│  │   Frontend (nginx) ──► API (api:3001) ──► PostgreSQL (postgres:5432)   │    │
+│  │         │                    │                      │                   │    │
+│  │         │                    │                      │                   │    │
+│  │    No external           No external           No external              │    │
+│  │    access needed         access needed         access needed            │    │
+│  │    (proxied via          (only via             (only internal)          │    │
+│  │     port 8080)            frontend)                                     │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                   │
+│  EXTERNAL ACCESS (Ports to expose):                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │                                                                          │    │
+│  │   Port 8080 ──► Frontend (ONLY port that needs external access)        │    │
+│  │                                                                          │    │
+│  │   Port 5432 ──► PostgreSQL (OPTIONAL - only for external DB access)     │    │
+│  │   Port 5050 ──► pgAdmin (OPTIONAL - only for DB admin UI)              │    │
+│  │                                                                          │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Port Exposure Summary
+
+| Port | Service | Expose Externally? | Purpose |
+|------|---------|-------------------|---------|
+| **8080** | Frontend | ✅ **YES** | Main web application - users access this |
+| 3001 | API | ❌ NO | Only accessed via frontend's nginx proxy |
+| 5432 | PostgreSQL | ⚠️ Optional | Only if you need external DB tools |
+| 5050 | pgAdmin | ⚠️ Optional | Only if you want web-based DB admin |
+
+**Key Point:** The frontend container (nginx) handles all external traffic. It serves static files and proxies `/api/*` requests to the backend API internally. The API and database never need direct external access.
+
+---
+
+### 🌐 Using with Nginx Proxy Manager (NPM)
+
+If you have **Nginx Proxy Manager** installed and want to use a domain with WeaveNote:
+
+#### Step 1: Configure WeaveNote Port
+
+In your `.env` file or `docker-compose.yml`, set the frontend to use port 80 internally:
+
+```yaml
+# docker-compose.yml
+services:
+  frontend:
+    ports:
+      - "8080:80"  # Maps external 8080 to internal 80
+```
+
+Or use any port you prefer (e.g., `3000:80`, `9000:80`).
+
+#### Step 2: Create NPM Proxy Host
+
+1. Open Nginx Proxy Manager admin panel
+2. Go to **Proxy Hosts** → **Add Proxy Host**
+3. Configure as follows:
+
+| Field | Value |
+|-------|-------|
+| **Domain Names** | `notes.yourdomain.com` |
+| **Scheme** | `http` |
+| **Forward Hostname / IP** | `weavenote-frontend` (or server IP) |
+| **Forward Port** | `80` (or your mapped port) |
+| **Block Common Exploits** | ✅ Enabled |
+| **Websockets Support** | ✅ Enabled |
+
+#### Step 3: SSL Configuration
+
+In the **SSL** tab:
+1. Select **Request a new SSL Certificate**
+2. Enable **Force SSL**
+3. Enable **HTTP/2 Support**
+4. Enter your email for Let's Encrypt
+5. Save
+
+#### Step 4: Environment Variables Update
+
+Update your `.env` file for production domain:
+
+```bash
+# Update CORS to allow your domain
+CORS_ORIGINS=https://notes.yourdomain.com
+
+# If using external access
+VITE_API_URL=https://notes.yourdomain.com/api
+```
+
+#### NPM Configuration Example
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    NGINX PROXY MANAGER CONFIGURATION                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Domain: notes.yourdomain.com                                           │
+│                                                                          │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │  Incoming Request                                                │   │
+│  │       │                                                          │   │
+│  │       ▼                                                          │   │
+│  │  ┌─────────────────┐                                             │   │
+│  │  │   NPM Proxy     │  SSL Termination                           │   │
+│  │  │   (Port 80/443) │  HTTPS → HTTP                              │   │
+│  │  └────────┬────────┘                                             │   │
+│  │           │                                                       │   │
+│  │           │ Forward to: weavenote-frontend:80                    │   │
+│  │           ▼                                                       │   │
+│  │  ┌─────────────────┐                                             │   │
+│  │  │   WeaveNote     │                                             │   │
+│  │  │   Frontend      │  Serves static files                        │   │
+│  │  │   (Nginx)       │  Proxies /api/* to backend:3001             │   │
+│  │  └─────────────────┘                                             │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Important Notes for NPM Setup
+
+1. **Only expose port 8080** (or your chosen frontend port) to NPM
+2. **Do NOT expose** ports 3001 (API) or 5432 (PostgreSQL) externally
+3. **Database port (5432)** should only be exposed if you need external database tools
+4. **Both NPM and WeaveNote** should be on the same Docker network, OR use the host IP
+
+#### Same Docker Network Setup
+
+If NPM is also running in Docker, create a shared network:
+
+```bash
+# Create shared network
+docker network create npm-network
+
+# Connect NPM to the network
+docker network connect npm-network nginx-proxy-manager
+
+# Connect WeaveNote to the network
+docker network connect npm-network weavenote-frontend
+```
+
+Then in NPM, use the container name as the forward hostname:
+- **Forward Hostname**: `weavenote-frontend`
+- **Forward Port**: `80`
+
+---
+
+### 🔒 Production Deployment Checklist
+
+When deploying to production with a domain:
+
+- [ ] Change all default passwords
+- [ ] Update `CORS_ORIGINS` to your domain
+- [ ] Configure SSL/TLS certificates
+- [ ] Set up proper firewall rules
+- [ ] Only expose necessary ports (8080 or NPM's 80/443)
+- [ ] Enable rate limiting
+- [ ] Configure backup strategy
+- [ ] Review database security settings
+
 ---
 
 ## 📡 API Reference
