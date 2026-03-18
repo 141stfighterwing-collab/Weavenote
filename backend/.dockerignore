@@ -1,10 +1,8 @@
 # Dependencies
 node_modules
-npm-debug.log*
 
 # Build output
 dist
-build
 
 # Environment files
 .env
@@ -24,29 +22,17 @@ Thumbs.db
 # Test files
 coverage
 *.test.ts
-*.test.tsx
 *.spec.ts
-*.spec.tsx
 
 # Documentation
 *.md
-!README.md
 
 # Git
 .git
 .gitignore
 
-# Docker
-docker-compose*.yml
-Dockerfile*
-.dockerignore
-
-# Backend
-backend/node_modules
-backend/dist
+# Prisma generated files (regenerated in container)
+# Note: We need Prisma client, so don't ignore prisma/generated
 
 # Misc
 *.log
-*.pid
-*.seed
-*.pid.lock
