@@ -127,8 +127,24 @@ $ErrorFixes = @{
         Fix = {
             Write-Progress "Auto-fixing: Regenerating Prisma client..."
             Push-Location backend
-            npx prisma generate 2>&1 | Out-File -Append -FilePath $LogFile
+            ./node_modules/.bin/prisma generate 2>&1 | Out-File -Append -FilePath $LogFile
             Pop-Location
+            return $true
+        }
+    }
+    "P1012" = @{
+        Description = "Prisma schema validation error (likely version mismatch)"
+        Fix = {
+            Write-Warning "Detected Prisma version mismatch. Pulling latest code with fix..."
+            git pull 2>&1 | Out-File -Append -FilePath $LogFile
+            return $true
+        }
+    }
+    "url.*no longer supported" = @{
+        Description = "Prisma 7.x breaking change detected"
+        Fix = {
+            Write-Warning "Detected Prisma 7.x breaking change. Pulling latest fix..."
+            git pull 2>&1 | Out-File -Append -FilePath $LogFile
             return $true
         }
     }
