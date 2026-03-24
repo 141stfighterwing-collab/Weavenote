@@ -110,39 +110,58 @@ WeaveNote is a modern, AI-powered note-taking application designed for professio
 
 ## 🚀 Quick Start
 
-### Windows Users - One-Click Install
+### ⚡ ONE-CLICK INSTALL (Recommended)
 
-The fastest way to get WeaveNote running on Windows:
+**Windows:**
+```
+Double-click install.bat
+```
 
-1. **Download** the repository (clone or ZIP)
-2. **Double-click** `install-weavenote.bat`
-3. **Follow the prompts** - the installer handles everything!
+**Linux/Mac:**
+```bash
+chmod +x install-smart.sh && ./install-smart.sh
+```
+
+The **Smart Installer** automatically:
+- ✅ Checks and installs dependencies
+- ✅ Shows real-time progress with percentage
+- ✅ Auto-fixes common errors (missing files, port conflicts, etc.)
+- ✅ Runs health checks
+- ✅ Opens the app when ready
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                                                                             │
 │     📁 Weavenote                                                           │
-│     ├── 📄 install-weavenote.bat    ◀── Double-click to start!            │
-│     ├── 📄 install-weavenote.ps1                                           │
+│     ├── 📄 install.bat             ◀── Double-click (Windows)              │
+│     ├── 📄 install-smart.sh        ◀── Run (Linux/Mac)                     │
+│     ├── 📄 install-smart.ps1       ◀── PowerShell (advanced)               │
 │     └── ...                                                                │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### What the Installer Does
+### Installer Features
 
-| Step | Action | Duration |
-|------|--------|----------|
-| 1 | Checks prerequisites (Docker, ports) | ~10s |
-| 2 | Generates secure default credentials | ~5s |
-| 3 | Creates environment configuration | ~5s |
-| 4 | Pulls/builds Docker images | ~2-5 min |
-| 5 | Initializes PostgreSQL database | ~30s |
-| 6 | Starts all services | ~30s |
-| 7 | Runs health checks | ~15s |
-| 8 | Opens browser to application | Instant |
+| Feature | Description |
+|---------|-------------|
+| 📊 **Progress Display** | Real-time percentage and status updates |
+| 🔧 **Auto-Fix** | Automatically resolves common errors |
+| 📝 **Logging** | Full error logging to `weavenote-install.log` |
+| 🏥 **Health Checks** | Verifies services are running correctly |
+| 🔄 **Retry Logic** | Retries failed operations up to 3 times |
 
-### Quick Docker Start (All Platforms)
+### Auto-Fix Capabilities
+
+The installer automatically detects and fixes:
+- Missing `package-lock.json`
+- Docker not running
+- Port conflicts
+- Disk space issues
+- Network errors
+- Prisma generation failures
+
+### Quick Docker Start (Manual)
 
 ```bash
 # Clone and start
