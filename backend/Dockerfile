@@ -13,14 +13,14 @@ RUN apk add --no-cache python3 make g++ openssl
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Install dependencies
+# Install ALL dependencies (including devDependencies for prisma CLI)
 RUN npm ci --legacy-peer-deps
 
 # Copy Prisma schema
 COPY prisma ./prisma/
 
-# Generate Prisma Client
-RUN npx prisma generate
+# Generate Prisma Client using locally installed prisma (version 5.x)
+RUN ./node_modules/.bin/prisma generate
 
 # Copy source code
 COPY . .
@@ -43,13 +43,18 @@ RUN addgroup -g 1001 -S weavenote && \
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Install production dependencies only
-RUN npm ci --only=production --legacy-peer-deps && \
-    npm cache clean --force
+# Install ALL dependencies first (needed for prisma generate)
+RUN npm ci --legacy-peer-deps
 
-# Copy Prisma files and generate client
+# Copy Prisma files
 COPY prisma ./prisma/
-RUN npx prisma generate
+
+# Generate Prisma client using locally installed prisma (version 5.x)
+RUN ./node_modules/.bin/prisma generate
+
+# Now remove devDependencies to keep image small
+RUN npm prune --production && \
+    npm cache clean --force
 
 # Copy source code
 COPY src ./src
