@@ -6,6 +6,13 @@ const version = '4.10.38';
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
 
 export const parseDocument = async (file: File): Promise<string> => {
+  // Max file size: 20MB
+  const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB in bytes
+  
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error(`File too large. Maximum size is 20MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.`);
+  }
+  
   try {
     if (file.type === 'application/pdf') {
       return await parsePDF(file);

@@ -26,7 +26,9 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
-      imgSrc: ["'self'", 'data:', 'https:'],
+      imgSrc: ["'self'", 'data:', 'https:', 'http:'],
+      // Allow Giphy and Tenor frames for GIF embeds
+      frameSrc: ["'self'", 'https://giphy.com', 'https://tenor.com'],
     },
   },
   crossOriginEmbedderPolicy: false,
@@ -55,9 +57,9 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Body parsing - 20MB limit for large document uploads
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
 // Request ID middleware
 app.use((req, res, next) => {

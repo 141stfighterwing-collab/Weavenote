@@ -36,8 +36,38 @@ const NoteCard: React.FC<NoteCardProps> = ({
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showCustomColorPicker, setShowCustomColorPicker] = useState(false);
 
-  const COLORS = ["#000000", "#ffffff", "#ef4444", "#f97316", "#f59e0b", "#10b981", "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6", "#d946ef"];
-  const BG_COLORS = ["#fef08a", "#bbf7d0", "#bae6fd", "#fbcfe8", "#e9d5ff", "#fed7aa", "#cbd5e1", "#ffffff", "#000000"];
+  // All main colors for text (including black and white)
+  const COLORS = [
+    "#000000", // Black
+    "#ffffff", // White
+    "#ef4444", // Red
+    "#f97316", // Orange
+    "#eab308", // Yellow
+    "#10b981", // Green
+    "#06b6d4", // Teal/Cyan
+    "#3b82f6", // Blue
+    "#6366f1", // Indigo
+    "#8b5cf6", // Purple
+    "#d946ef", // Magenta/Pink
+    "#6b7280"  // Gray
+  ];
+  // All main colors for background/highlight (including black and white)
+  const BG_COLORS = [
+    "#000000", // Black
+    "#ffffff", // White
+    "#fecaca", // Light Red
+    "#fed7aa", // Light Orange
+    "#fef08a", // Light Yellow
+    "#bbf7d0", // Light Green
+    "#bae6fd", // Light Blue
+    "#c7d2fe", // Light Indigo
+    "#e9d5ff", // Light Purple
+    "#fbcfe8", // Light Pink
+    "#cbd5e1", // Light Gray
+    "#ef4444", // Red (full)
+    "#10b981", // Green (full)
+    "#3b82f6"  // Blue (full)
+  ];
 
   const folderName = useMemo(() => {
     if (!note.folderId || !folders) return null;
@@ -56,6 +86,30 @@ const NoteCard: React.FC<NoteCardProps> = ({
       }
       return total === 0 ? 0 : Math.round((completed / total) * 100);
   }, [note.projectData]);
+
+  // Extract images from note content for thumbnail display
+  const extractedImages = useMemo(() => {
+    const images: string[] = [];
+    const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+    const mdImgRegex = /!\[[^\]]*\]\(([^)]+)\)/gi;
+    let match;
+    
+    // Extract from HTML img tags
+    while ((match = imgRegex.exec(note.content)) !== null) {
+      if (match[1] && !images.includes(match[1])) {
+        images.push(match[1]);
+      }
+    }
+    
+    // Extract from markdown image syntax
+    while ((match = mdImgRegex.exec(note.content)) !== null) {
+      if (match[1] && !images.includes(match[1])) {
+        images.push(match[1]);
+      }
+    }
+    
+    return images.slice(0, 3); // Limit to 3 thumbnails
+  }, [note.content]);
 
   const handleDragStart = (e: React.DragEvent) => {
     if (readOnly) return;
@@ -140,6 +194,34 @@ const NoteCard: React.FC<NoteCardProps> = ({
          </ReactMarkdown>
       </div>
 
+      {/* Image thumbnails for quick notes */}
+      {extractedImages.length > 0 && (
+        <div className="mb-4 flex gap-2 flex-wrap">
+          {extractedImages.map((imgSrc, idx) => (
+            <div 
+              key={idx} 
+              className="relative group/img"
+              onClick={(e) => { e.stopPropagation(); onViewImage(imgSrc); }}
+            >
+              <img 
+                src={imgSrc} 
+                alt={`Attachment ${idx + 1}`}
+                className="h-16 w-16 object-cover rounded-lg border border-black/10 shadow-sm cursor-pointer hover:shadow-md transition-all"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+              {imgSrc.includes('.gif') && (
+                <span className="absolute bottom-0.5 right-0.5 bg-black/70 text-white text-[7px] px-1 rounded font-bold">GIF</span>
+              )}
+            </div>
+          ))}
+          {extractedImages.length > 0 && (
+            <div className="h-16 w-16 flex items-center justify-center bg-slate-100 dark:bg-slate-700 rounded-lg border border-dashed border-slate-300 dark:border-slate-600">
+              <span className="text-[8px] font-bold text-slate-400 uppercase">Click to view</span>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="mt-auto">
         {note.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-4">
@@ -179,31 +261,51 @@ const NoteCard: React.FC<NoteCardProps> = ({
                     </div>
                 )}
                 {showCustomColorPicker && (
-                    <div className="absolute bottom-full right-0 mb-3 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border dark:border-slate-700 flex flex-col gap-4 w-56 z-50">
+                    <div className="absolute bottom-full right-0 mb-3 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border dark:border-slate-700 flex flex-col gap-4 w-60 z-50">
                         <div>
                             <div className="text-[9px] font-black uppercase text-slate-400 mb-2">Text Color</div>
-                            <div className="flex flex-wrap gap-1.5">
+                            <div className="flex flex-wrap gap-1.5 mb-2">
                                 {COLORS.map(c => (
                                     <button 
                                         key={c} 
                                         onClick={(e) => { e.stopPropagation(); onUpdateColors?.(note.id, c, note.backgroundColor); }} 
-                                        className={`w-6 h-6 rounded-full border border-black/10 ${note.textColor === c ? 'ring-2 ring-primary-500' : ''}`} 
+                                        className={`w-6 h-6 rounded-full border border-slate-300 dark:border-slate-600 hover:scale-110 transition-transform ${note.textColor === c ? 'ring-2 ring-primary-500' : ''}`} 
                                         style={{backgroundColor: c}} 
+                                        title={c}
                                     />
                                 ))}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="color" 
+                                    onChange={(e) => { e.stopPropagation(); onUpdateColors?.(note.id, e.target.value, note.backgroundColor); }}
+                                    className="w-6 h-6 rounded cursor-pointer border-0"
+                                    title="Custom text color"
+                                />
+                                <span className="text-[8px] text-slate-400 font-bold">Custom</span>
                             </div>
                         </div>
                         <div>
                             <div className="text-[9px] font-black uppercase text-slate-400 mb-2">Background Color</div>
-                            <div className="flex flex-wrap gap-1.5">
+                            <div className="flex flex-wrap gap-1.5 mb-2">
                                 {BG_COLORS.map(c => (
                                     <button 
                                         key={c} 
                                         onClick={(e) => { e.stopPropagation(); onUpdateColors?.(note.id, note.textColor, c); }} 
-                                        className={`w-6 h-6 rounded-lg border border-black/10 ${note.backgroundColor === c ? 'ring-2 ring-primary-500' : ''}`} 
+                                        className={`w-6 h-6 rounded-lg border border-slate-300 dark:border-slate-600 hover:scale-110 transition-transform ${note.backgroundColor === c ? 'ring-2 ring-primary-500' : ''}`} 
                                         style={{backgroundColor: c}} 
+                                        title={c}
                                     />
                                 ))}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="color" 
+                                    onChange={(e) => { e.stopPropagation(); onUpdateColors?.(note.id, note.textColor, e.target.value); }}
+                                    className="w-6 h-6 rounded cursor-pointer border-0"
+                                    title="Custom background color"
+                                />
+                                <span className="text-[8px] text-slate-400 font-bold">Custom</span>
                             </div>
                         </div>
                         <button 

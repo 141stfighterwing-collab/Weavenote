@@ -17,8 +17,38 @@ interface NoteInputProps {
 const FONTS = ["Inter", "System-ui", "Serif", "Fira Code", "Arial", "Georgia", "Verdana", "Courier New"];
 const SIZES = ["1", "2", "3", "4", "5", "6", "7"];
 const EMOJIS = ["✨", "🚀", "💡", "📝", "✅", "🔥", "🛠️", "🎯", "📊", "🧠", "💻", "🎨", "📅", "📌", "🔒", "⚠️"];
-const COLORS = ["#000000", "#ef4444", "#f97316", "#f59e0b", "#10b981", "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6", "#d946ef"];
-const BG_COLORS = ["#fef08a", "#bbf7d0", "#bae6fd", "#fbcfe8", "#e9d5ff", "#fed7aa", "#cbd5e1"];
+// All main colors for text (including black and white)
+const COLORS = [
+  "#000000", // Black
+  "#ffffff", // White
+  "#ef4444", // Red
+  "#f97316", // Orange
+  "#eab308", // Yellow
+  "#10b981", // Green
+  "#06b6d4", // Teal/Cyan
+  "#3b82f6", // Blue
+  "#6366f1", // Indigo
+  "#8b5cf6", // Purple
+  "#d946ef", // Magenta/Pink
+  "#6b7280"  // Gray
+];
+// All main colors for highlight (including black and white)
+const BG_COLORS = [
+  "#000000", // Black
+  "#ffffff", // White
+  "#fecaca", // Light Red
+  "#fed7aa", // Light Orange
+  "#fef08a", // Light Yellow
+  "#bbf7d0", // Light Green
+  "#bae6fd", // Light Blue
+  "#c7d2fe", // Light Indigo
+  "#e9d5ff", // Light Purple
+  "#fbcfe8", // Light Pink
+  "#cbd5e1", // Light Gray
+  "#ef4444", // Red (full)
+  "#10b981", // Green (full)
+  "#3b82f6"  // Blue (full)
+];
 
 const NoteInput: React.FC<NoteInputProps> = ({ 
     onAddNote, onTypeChange, isProcessing, activeType, readOnly = false, isGuest = true, selectedTemplate = null, onTemplateApplied 
@@ -29,6 +59,10 @@ const NoteInput: React.FC<NoteInputProps> = ({
   const [aiStep, setAiStep] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [showImageDialog, setShowImageDialog] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageWidth, setImageWidth] = useState('');
   const [isIngesting, setIsIngesting] = useState(false);
 
   const [projectObjectives, setProjectObjectives] = useState('');
@@ -147,6 +181,33 @@ const NoteInput: React.FC<NoteInputProps> = ({
     setProjectObjectives(''); setProjectDeliverables(''); setProjectProgress(0);
   };
 
+  // Insert image/GIF from URL with optional width
+  const insertImageFromUrl = (url: string, width?: string) => {
+    if (!url.trim()) return;
+    if (editorRef.current) {
+      editorRef.current.focus();
+      const widthStyle = width ? ` width="${width}"` : '';
+      const imgHtml = `<img src="${url}" alt="Image"${widthStyle} style="max-width: 100%; height: auto; border-radius: 8px; margin: 8px 0;" />`;
+      document.execCommand('insertHTML', false, imgHtml);
+      setShowImageDialog(false);
+      setShowGifPicker(false);
+      setImageUrl('');
+      setImageWidth('');
+    }
+  };
+
+  // Popular GIF sources for quick access
+  const POPULAR_GIFS = [
+    { name: 'Thumbs Up', url: 'https://media.giphy.com/media/lexyF1vbzO2iOQ6F8b/giphy.gif' },
+    { name: 'Applause', url: 'https://media.giphy.com/media/mCOclR8iGicJ1VYfdT/giphy.gif' },
+    { name: 'Thinking', url: 'https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif' },
+    { name: 'Party', url: 'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif' },
+    { name: 'Success', url: 'https://media.giphy.com/media/a0h7sAqON67nO/giphy.gif' },
+    { name: 'Fire', url: 'https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif' },
+    { name: 'Celebrate', url: 'https://media.tenor.com/ja4S6wLmYPAAAAAC/celebrate.gif' },
+    { name: 'Wow', url: 'https://media.tenor.com/5tNnolqRe1YAAAAd/surprised-shocked.gif' },
+  ];
+
   return (
     <div className="rounded-2xl shadow-2xl border p-1 mb-8 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 transition-all duration-300 ring-4 ring-black/5 overflow-visible">
         <div className="flex gap-1 p-1 mb-1 overflow-x-auto no-scrollbar border-b dark:border-slate-700">
@@ -201,6 +262,8 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 </button>
                 <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base">😀</button>
                 <button onClick={() => setShowColorPicker(!showColorPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base">🎨</button>
+                <button onClick={() => setShowGifPicker(!showGifPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" title="Insert GIF">🎬</button>
+                <button onClick={() => setShowImageDialog(!showImageDialog)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" title="Insert Image URL">🖼️</button>
 
                 {showEmojiPicker && (
                     <div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-2xl z-50 grid grid-cols-4 gap-1 min-w-[140px]">
@@ -208,14 +271,124 @@ const NoteInput: React.FC<NoteInputProps> = ({
                     </div>
                 )}
                 {showColorPicker && (
-                    <div className="absolute top-full left-0 mt-1 p-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-2xl z-50 min-w-[200px]">
+                    <div className="absolute top-full left-0 mt-1 p-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-2xl z-50 min-w-[240px]">
                         <div className="text-[9px] font-black uppercase text-slate-400 mb-2">Text Color</div>
-                        <div className="flex flex-wrap gap-1 mb-3">
-                            {COLORS.map(c => <button key={c} onClick={() => execCommand('foreColor', c)} className="w-5 h-5 rounded-full" style={{backgroundColor: c}} />)}
+                        <div className="flex flex-wrap gap-1 mb-2">
+                            {COLORS.map(c => (
+                              <button 
+                                key={c} 
+                                onClick={() => execCommand('foreColor', c)} 
+                                className="w-5 h-5 rounded-full border border-slate-300 dark:border-slate-600 hover:scale-110 transition-transform" 
+                                style={{backgroundColor: c}} 
+                                title={c}
+                              />
+                            ))}
                         </div>
+                        <div className="flex items-center gap-2 mb-3">
+                            <input 
+                              type="color" 
+                              onChange={(e) => execCommand('foreColor', e.target.value)} 
+                              className="w-6 h-6 rounded cursor-pointer border-0"
+                              title="Custom text color"
+                            />
+                            <span className="text-[8px] text-slate-400 font-bold">Custom</span>
+                        </div>
+                        
                         <div className="text-[9px] font-black uppercase text-slate-400 mb-2">Highlight</div>
-                        <div className="flex flex-wrap gap-1">
-                            {BG_COLORS.map(c => <button key={c} onClick={() => execCommand('hiliteColor', c)} className="w-5 h-5 rounded" style={{backgroundColor: c}} />)}
+                        <div className="flex flex-wrap gap-1 mb-2">
+                            {BG_COLORS.map(c => (
+                              <button 
+                                key={c} 
+                                onClick={() => execCommand('hiliteColor', c)} 
+                                className="w-5 h-5 rounded border border-slate-300 dark:border-slate-600 hover:scale-110 transition-transform" 
+                                style={{backgroundColor: c}} 
+                                title={c}
+                              />
+                            ))}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <input 
+                              type="color" 
+                              onChange={(e) => execCommand('hiliteColor', e.target.value)} 
+                              className="w-6 h-6 rounded cursor-pointer border-0"
+                              title="Custom highlight color"
+                            />
+                            <span className="text-[8px] text-slate-400 font-bold">Custom</span>
+                        </div>
+                    </div>
+                )}
+                {showGifPicker && (
+                    <div className="absolute top-full left-0 mt-1 p-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-2xl z-50 min-w-[280px]">
+                        <div className="text-[9px] font-black uppercase text-slate-400 mb-2">Popular GIFs</div>
+                        <div className="grid grid-cols-4 gap-2 mb-3">
+                            {POPULAR_GIFS.map(gif => (
+                                <button
+                                    key={gif.name}
+                                    onClick={() => insertImageFromUrl(gif.url)}
+                                    className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+                                    title={gif.name}
+                                >
+                                    <img src={gif.url} alt={gif.name} className="w-10 h-10 object-cover rounded" />
+                                </button>
+                            ))}
+                        </div>
+                        <div className="text-[9px] font-black uppercase text-slate-400 mb-2">GIF URL</div>
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={imageUrl}
+                                onChange={(e) => setImageUrl(e.target.value)}
+                                placeholder="https://media.giphy.com/..."
+                                className="flex-1 px-2 py-1.5 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded text-[10px] outline-none text-slate-900 dark:text-white"
+                            />
+                            <input
+                                type="text"
+                                value={imageWidth}
+                                onChange={(e) => setImageWidth(e.target.value)}
+                                placeholder="Width"
+                                className="w-16 px-2 py-1.5 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded text-[10px] outline-none text-slate-900 dark:text-white"
+                            />
+                            <button
+                                onClick={() => insertImageFromUrl(imageUrl, imageWidth)}
+                                className="px-3 py-1.5 bg-primary-600 text-white rounded text-[10px] font-black uppercase"
+                            >
+                                Add
+                            </button>
+                        </div>
+                        <div className="text-[8px] text-slate-400 mt-2">
+                            📌 Try: giphy.com, tenor.com, imgur.com
+                        </div>
+                    </div>
+                )}
+                {showImageDialog && (
+                    <div className="absolute top-full left-0 mt-1 p-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-2xl z-50 min-w-[280px]">
+                        <div className="text-[9px] font-black uppercase text-slate-400 mb-2">Insert Image from URL</div>
+                        <div className="space-y-2">
+                            <input
+                                type="text"
+                                value={imageUrl}
+                                onChange={(e) => setImageUrl(e.target.value)}
+                                placeholder="https://example.com/image.jpg"
+                                className="w-full px-2 py-1.5 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded text-[10px] outline-none text-slate-900 dark:text-white"
+                            />
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={imageWidth}
+                                    onChange={(e) => setImageWidth(e.target.value)}
+                                    placeholder="Width (e.g., 300px or 100%)"
+                                    className="flex-1 px-2 py-1.5 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded text-[10px] outline-none text-slate-900 dark:text-white"
+                                />
+                                <button
+                                    onClick={() => insertImageFromUrl(imageUrl, imageWidth)}
+                                    className="px-3 py-1.5 bg-primary-600 text-white rounded text-[10px] font-black uppercase"
+                                >
+                                    Insert
+                                </button>
+                            </div>
+                        </div>
+                        <div className="text-[8px] text-slate-400 mt-2">
+                            💡 Supports JPG, PNG, GIF, WebP, SVG
                         </div>
                     </div>
                 )}

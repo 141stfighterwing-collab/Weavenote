@@ -2,6 +2,67 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.6.0] - 2025-03-25
+
+### 🎨 Major Feature Release - GIF Support, Enhanced Colors & Image Improvements
+
+This release brings comprehensive GIF support from Giphy and Tenor, expanded color options with full customization, image thumbnails in note cards, and increased file upload limits.
+
+### Added
+
+#### 🎬 GIF & Image Support
+- **Giphy & Tenor Integration**: Insert GIFs directly from Giphy and Tenor with one-click popular GIF picker
+- **Image URL Insertion**: Insert images from any URL with optional width control for resizing
+- **Image Resizing**: Set custom width for images (e.g., 300px, 100%) when inserting
+- **GIF Badge**: Visual indicator showing "GIF" badge on animated images in note cards
+- **Image Thumbnails**: Quick notes now display image/GIF thumbnails directly on the card (up to 3 images)
+- **Click to Expand**: Click any thumbnail to view the full-size image in the image viewer
+
+#### 🎨 Enhanced Color Picker
+- **Full Text Color Spectrum**: All main colors now available for text including:
+  - Black and White
+  - Red, Orange, Yellow, Green, Teal, Blue, Indigo, Purple, Magenta, Gray
+- **Full Highlight Color Spectrum**: All main colors now available for highlights including:
+  - Black and White
+  - Light variants of all colors
+  - Full saturation colors for vibrant highlights
+- **Custom Color Picker**: Native color picker input for unlimited color choices
+- **Hover Effects**: Color buttons now have hover scale effects for better UX
+- **Color Tooltips**: Hover over colors to see hex values
+
+#### 📦 File Upload Improvements
+- **20MB Document Upload**: Increased from 10MB to 20MB maximum file size for document uploads
+- **File Size Validation**: Clear error messages when files exceed size limits
+- **Backend Support**: Updated API limits to handle larger payloads
+
+#### 🔒 Security Updates
+- **CSP Frame Sources**: Added Giphy and Tenor to Content Security Policy frame sources
+- **Image Domain Support**: Expanded allowed image sources for better flexibility
+- **Sanitization Updates**: Enhanced HTML sanitization to support image styling attributes
+
+### Changed
+
+#### Security Schema
+- Extended `customSanitizeSchema` to include `iframe` tags for embedded content
+- Added `style` and `class` attributes to img tags for image sizing support
+- Added `isAllowedImageUrl` helper function for URL validation
+
+#### Backend Configuration
+- Body parser limits increased to 20MB for JSON and URL-encoded data
+- CSP frame-src directive updated to allow Giphy and Tenor embeds
+
+### Technical Details
+
+| Component | Changes |
+|-----------|---------|
+| NoteInput.tsx | Added GIF picker, image URL dialog, width controls |
+| NoteCard.tsx | Added image thumbnail extraction and display |
+| security.ts | Extended sanitization schema, added URL validation |
+| documentParser.ts | Added 20MB file size limit with validation |
+| backend/index.js | Updated body limits and CSP headers |
+
+---
+
 ## [1.5.0] - 2025-03-18
 
 ### 🎉 Major Release - Docker, PostgreSQL & Enterprise Features
@@ -218,4 +279,4 @@ This project uses **Semantic Versioning (SemVer)**:
 - **MINOR** version for backward-compatible features.
 - **PATCH** version for backward-compatible bug fixes.
 
-Current version: **1.5.0**.
+Current version: **1.6.0**.
