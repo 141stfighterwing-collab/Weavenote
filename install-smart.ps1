@@ -41,17 +41,17 @@ function Write-Success {
     Write-ColorOutput Green "  [OK] $Message"
 }
 
-function Write-Error {
+function Write-Err {
     param([string]$Message)
     Write-ColorOutput Red "  [ERROR] $Message"
 }
 
-function Write-Warning {
+function Write-Warn {
     param([string]$Message)
     Write-ColorOutput Yellow "  [WARN] $Message"
 }
 
-function Write-Progress {
+function Write-Status {
     param([string]$Message)
     Write-ColorOutput White "  [..] $Message"
 }
@@ -71,11 +71,11 @@ function Write-Log {
 # ERROR DEFINITIONS AND AUTO-FIXES
 # =============================================================================
 
-$ErrorFixes = @{
+$script:ErrorFixes = @{
     "npm ci.*package-lock.json" = @{
         Description = "Missing package-lock.json"
         Fix = {
-            Write-Progress "Auto-fixing: Generating package-lock.json..."
+            Write-Status "Auto-fixing: Generating package-lock.json..."
             Push-Location backend
             npm install --legacy-peer-deps 2>&1 | Out-File -Append -FilePath $LogFile
             Pop-Location
@@ -85,7 +85,7 @@ $ErrorFixes = @{
     "ECONNREFUSED" = @{
         Description = "Connection refused - Docker may not be running"
         Fix = {
-            Write-Progress "Auto-fixing: Attempting to start Docker..."
+            Write-Status "Auto-fixing: Attempting to start Docker..."
             Start-Process "docker" -ArgumentList "desktop" -ErrorAction SilentlyContinue
             Start-Sleep -Seconds 10
             return $true
@@ -94,7 +94,7 @@ $ErrorFixes = @{
     "port is already allocated" = @{
         Description = "Port already in use"
         Fix = {
-            Write-Progress "Auto-fixing: Stopping conflicting containers..."
+            Write-Status "Auto-fixing: Stopping conflicting containers..."
             docker-compose down 2>&1 | Out-Null
             return $true
         }
@@ -102,7 +102,7 @@ $ErrorFixes = @{
     "no space left on device" = @{
         Description = "Disk space full"
         Fix = {
-            Write-Progress "Auto-fixing: Cleaning Docker system..."
+            Write-Status "Auto-fixing: Cleaning Docker system..."
             docker system prune -af 2>&1 | Out-File -Append -FilePath $LogFile
             return $true
         }
@@ -110,7 +110,7 @@ $ErrorFixes = @{
     "network.*not found" = @{
         Description = "Docker network issue"
         Fix = {
-            Write-Progress "Auto-fixing: Creating Docker network..."
+            Write-Status "Auto-fixing: Creating Docker network..."
             docker network create weavenote-network 2>&1 | Out-Null
             return $true
         }
@@ -118,32 +118,14 @@ $ErrorFixes = @{
     "permission denied" = @{
         Description = "Permission denied"
         Fix = {
-            Write-Warning "Permission issue detected. Please run as Administrator."
+            Write-Warn "Permission issue detected. Please run as Administrator."
             return $false
-        }
-    }
-    "prisma.*generate" = @{
-        Description = "Prisma client generation failed"
-        Fix = {
-            Write-Progress "Auto-fixing: Regenerating Prisma client..."
-            Push-Location backend
-            ./node_modules/.bin/prisma generate 2>&1 | Out-File -Append -FilePath $LogFile
-            Pop-Location
-            return $true
         }
     }
     "P1012" = @{
         Description = "Prisma schema validation error (likely version mismatch)"
         Fix = {
-            Write-Warning "Detected Prisma version mismatch. Pulling latest code with fix..."
-            git pull 2>&1 | Out-File -Append -FilePath $LogFile
-            return $true
-        }
-    }
-    "url.*no longer supported" = @{
-        Description = "Prisma 7.x breaking change detected"
-        Fix = {
-            Write-Warning "Detected Prisma 7.x breaking change. Pulling latest fix..."
+            Write-Warn "Detected Prisma version mismatch. Pulling latest code with fix..."
             git pull 2>&1 | Out-File -Append -FilePath $LogFile
             return $true
         }
@@ -151,23 +133,7 @@ $ErrorFixes = @{
     "ENOENT.*package.json" = @{
         Description = "Missing package.json"
         Fix = {
-            Write-Error "Critical: package.json is missing. Please re-clone the repository."
-            return $false
-        }
-    }
-    "daemon.*not running" = @{
-        Description = "Docker daemon not running"
-        Fix = {
-            Write-Progress "Auto-fixing: Waiting for Docker to start..."
-            $retries = 0
-            while ($retries -lt 30) {
-                docker info 2>&1 | Out-Null
-                if ($LASTEXITCODE -eq 0) {
-                    return $true
-                }
-                Start-Sleep -Seconds 2
-                $retries++
-            }
+            Write-Err "Critical: package.json is missing. Please re-clone the repository."
             return $false
         }
     }
@@ -180,7 +146,7 @@ $ErrorFixes = @{
 function Test-Dependency {
     param([string]$Name, [string]$Command, [string]$InstallUrl)
 
-    Write-Progress "Checking $Name..."
+    Write-Status "Checking $Name..."
     try {
         $result = & $Command 2>&1
         if ($LASTEXITCODE -eq 0 -or $result) {
@@ -189,11 +155,11 @@ function Test-Dependency {
             return $true
         }
     } catch {
-        Write-Warning "$Name not found"
+        Write-Warn "$Name not found"
         Write-Log "$Name not found" "WARN"
 
         if (-not $SkipDeps) {
-            Write-Warning "Please install $Name from: $InstallUrl"
+            Write-Warn "Please install $Name from: $InstallUrl"
             $install = Read-Host "Would you like to open the download page? (Y/n)"
             if ($install -ne "n") {
                 Start-Process $InstallUrl
@@ -222,7 +188,7 @@ function Test-AllDependencies {
     if ($LASTEXITCODE -eq 0) {
         Write-Success "Docker Compose is installed"
     } else {
-        Write-Warning "Docker Compose not found"
+        Write-Warn "Docker Compose not found"
         $allOk = $false
     }
 
@@ -238,146 +204,88 @@ function Test-AllDependencies {
 # DOCKER BUILD WITH PROGRESS
 # =============================================================================
 
-function Start-DockerBuild {
-    param([ref]$ProgressData)
-
+function Invoke-DockerBuild {
     Write-Header "Building Docker Containers"
-    Write-Progress "Starting Docker build process..."
+    Write-Status "Starting Docker build process..."
 
     # Create log file
     "=== Weavenote Installation Log ===" | Out-File -FilePath $LogFile
     "Started: $(Get-Date)" | Out-File -Append -FilePath $LogFile
 
-    # Start docker-compose in background
-    $job = Start-Job -ScriptBlock {
-        param($workDir, $logFile)
-        Set-Location $workDir
-        docker-compose up -d --build 2>&1 | Tee-Object -FilePath $logFile
-    } -ArgumentList $PWD.Path, $LogFile
-
-    return $job
-}
-
-function Get-DockerBuildProgress {
-    param($Job, [ref]$ProgressData)
-
-    $output = Receive-Job -Job $Job -ErrorAction SilentlyContinue
-    $progressData.Value.Output += $output
-
-    # Analyze progress based on Docker output
-    $totalSteps = 16
-    $currentStep = 0
-
-    $progressText = ""
-
-    if ($output) {
-        $outputArray = $output -split "`n"
-
-        foreach ($line in $outputArray) {
-            # Detect build stages
-            if ($line -match "Building|builder|production") {
-                $currentStep++
-            }
-            if ($line -match "DONE") {
-                $currentStep++
-            }
-            if ($line -match "pulling|Pulled") {
-                $progressText = "Pulling base images..."
-            }
-            if ($line -match "npm ci|npm install") {
-                $progressText = "Installing npm packages..."
-            }
-            if ($line -match "prisma generate") {
-                $progressText = "Generating Prisma client..."
-            }
-            if ($line -match "COPY|copying") {
-                $progressText = "Copying files..."
-            }
-            if ($line -match "vite.*build|Building for production") {
-                $progressText = "Building frontend..."
-            }
-            if ($line -match "Creating|Created|Starting") {
-                $progressText = "Creating containers..."
-            }
-            if ($line -match "Health|healthy") {
-                $progressText = "Running health checks..."
-            }
-        }
-    }
-
-    $percent = [Math]::Min(100, [Math]::Round(($currentStep / $totalSteps) * 100))
-    $progressData.Value.Percent = $percent
-    $progressData.Value.Text = $progressText
-
-    return $Job.State
-}
-
-function Watch-DockerBuild {
-    param($Job)
-
-    $progressData = @{
-        Percent = 0
-        Text = "Initializing..."
-        Output = @()
-        Errors = @()
-        RetryCount = 0
-        MaxRetries = 3
-    }
-
+    # Progress tracking
+    $percent = 0
+    $status = "Initializing..."
     $activity = "Installing Weavenote"
 
-    while ($Job.State -eq "Running") {
-        $state = Get-DockerBuildProgress -Job $Job -ProgressData ([ref]$progressData)
+    # Run docker-compose with progress
+    $buildProcess = Start-Process -FilePath "docker-compose" -ArgumentList "up", "-d", "--build" -NoNewWindow -PassThru -RedirectStandardOutput "$LogFile.out" -RedirectStandardError "$LogFile.err"
 
-        # Display progress bar
-        $status = if ($progressData.Text) { $progressData.Text } else { "Processing..." }
-        Write-Progress -Activity $activity -Status $status -PercentComplete $progressData.Percent
+    # Monitor progress
+    while (-not $buildProcess.HasExited) {
+        # Read output for progress hints
+        if (Test-Path "$LogFile.out") {
+            $output = Get-Content "$LogFile.out" -Tail 20 -ErrorAction SilentlyContinue
+            
+            # Analyze progress
+            if ($output -match "Pulling") {
+                $percent = 10
+                $status = "Pulling base images..."
+            } elseif ($output -match "npm ci|npm install") {
+                $percent = 30
+                $status = "Installing npm packages..."
+            } elseif ($output -match "prisma generate") {
+                $percent = 50
+                $status = "Generating Prisma client..."
+            } elseif ($output -match "vite.*build|Building") {
+                $percent = 70
+                $status = "Building frontend..."
+            } elseif ($output -match "Creating|Starting") {
+                $percent = 90
+                $status = "Starting containers..."
+            } elseif ($output -match "DONE") {
+                $percent = [Math]::Min($percent + 5, 95)
+            }
 
-        # Check for errors in output
-        $recentOutput = $progressData.Output | Select-Object -Last 10
-        foreach ($line in $recentOutput) {
-            if ($line -match "error|Error|ERROR|failed|FAILED") {
-                # Try auto-fix
-                $fixed = $false
-                foreach ($pattern in $ErrorFixes.Keys) {
-                    if ($line -match $pattern) {
-                        Write-Warning "Detected: $($ErrorFixes[$pattern].Description)"
-                        $fixResult = & $ErrorFixes[$pattern].Fix
+            # Check for errors
+            $errors = $output | Where-Object { $_ -match "error|Error|ERROR|failed|FAILED" }
+            foreach ($err in $errors) {
+                foreach ($pattern in $script:ErrorFixes.Keys) {
+                    if ($err -match $pattern) {
+                        Write-Warn "Detected: $($script:ErrorFixes[$pattern].Description)"
+                        $fixResult = & $script:ErrorFixes[$pattern].Fix
                         if ($fixResult) {
-                            Write-Success "Auto-fixed: $($ErrorFixes[$pattern].Description)"
-                            $fixed = $true
-                            # Retry build
-                            if ($progressData.RetryCount -lt $progressData.MaxRetries) {
-                                $progressData.RetryCount++
-                                Write-Progress "Retrying build (attempt $($progressData.RetryCount)/$($progressData.MaxRetries))..."
-                                Stop-Job -Job $Job
-                                Remove-Job -Job $Job
-                                $Job = Start-DockerBuild -ProgressData ([ref]$progressData)
-                            }
+                            Write-Success "Auto-fixed!"
                         }
                         break
                     }
                 }
-                if (-not $fixed) {
-                    $progressData.Errors += $line
-                }
             }
         }
+
+        # Update progress bar
+        Write-Progress -Activity $activity -Status $status -PercentComplete $percent
 
         Start-Sleep -Milliseconds 500
     }
 
-    # Final status
-    $finalOutput = Receive-Job -Job $Job
-    $progressData.Output += $finalOutput
+    # Final output
+    Write-Progress -Activity $activity -Status "Finalizing..." -PercentComplete 100
 
-    if ($Job.State -eq "Completed" -and $LASTEXITCODE -eq 0) {
-        Write-Progress -Activity $activity -Status "Complete!" -PercentComplete 100
+    # Append logs
+    if (Test-Path "$LogFile.out") {
+        Get-Content "$LogFile.out" | Add-Content $LogFile
+        Remove-Item "$LogFile.out" -Force
+    }
+    if (Test-Path "$LogFile.err") {
+        Get-Content "$LogFile.err" | Add-Content $LogFile
+        Remove-Item "$LogFile.err" -Force
+    }
+
+    if ($buildProcess.ExitCode -eq 0) {
         Write-Success "Docker build completed successfully!"
         return $true
     } else {
-        Write-Progress -Activity $activity -Status "Failed" -PercentComplete 100
-        Write-Error "Docker build failed. Check log file: $LogFile"
+        Write-Err "Docker build failed. Check log file: $LogFile"
         return $false
     }
 }
@@ -419,6 +327,7 @@ function Test-ApplicationHealth {
         }
     }
 
+    Write-Progress -Activity "Health Check" -Completed
     return $healthy
 }
 
@@ -446,7 +355,7 @@ function Main {
 
     # Step 1: Check dependencies
     if (-not (Test-AllDependencies)) {
-        Write-Error "Missing required dependencies. Please install them and try again."
+        Write-Err "Missing required dependencies. Please install them and try again."
         Write-Log "Installation failed - missing dependencies" "ERROR"
         exit 1
     }
@@ -454,7 +363,7 @@ function Main {
     # Step 2: Ensure package-lock.json exists
     Write-Header "Preparing Build Files"
     if (-not (Test-Path "backend/package-lock.json")) {
-        Write-Progress "Generating backend package-lock.json..."
+        Write-Status "Generating backend package-lock.json..."
         Push-Location backend
         npm install --legacy-peer-deps 2>&1 | Out-File -Append -FilePath $LogFile
         Pop-Location
@@ -465,21 +374,16 @@ function Main {
 
     # Step 3: Stop any existing containers
     Write-Header "Cleaning Up"
-    Write-Progress "Stopping any existing containers..."
+    Write-Status "Stopping any existing containers..."
     docker-compose down 2>&1 | Out-Null
     Write-Success "Cleanup complete"
 
     # Step 4: Build and start containers
-    $progressData = @{Percent = 0; Text = ""; Output = @(); Errors = @()}
-    $buildJob = Start-DockerBuild -ProgressData ([ref]$progressData)
-
-    $buildSuccess = Watch-DockerBuild -Job $buildJob
-
-    Remove-Job -Job $buildJob -Force -ErrorAction SilentlyContinue
+    $buildSuccess = Invoke-DockerBuild
 
     if (-not $buildSuccess) {
         Write-Header "Installation Failed"
-        Write-Error "Docker build failed. Check the log file for details:"
+        Write-Err "Docker build failed. Check the log file for details:"
         Write-Output "  $LogFile"
         Write-Log "Installation failed - Docker build error" "ERROR"
 
@@ -513,7 +417,7 @@ function Main {
             Start-Process "http://localhost:8080"
         }
     } else {
-        Write-Warning "Services are starting but not yet responding."
+        Write-Warn "Services are starting but not yet responding."
         Write-Output "  Please wait a moment and try accessing: http://localhost:8080"
         Write-Log "Installation completed but health check timed out" "WARN"
     }
