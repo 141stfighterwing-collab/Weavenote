@@ -70,6 +70,7 @@
 - [API Reference](#-api-reference)
 - [Database Architecture](#-database-architecture)
 - [Security](#-security)
+- [Versioning & Patching](#-versioning--patching)
 - [Troubleshooting](#-troubleshooting)
 - [FAQ](#-faq)
 - [Development](#-development)
@@ -163,6 +164,18 @@ The installer automatically detects and fixes:
 
 ### Quick Docker Start (Manual)
 
+**Windows (PowerShell):**
+```powershell
+# Clone and start
+git clone https://github.com/141stfighterwing-collab/Weavenote.git
+cd Weavenote
+docker-compose up -d --build
+
+# Access the app
+start http://localhost:8080
+```
+
+**Linux/Mac:**
 ```bash
 # Clone and start
 git clone https://github.com/141stfighterwing-collab/Weavenote.git
@@ -171,6 +184,24 @@ docker-compose up -d --build
 
 # Access the app
 open http://localhost:8080
+```
+
+### Update to Latest Version
+
+**Windows (PowerShell):**
+```powershell
+cd Weavenote
+git pull
+docker-compose down
+docker-compose up -d --build
+```
+
+**Linux/Mac:**
+```bash
+cd Weavenote
+git pull
+docker-compose down
+docker-compose up -d --build
 ```
 
 ---
@@ -1141,6 +1172,106 @@ cat backup_20240101.sql | docker-compose exec -T postgres psql -U weavenote weav
    - Keep Docker images updated
    - Monitor audit logs
    - Backup database regularly
+
+---
+
+## 📦 Versioning & Patching
+
+### Current Version
+
+| Component | Version |
+|-----------|---------|
+| **WeaveNote** | 1.5.0 |
+| **Frontend** | React 18 + Vite 5 |
+| **Backend** | Node.js 20 + Express 4 |
+| **Database** | PostgreSQL 16 |
+| **ORM** | Prisma 5.x |
+
+### Version History
+
+WeaveNote tracks all patches and updates in the `system_versions` table. View version history in the Settings panel.
+
+| Version | Date | Changes |
+|---------|------|---------|
+| **1.5.0** | 2024-01 | Smart installer, auto-fix capabilities, Docker optimizations |
+| **1.4.0** | 2024-01 | Added project management features, Gantt charts |
+| **1.3.0** | 2024-01 | Mind map view, workflow editor |
+| **1.2.0** | 2023-12 | AI integration with Google Gemini |
+| **1.1.0** | 2023-12 | PostgreSQL migration, Prisma ORM |
+| **1.0.0** | 2023-11 | Initial release |
+
+### Update Process
+
+**Automatic Update (Recommended):**
+
+**Windows (PowerShell):**
+```powershell
+cd Weavenote
+git pull
+docker-compose down
+docker-compose up -d --build
+start http://localhost:8080
+```
+
+**Linux/Mac:**
+```bash
+cd Weavenote
+git pull
+docker-compose down
+docker-compose up -d --build
+open http://localhost:8080
+```
+
+**Check Current Version:**
+```bash
+# Via API
+curl http://localhost:8080/api/version
+
+# Via database
+docker-compose exec postgres psql -U weavenote -d weavenote -c "SELECT * FROM system_versions ORDER BY appliedAt DESC LIMIT 5;"
+```
+
+### Patch Notes
+
+Patches are automatically tracked in the database. Each patch includes:
+- Version number
+- Patch notes
+- Applied timestamp
+- Breaking change flags
+- Rollback capability (for non-breaking patches)
+
+### Database Migrations
+
+When updating, Prisma automatically handles database migrations:
+
+```bash
+# Check migration status
+docker-compose exec api npx prisma migrate status
+
+# Apply pending migrations
+docker-compose exec api npx prisma migrate deploy
+
+# View migration history
+docker-compose exec postgres psql -U weavenote -d weavenote -c "SELECT * FROM _prisma_migrations;"
+```
+
+### Rollback
+
+If an update causes issues:
+
+```bash
+# Stop current version
+docker-compose down
+
+# Checkout previous version
+git checkout <previous-tag>
+
+# Restart
+docker-compose up -d --build
+
+# Or restore from backup
+cat backup.sql | docker-compose exec -T postgres psql -U weavenote weavenote
+```
 
 ---
 
