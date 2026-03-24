@@ -31,24 +31,27 @@ function Write-Info { param([string]$Message) Write-ColorOutput Cyan "  [INFO] $
 
 function Write-Header {
     param([string]$Message)
-    Write-ColorOutput Cyan "`n$('='*60)"
+    Write-ColorOutput Cyan ""
+    Write-ColorOutput Cyan "  ============================================================"
     Write-ColorOutput Cyan "  $Message"
-    Write-ColorOutput Cyan "$('='*60)`n"
+    Write-ColorOutput Cyan "  ============================================================"
+    Write-ColorOutput Cyan ""
 }
 
+# ASCII-only progress bar
 function Show-ProgressBar {
     param([int]$Percent, [string]$Status = "")
     $Percent = [Math]::Max(0, [Math]::Min(99, $Percent))
     $barWidth = 40
     $filled = [Math]::Floor($Percent / 100 * $barWidth)
     $empty = $barWidth - $filled
-    $bar = "[" + ("█" * $filled) + ("░" * $empty) + "]"
+    $bar = "[" + ("#" * $filled) + ("-" * $empty) + "]"
     Write-Host "`r  $bar $Percent% $Status" -NoNewline
 }
 
 function Complete-ProgressBar {
     param([string]$Status = "Complete!")
-    Write-Host "`r  [" + ("█" * 40) + "] 100% $Status"
+    Write-Host "`r  [" + ("#" * 40) + "] 100% $Status"
 }
 
 # =============================================================================
@@ -81,18 +84,11 @@ $script:DatabaseConfig = @{
 
 function Show-DatabaseMenu {
     Clear-Host
-    Write-ColorOutput Magenta @"
-
-  ██╗    ██╗██╗  ██╗███████╗██╗     ███████╗ ██████╗ ███╗   ██╗
-  ██║    ██║██║  ██║██╔════╝██║     ██╔════╝██╔═══██╗████╗  ██║
-  ██║ █╗ ██║███████║█████╗  ██║     ███████╗██║   ██║██╔██╗ ██║
-  ██║███╗██║██╔══██║██╔══╝  ██║     ╚════██║██║   ██║██║╚██╗██║
-  ╚███╔███╔╝██║  ██║███████╗███████╗███████║╚██████╔╝██║ ╚████║
-   ╚══╝╚══╝ ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝ ╚═════╝ ╚═╝  ╚═══╝
-
-  Database Configuration
-
-"@
+    Write-ColorOutput Magenta ""
+    Write-ColorOutput Magenta "  ============================================================"
+    Write-ColorOutput Magenta "       W E A V E N O T E - Database Configuration"
+    Write-ColorOutput Magenta "  ============================================================"
+    Write-ColorOutput Magenta ""
     Write-Host "  SELECT DATABASE BACKEND:" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "  [1] PostgreSQL (On-Premises) - DEFAULT" -ForegroundColor Green
@@ -491,18 +487,11 @@ function Start-FullRepair {
 function Show-Menu {
     Clear-Host
     
-    Write-ColorOutput Magenta @"
-
-  ██╗    ██╗██╗  ██╗███████╗██╗     ███████╗ ██████╗ ███╗   ██╗
-  ██║    ██║██║  ██║██╔════╝██║     ██╔════╝██╔═══██╗████╗  ██║
-  ██║ █╗ ██║███████║█████╗  ██║     ███████╗██║   ██║██╔██╗ ██║
-  ██║███╗██║██╔══██║██╔══╝  ██║     ╚════██║██║   ██║██║╚██╗██║
-  ╚███╔███╔╝██║  ██║███████╗███████╗███████║╚██████╔╝██║ ╚████║
-   ╚══╝╚══╝ ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝ ╚═════╝ ╚═╝  ╚═══╝
-
-  Setup & Diagnostic Tool
-
-"@
+    Write-ColorOutput Magenta ""
+    Write-ColorOutput Magenta "  ============================================================"
+    Write-ColorOutput Magenta "       W E A V E N O T E - Setup & Diagnostic Tool"
+    Write-ColorOutput Magenta "  ============================================================"
+    Write-ColorOutput Magenta ""
     Write-Host "  DATABASE OPTIONS:" -ForegroundColor Yellow
     Write-Host "  [D] Configure Database Backend"
     Write-Host ""

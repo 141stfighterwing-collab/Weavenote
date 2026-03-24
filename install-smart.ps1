@@ -33,13 +33,15 @@ function Write-Info { param([string]$Message) Write-ColorOutput Cyan "  [INFO] $
 
 function Write-Header {
     param([string]$Message)
-    Write-ColorOutput Cyan "`n$('='*60)"
+    Write-ColorOutput Cyan ""
+    Write-ColorOutput Cyan "  ============================================================"
     Write-ColorOutput Cyan "  $Message"
-    Write-ColorOutput Cyan "$('='*60)`n"
+    Write-ColorOutput Cyan "  ============================================================"
+    Write-ColorOutput Cyan ""
 }
 
 # =============================================================================
-# PROGRESS BAR FUNCTION
+# PROGRESS BAR FUNCTION (ASCII-only for Windows compatibility)
 # =============================================================================
 
 function Show-ProgressBar {
@@ -51,14 +53,16 @@ function Show-ProgressBar {
     $barWidth = 40
     $filled = [Math]::Floor($Percent / 100 * $barWidth)
     $empty = $barWidth - $filled
-    $bar = "[" + ("█" * $filled) + ("░" * $empty) + "]"
+    # Use ASCII characters only - # for filled, - for empty
+    $bar = "[" + ("#" * $filled) + ("-" * $empty) + "]"
     $statusText = if ($Status) { " $Status" } else { "" }
     Write-Host "`r  $bar $Percent%$statusText" -NoNewline
 }
 
 function Complete-ProgressBar {
     param([string]$Status = "Complete!")
-    Write-Host "`r  [" + ("█" * 40) + "] 100% $Status"
+    # Use ASCII characters only
+    Write-Host "`r  [" + ("#" * 40) + "] 100% $Status"
 }
 
 # =============================================================================
@@ -240,7 +244,7 @@ function Select-Database {
     Write-Host "      Amazon managed database"
     Write-Host ""
     
-    $choice = Read-Host "  Select (1-4, default: 1)"
+    $choice = Read-Host "  Select (1-4, default is 1)"
     
     switch ($choice) {
         "2" { return "supabase" }
@@ -259,9 +263,15 @@ function Configure-Database {
     switch ($Type) {
         "postgresql" {
             Write-Success "Using On-Premises PostgreSQL (Docker)"
+            # Clear Firebase settings for on-prem mode
             $envContent = $envContent -replace "VITE_FIREBASE_API_KEY=.*", "VITE_FIREBASE_API_KEY="
             $envContent = $envContent -replace "VITE_FIREBASE_AUTH_DOMAIN=.*", "VITE_FIREBASE_AUTH_DOMAIN="
             $envContent = $envContent -replace "VITE_FIREBASE_PROJECT_ID=.*", "VITE_FIREBASE_PROJECT_ID="
+            $envContent = $envContent -replace "VITE_FIREBASE_STORAGE_BUCKET=.*", "VITE_FIREBASE_STORAGE_BUCKET="
+            # Ensure local PostgreSQL settings
+            if ($envContent -notmatch "DATABASE_URL=") {
+                $envContent += "`nDATABASE_URL=postgresql://weavenote:weavenote@postgres:5432/weavenote"
+            }
         }
         "supabase" {
             Write-Info "Enter Supabase credentials:"
@@ -327,18 +337,12 @@ function Configure-Database {
 function Main {
     Clear-Host
 
-    Write-ColorOutput Magenta @"
-
-  ██╗    ██╗██╗  ██╗███████╗██╗     ███████╗ ██████╗ ███╗   ██╗
-  ██║    ██║██║  ██║██╔════╝██║     ██╔════╝██╔═══██╗████╗  ██║
-  ██║ █╗ ██║███████║█████╗  ██║     ███████╗██║   ██║██╔██╗ ██║
-  ██║███╗██║██╔══██║██╔══╝  ██║     ╚════██║██║   ██║██║╚██╗██║
-  ╚███╔███╔╝██║  ██║███████╗███████╗███████║╚██████╔╝██║ ╚████║
-   ╚══╝╚══╝ ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝ ╚═════╝ ╚═╝  ╚═══╝
-
-  Smart Installer v3.0
-
-"@
+    # Simple ASCII header - no special Unicode characters
+    Write-ColorOutput Magenta ""
+    Write-ColorOutput Magenta "  ============================================================"
+    Write-ColorOutput Magenta "       W E A V E N O T E   Smart Installer v3.0"
+    Write-ColorOutput Magenta "  ============================================================"
+    Write-ColorOutput Magenta ""
 
     if (-not (Test-Docker)) {
         Write-Err "Prerequisites not met. Install Docker Desktop."
