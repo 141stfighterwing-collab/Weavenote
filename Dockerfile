@@ -63,9 +63,25 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Create directory for environment injection script
 RUN mkdir -p /docker-entrypoint.d
 
-# Create environment injection script
-COPY docker-entrypoint.sh /docker-entrypoint.d/40-inject-env.sh
-RUN chmod +x /docker-entrypoint.d/40-inject-env.sh
+# Create environment injection script (inline to ensure LF line endings)
+RUN echo '#!/bin/sh' > /docker-entrypoint.d/40-inject-env.sh && \
+    echo 'cat > /usr/share/nginx/html/runtime-config.js << EOF' >> /docker-entrypoint.d/40-inject-env.sh && \
+    echo 'window.__RUNTIME_CONFIG__ = {' >> /docker-entrypoint.d/40-inject-env.sh && \
+    echo '  apiUrl: "${VITE_API_URL:-/api}",' >> /docker-entrypoint.d/40-inject-env.sh && \
+    echo '  geminiApiKey: "${GEMINI_API_KEY:-}",' >> /docker-entrypoint.d/40-inject-env.sh && \
+    echo '  firebase: {' >> /docker-entrypoint.d/40-inject-env.sh && \
+    echo '    apiKey: "${VITE_FIREBASE_API_KEY:-}",' >> /docker-entrypoint.d/40-inject-env.sh && \
+    echo '    authDomain: "${VITE_FIREBASE_AUTH_DOMAIN:-}",' >> /docker-entrypoint.d/40-inject-env.sh && \
+    echo '    projectId: "${VITE_FIREBASE_PROJECT_ID:-}",' >> /docker-entrypoint.d/40-inject-env.sh && \
+    echo '    storageBucket: "${VITE_FIREBASE_STORAGE_BUCKET:-}",' >> /docker-entrypoint.d/40-inject-env.sh && \
+    echo '    messagingSenderId: "${VITE_FIREBASE_MESSAGING_SENDER_ID:-}",' >> /docker-entrypoint.d/40-inject-env.sh && \
+    echo '    appId: "${VITE_FIREBASE_APP_ID:-}",' >> /docker-entrypoint.d/40-inject-env.sh && \
+    echo '    measurementId: "${VITE_FIREBASE_MEASUREMENT_ID:-}"' >> /docker-entrypoint.d/40-inject-env.sh && \
+    echo '  }' >> /docker-entrypoint.d/40-inject-env.sh && \
+    echo '};' >> /docker-entrypoint.d/40-inject-env.sh && \
+    echo 'EOF' >> /docker-entrypoint.d/40-inject-env.sh && \
+    echo 'echo "Runtime configuration injected"' >> /docker-entrypoint.d/40-inject-env.sh && \
+    chmod +x /docker-entrypoint.d/40-inject-env.sh
 
 # Expose port
 EXPOSE 8080
