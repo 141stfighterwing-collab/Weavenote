@@ -2,6 +2,43 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.6.1] - 2025-03-25
+
+### 🛠️ Patch Release - Enhanced Text Formatting & Validation
+
+This patch adds comprehensive text formatting tools and ensures all note types work correctly.
+
+### Added
+
+#### ✍️ Enhanced Text Formatting Toolbar
+- **Strikethrough**: New "S" button for strikethrough text
+- **Superscript**: New "X²" button for superscript text (e.g., H₂O, E=mc²)
+- **Subscript**: New "X₂" button for subscript text (e.g., CO₂, chemical formulas)
+- **Formatting Toolbar Updates**: Available in both NoteInput and EditNoteModal
+
+#### ✅ Validation & Testing
+- Verified all 6 note types function correctly:
+  - **Quick Notes**: Color picker, GIF picker, image insertion, text formatting
+  - **Notebook Notes**: Highlighting tool, page navigation, fullscreen mode
+  - **Deep Notes**: List view with expandable details
+  - **Code Notes**: Dual-panel editor with matrix theme code box
+  - **Project Notes**: Objectives, deliverables, progress slider
+  - **Document Notes**: File upload for PDF/TXT/MD with 20MB limit
+
+### Changed
+
+- Toolbar button labels updated for clarity (B/I/U/S instead of symbols)
+- Added range checking for superscript/subscript operations
+
+### Technical Details
+
+| Component | Changes |
+|-----------|---------|
+| NoteInput.tsx | Added strikethrough, superscript, subscript buttons |
+| EditNoteModal.tsx | Added strikethrough, superscript, subscript buttons |
+
+---
+
 ## [1.6.0] - 2025-03-25
 
 ### 🎨 Major Feature Release - GIF Support, Enhanced Colors & Image Improvements
@@ -279,4 +316,4 @@ This project uses **Semantic Versioning (SemVer)**:
 - **MINOR** version for backward-compatible features.
 - **PATCH** version for backward-compatible bug fixes.
 
-Current version: **1.6.0**.
+Current version: **1.6.1**.

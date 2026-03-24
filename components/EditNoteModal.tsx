@@ -25,6 +25,10 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
   const [deliverables, setDeliverables] = useState('');
   const [manualProgress, setManualProgress] = useState(0);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [showImageDialog, setShowImageDialog] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageWidth, setImageWidth] = useState('');
   
   const editorRef = useRef<HTMLDivElement>(null);
   const isGuest = currentUser === 'Guest';
@@ -81,6 +85,33 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
     document.execCommand(command, false, value);
     if (editorRef.current) editorRef.current.focus();
   };
+
+  // Insert image/GIF from URL with optional width
+  const insertImageFromUrl = (url: string, width?: string) => {
+    if (!url.trim()) return;
+    if (editorRef.current) {
+      editorRef.current.focus();
+      const widthStyle = width ? ` width="${width}"` : '';
+      const imgHtml = `<img src="${url}" alt="Image"${widthStyle} style="max-width: 100%; height: auto; border-radius: 8px; margin: 8px 0;" />`;
+      document.execCommand('insertHTML', false, imgHtml);
+      setShowImageDialog(false);
+      setShowGifPicker(false);
+      setImageUrl('');
+      setImageWidth('');
+    }
+  };
+
+  // Popular GIF sources for quick access
+  const POPULAR_GIFS = [
+    { name: 'Thumbs Up', url: 'https://media.giphy.com/media/lexyF1vbzO2iOQ6F8b/giphy.gif' },
+    { name: 'Applause', url: 'https://media.giphy.com/media/mCOclR8iGicJ1VYfdT/giphy.gif' },
+    { name: 'Thinking', url: 'https://media.giphy.com/media/3o7btPCcdNniyf0ArS/giphy.gif' },
+    { name: 'Party', url: 'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif' },
+    { name: 'Success', url: 'https://media.giphy.com/media/a0h7sAqON67nO/giphy.gif' },
+    { name: 'Fire', url: 'https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif' },
+    { name: 'Celebrate', url: 'https://media.tenor.com/ja4S6wLmYPAAAAAC/celebrate.gif' },
+    { name: 'Wow', url: 'https://media.tenor.com/5tNnolqRe1YAAAAd/surprised-shocked.gif' },
+  ];
 
   const handleAIOrganize = async () => {
       if (isGuest) return;
@@ -214,6 +245,10 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
                         <button type="button" onClick={() => execCommand('bold')} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs font-black text-slate-600 dark:text-slate-300">B</button>
                         <button type="button" onClick={() => execCommand('italic')} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs italic text-slate-600 dark:text-slate-300">I</button>
                         <button type="button" onClick={() => execCommand('underline')} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs underline text-slate-600 dark:text-slate-300">U</button>
+                        <button type="button" onClick={() => execCommand('strikeThrough')} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs line-through text-slate-600 dark:text-slate-300">S</button>
+                        <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 mx-1" />
+                        <button type="button" onClick={() => { const sel = window.getSelection(); if (sel && sel.rangeCount > 0) { const range = sel.getRangeAt(0); const sup = document.createElement('sup'); sup.textContent = sel.toString(); range.deleteContents(); range.insertNode(sup); } }} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-[10px] font-black text-slate-600 dark:text-slate-300" title="Superscript">X²</button>
+                        <button type="button" onClick={() => { const sel = window.getSelection(); if (sel && sel.rangeCount > 0) { const range = sel.getRangeAt(0); const sub = document.createElement('sub'); sub.textContent = sel.toString(); range.deleteContents(); range.insertNode(sub); } }} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-[10px] font-black text-slate-600 dark:text-slate-300" title="Subscript">X₂</button>
                         <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 mx-1" />
                         <div className="relative">
                             <button type="button" onClick={() => setShowColorPicker(!showColorPicker)} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs text-slate-600 dark:text-slate-300">🎨</button>
@@ -267,6 +302,87 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
                                 </div>
                             )}
                         </div>
+                        <button type="button" onClick={() => setShowGifPicker(!showGifPicker)} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs text-slate-600 dark:text-slate-300" title="Insert GIF">🎬</button>
+                        <button type="button" onClick={() => setShowImageDialog(!showImageDialog)} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs text-slate-600 dark:text-slate-300" title="Insert Image URL">🖼️</button>
+                        
+                        {showGifPicker && (
+                            <div className="absolute top-full left-0 mt-1 p-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-2xl z-50 min-w-[280px]">
+                                <div className="text-[9px] font-black uppercase text-slate-400 mb-2">Popular GIFs</div>
+                                <div className="grid grid-cols-4 gap-2 mb-3">
+                                    {POPULAR_GIFS.map(gif => (
+                                        <button
+                                            key={gif.name}
+                                            type="button"
+                                            onClick={() => insertImageFromUrl(gif.url)}
+                                            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+                                            title={gif.name}
+                                        >
+                                            <img src={gif.url} alt={gif.name} className="w-10 h-10 object-cover rounded" />
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="text-[9px] font-black uppercase text-slate-400 mb-2">GIF URL</div>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={imageUrl}
+                                        onChange={(e) => setImageUrl(e.target.value)}
+                                        placeholder="https://media.giphy.com/..."
+                                        className="flex-1 px-2 py-1.5 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded text-[10px] outline-none text-slate-900 dark:text-white"
+                                    />
+                                    <input
+                                        type="text"
+                                        value={imageWidth}
+                                        onChange={(e) => setImageWidth(e.target.value)}
+                                        placeholder="Width"
+                                        className="w-16 px-2 py-1.5 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded text-[10px] outline-none text-slate-900 dark:text-white"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => insertImageFromUrl(imageUrl, imageWidth)}
+                                        className="px-3 py-1.5 bg-primary-600 text-white rounded text-[10px] font-black uppercase"
+                                    >
+                                        Add
+                                    </button>
+                                </div>
+                                <div className="text-[8px] text-slate-400 mt-2">
+                                    📌 Try: giphy.com, tenor.com, imgur.com
+                                </div>
+                            </div>
+                        )}
+                        {showImageDialog && (
+                            <div className="absolute top-full left-0 mt-1 p-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-2xl z-50 min-w-[280px]">
+                                <div className="text-[9px] font-black uppercase text-slate-400 mb-2">Insert Image from URL</div>
+                                <div className="space-y-2">
+                                    <input
+                                        type="text"
+                                        value={imageUrl}
+                                        onChange={(e) => setImageUrl(e.target.value)}
+                                        placeholder="https://example.com/image.jpg"
+                                        className="w-full px-2 py-1.5 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded text-[10px] outline-none text-slate-900 dark:text-white"
+                                    />
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={imageWidth}
+                                            onChange={(e) => setImageWidth(e.target.value)}
+                                            placeholder="Width (e.g., 300px or 100%)"
+                                            className="flex-1 px-2 py-1.5 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded text-[10px] outline-none text-slate-900 dark:text-white"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => insertImageFromUrl(imageUrl, imageWidth)}
+                                            className="px-3 py-1.5 bg-primary-600 text-white rounded text-[10px] font-black uppercase"
+                                        >
+                                            Insert
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="text-[8px] text-slate-400 mt-2">
+                                    💡 Supports JPG, PNG, GIF, WebP, SVG
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <div
                       ref={editorRef}
