@@ -4,8 +4,8 @@
 # Features:
 # - Real-time Docker output display
 # - 0-99% progress bar
+# - Database backend selection (PostgreSQL, Supabase, Firebase, AWS)
 # - Live logging to console
-# - Auto-fix for common issues
 # =============================================================================
 
 param(
@@ -45,30 +45,20 @@ function Write-Header {
 function Show-ProgressBar {
     param(
         [int]$Percent,
-        [string]$Status = "",
-        [string]$Activity = "Installing Weavenote"
+        [string]$Status = ""
     )
-
-    # Clamp to 0-99
     $Percent = [Math]::Max(0, [Math]::Min(99, $Percent))
-
-    # Build progress bar
     $barWidth = 40
     $filled = [Math]::Floor($Percent / 100 * $barWidth)
     $empty = $barWidth - $filled
-
     $bar = "[" + ("█" * $filled) + ("░" * $empty) + "]"
-
-    # Clear line and write progress
     $statusText = if ($Status) { " $Status" } else { "" }
     Write-Host "`r  $bar $Percent%$statusText" -NoNewline
 }
 
 function Complete-ProgressBar {
     param([string]$Status = "Complete!")
-    $barWidth = 40
-    $bar = "[" + ("█" * $barWidth) + "]"
-    Write-Host "`r  $bar 100% $Status"
+    Write-Host "`r  [" + ("█" * 40) + "] 100% $Status"
 }
 
 # =============================================================================
@@ -78,16 +68,12 @@ function Complete-ProgressBar {
 function Invoke-RealTimeBuild {
     Write-Header "Building Docker Containers"
 
-    # Initialize log
     "=== Weavenote Installation Log ===" | Out-File -FilePath $LogFile
     "Started: $(Get-Date)" | Out-File -Append -FilePath $LogFile
 
-    # Progress tracking variables
     $script:currentPercent = 0
     $script:currentStatus = "Initializing..."
-    $script:buildErrors = @()
 
-    # Create process
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = "docker-compose"
     $psi.Arguments = "up -d --build"
@@ -99,152 +85,67 @@ function Invoke-RealTimeBuild {
     $process = New-Object System.Diagnostics.Process
     $process.StartInfo = $psi
 
-    # Event handlers for output
     $outputAction = {
         param($sender, $e)
         if (-not [string]::IsNullOrEmpty($e.Data)) {
             $line = $e.Data
-            
-            # Write to log
             Add-Content -Path $LogFile -Value $line
-            
-            # Analyze for progress
+
             $percent = $script:currentPercent
             $status = $script:currentStatus
 
-            if ($line -match "Pulling") {
-                $percent = 5
-                $status = "Pulling base images..."
-            }
-            elseif ($line -match "\[internal\]") {
-                $percent = 10
-                $status = "Initializing build..."
-            }
-            elseif ($line -match "builder") {
-                $percent = [Math]::Max($percent, 15)
-                $status = "Building stage..."
-            }
-            elseif ($line -match "npm ci|npm install") {
-                $percent = [Math]::Max($percent, 25)
-                $status = "Installing npm packages..."
-            }
-            elseif ($line -match "added.*packages") {
-                $percent = [Math]::Max($percent, 40)
-                $status = "Packages installed"
-            }
-            elseif ($line -match "prisma generate") {
-                $percent = [Math]::Max($percent, 50)
-                $status = "Generating Prisma client..."
-            }
-            elseif ($line -match "Generated Prisma") {
-                $percent = [Math]::Max($percent, 55)
-                $status = "Prisma client ready"
-            }
-            elseif ($line -match "vite.*build|Building for production") {
-                $percent = [Math]::Max($percent, 60)
-                $status = "Building frontend..."
-            }
-            elseif ($line -match "transforming") {
-                $percent = [Math]::Max($percent, 65)
-                $status = "Transforming modules..."
-            }
-            elseif ($line -match "rendering chunks") {
-                $percent = [Math]::Max($percent, 75)
-                $status = "Rendering chunks..."
-            }
-            elseif ($line -match "built in") {
-                $percent = [Math]::Max($percent, 80)
-                $status = "Frontend built"
-            }
-            elseif ($line -match "exporting") {
-                $percent = [Math]::Max($percent, 85)
-                $status = "Exporting image..."
-            }
-            elseif ($line -match "Creating|Created") {
-                $percent = [Math]::Max($percent, 90)
-                $status = "Creating containers..."
-            }
-            elseif ($line -match "Starting|Started") {
-                $percent = [Math]::Max($percent, 93)
-                $status = "Starting containers..."
-            }
-            elseif ($line -match "Healthy") {
-                $percent = [Math]::Max($percent, 96)
-                $status = "Health check passed"
-            }
-            elseif ($line -match "DONE") {
-                $percent = [Math]::Min($percent + 2, 98)
-            }
+            if ($line -match "Pulling") { $percent = 5; $status = "Pulling images..." }
+            elseif ($line -match "\[internal\]") { $percent = 10; $status = "Initializing..." }
+            elseif ($line -match "builder") { $percent = [Math]::Max($percent, 15); $status = "Building..." }
+            elseif ($line -match "npm ci|npm install") { $percent = [Math]::Max($percent, 25); $status = "Installing packages..." }
+            elseif ($line -match "added.*packages") { $percent = [Math]::Max($percent, 40); $status = "Packages ready" }
+            elseif ($line -match "prisma generate") { $percent = [Math]::Max($percent, 50); $status = "Generating Prisma..." }
+            elseif ($line -match "Generated Prisma") { $percent = [Math]::Max($percent, 55); $status = "Prisma ready" }
+            elseif ($line -match "vite.*build|Building for production") { $percent = [Math]::Max($percent, 60); $status = "Building frontend..." }
+            elseif ($line -match "transforming") { $percent = [Math]::Max($percent, 65); $status = "Transforming..." }
+            elseif ($line -match "rendering chunks") { $percent = [Math]::Max($percent, 75); $status = "Rendering..." }
+            elseif ($line -match "built in") { $percent = [Math]::Max($percent, 80); $status = "Build complete" }
+            elseif ($line -match "Creating|Created") { $percent = [Math]::Max($percent, 90); $status = "Creating containers..." }
+            elseif ($line -match "Starting|Started") { $percent = [Math]::Max($percent, 93); $status = "Starting..." }
+            elseif ($line -match "Healthy") { $percent = [Math]::Max($percent, 96); $status = "Healthy" }
 
-            # Check for errors
             if ($line -match "error|Error|ERROR|failed|FAILED") {
-                $script:buildErrors += $line
-                Write-Host ""  # New line
-                Write-Err $line
+                Write-Host ""; Write-Err $line
             }
 
-            # Update progress
             $script:currentPercent = $percent
             $script:currentStatus = $status
             Show-ProgressBar -Percent $percent -Status $status
         }
     }
 
-    $errorAction = {
-        param($sender, $e)
-        if (-not [string]::IsNullOrEmpty($e.Data)) {
-            $line = $e.Data
-            Add-Content -Path $LogFile -Value "STDERR: $line"
-            
-            if ($line -match "error|Error|ERROR|failed|FAILED") {
-                $script:buildErrors += $line
-                Write-Host ""  # New line
-                Write-Err $line
-            }
-        }
-    }
-
-    # Register events
     Register-ObjectEvent -InputObject $process -EventName OutputDataReceived -Action $outputAction | Out-Null
-    Register-ObjectEvent -InputObject $process -EventName ErrorDataReceived -Action $errorAction | Out-Null
+    Register-ObjectEvent -InputObject $process -EventName ErrorDataReceived -Action $outputAction | Out-Null
 
-    # Start process
     Write-Info "Starting Docker build..."
     $process.Start() | Out-Null
     $process.BeginOutputReadLine()
     $process.BeginErrorReadLine()
 
-    # Wait with animated progress
     $dots = 0
     while (-not $process.HasExited) {
         Start-Sleep -Milliseconds 200
-        
-        # Animate dots
         $dots = ($dots + 1) % 4
-        $dotString = "." * $dots
-        
-        # Show current progress
-        Show-ProgressBar -Percent $script:currentPercent -Status "$($script:currentStatus)$dotString"
+        Show-ProgressBar -Percent $script:currentPercent -Status "$($script:currentStatus)$('.' * $dots)"
     }
 
-    # Wait for events to complete
     Start-Sleep -Milliseconds 500
-
-    # Complete progress bar
-    Write-Host ""  # New line
+    Write-Host ""
     Complete-ProgressBar -Status "Build complete!"
 
     $exitCode = $process.ExitCode
-
-    # Cleanup
     $process.Dispose()
 
     if ($exitCode -eq 0) {
-        Write-Success "Docker build completed successfully!"
+        Write-Success "Docker build completed!"
         return $true
     } else {
-        Write-Err "Docker build failed with exit code: $exitCode"
-        Write-Info "Check log file: $LogFile"
+        Write-Err "Docker build failed. Check: $LogFile"
         return $false
     }
 }
@@ -256,7 +157,6 @@ function Invoke-RealTimeBuild {
 function Test-Docker {
     Write-Header "Checking Prerequisites"
 
-    # Check Docker
     try {
         $dockerVersion = docker --version 2>&1
         if ($LASTEXITCODE -eq 0) {
@@ -270,19 +170,17 @@ function Test-Docker {
         return $false
     }
 
-    # Check Docker daemon
     try {
         docker info | Out-Null
         Write-Success "Docker daemon is running"
     } catch {
-        Write-Err "Docker daemon is not running. Please start Docker Desktop."
+        Write-Err "Docker daemon not running. Start Docker Desktop."
         return $false
     }
 
-    # Check Docker Compose
     try {
         docker compose version | Out-Null
-        Write-Success "Docker Compose is available"
+        Write-Success "Docker Compose available"
     } catch {
         Write-Err "Docker Compose not found"
         return $false
@@ -302,22 +200,13 @@ function Wait-ForHealthy {
     $waited = 0
 
     while ($waited -lt $maxWait) {
-        $percent = [Math]::Floor($waited / $maxWait * 99)
-        Show-ProgressBar -Percent $percent -Status "Waiting for services... ($waited/$maxWait)"
+        Show-ProgressBar -Percent ([Math]::Floor($waited / $maxWait * 99)) -Status "Waiting... ($waited/$maxWait)"
 
         try {
             $response = Invoke-WebRequest -Uri "http://localhost:8080" -TimeoutSec 2 -ErrorAction SilentlyContinue
             if ($response.StatusCode -eq 200) {
                 Write-Host ""
-                Write-Success "Frontend is ready!"
-                
-                try {
-                    $apiResponse = Invoke-WebRequest -Uri "http://localhost:3001/api/health" -TimeoutSec 2 -ErrorAction SilentlyContinue
-                    if ($apiResponse.StatusCode -eq 200) {
-                        Write-Success "API is ready!"
-                    }
-                } catch {}
-                
+                Write-Success "Frontend ready!"
                 return $true
             }
         } catch {}
@@ -327,8 +216,108 @@ function Wait-ForHealthy {
     }
 
     Write-Host ""
-    Write-Warn "Services taking longer than expected. Try accessing manually."
+    Write-Warn "Services starting. Try http://localhost:8080 manually."
     return $false
+}
+
+# =============================================================================
+# DATABASE SELECTION
+# =============================================================================
+
+function Select-Database {
+    Write-Header "Select Database Backend"
+    
+    Write-Host "  [1] PostgreSQL (On-Premises) - DEFAULT" -ForegroundColor Green
+    Write-Host "      Local Docker PostgreSQL - No cloud needed"
+    Write-Host ""
+    Write-Host "  [2] Supabase (Cloud PostgreSQL)" -ForegroundColor Cyan
+    Write-Host "      Managed PostgreSQL with real-time"
+    Write-Host ""
+    Write-Host "  [3] Firebase (Cloud - Auth Only)" -ForegroundColor Yellow
+    Write-Host "      Google auth + sync (PostgreSQL for data)"
+    Write-Host ""
+    Write-Host "  [4] AWS RDS (Cloud PostgreSQL)" -ForegroundColor Magenta
+    Write-Host "      Amazon managed database"
+    Write-Host ""
+    
+    $choice = Read-Host "  Select (1-4, default: 1)"
+    
+    switch ($choice) {
+        "2" { return "supabase" }
+        "3" { return "firebase" }
+        "4" { return "aws" }
+        default { return "postgresql" }
+    }
+}
+
+function Configure-Database {
+    param([string]$Type)
+    
+    $envFile = ".env"
+    $envContent = if (Test-Path $envFile) { Get-Content $envFile -Raw } else { "" }
+    
+    switch ($Type) {
+        "postgresql" {
+            Write-Success "Using On-Premises PostgreSQL (Docker)"
+            $envContent = $envContent -replace "VITE_FIREBASE_API_KEY=.*", "VITE_FIREBASE_API_KEY="
+            $envContent = $envContent -replace "VITE_FIREBASE_AUTH_DOMAIN=.*", "VITE_FIREBASE_AUTH_DOMAIN="
+            $envContent = $envContent -replace "VITE_FIREBASE_PROJECT_ID=.*", "VITE_FIREBASE_PROJECT_ID="
+        }
+        "supabase" {
+            Write-Info "Enter Supabase credentials:"
+            $url = Read-Host "  Supabase URL"
+            $key = Read-Host "  Anon Key"
+            $dbUrl = Read-Host "  Database URL"
+            
+            if ($envContent -match "SUPABASE_URL=") {
+                $envContent = $envContent -replace "SUPABASE_URL=.*", "SUPABASE_URL=$url"
+            } else { $envContent += "`nSUPABASE_URL=$url" }
+            
+            if ($envContent -match "SUPABASE_ANON_KEY=") {
+                $envContent = $envContent -replace "SUPABASE_ANON_KEY=.*", "SUPABASE_ANON_KEY=$key"
+            } else { $envContent += "`nSUPABASE_ANON_KEY=$key" }
+            
+            if ($envContent -match "DATABASE_URL=") {
+                $envContent = $envContent -replace "DATABASE_URL=.*", "DATABASE_URL=$dbUrl"
+            } else { $envContent += "`nDATABASE_URL=$dbUrl" }
+            
+            Write-Success "Supabase configured"
+        }
+        "firebase" {
+            Write-Info "Enter Firebase credentials:"
+            $apiKey = Read-Host "  API Key"
+            $authDomain = Read-Host "  Auth Domain"
+            $projectId = Read-Host "  Project ID"
+            $storageBucket = Read-Host "  Storage Bucket"
+            
+            $envContent = $envContent -replace "VITE_FIREBASE_API_KEY=.*", "VITE_FIREBASE_API_KEY=$apiKey"
+            $envContent = $envContent -replace "VITE_FIREBASE_AUTH_DOMAIN=.*", "VITE_FIREBASE_AUTH_DOMAIN=$authDomain"
+            $envContent = $envContent -replace "VITE_FIREBASE_PROJECT_ID=.*", "VITE_FIREBASE_PROJECT_ID=$projectId"
+            $envContent = $envContent -replace "VITE_FIREBASE_STORAGE_BUCKET=.*", "VITE_FIREBASE_STORAGE_BUCKET=$storageBucket"
+            
+            Write-Success "Firebase configured (auth/sync only)"
+        }
+        "aws" {
+            Write-Info "Enter AWS RDS credentials:"
+            $endpoint = Read-Host "  RDS Endpoint"
+            $port = Read-Host "  Port (default: 5432)"
+            $database = Read-Host "  Database Name"
+            $username = Read-Host "  Username"
+            $password = Read-Host "  Password"
+            
+            if ([string]::IsNullOrWhiteSpace($port)) { $port = "5432" }
+            $dbUrl = "postgresql://${username}:${password}@${endpoint}:${port}/${database}"
+            
+            if ($envContent -match "DATABASE_URL=") {
+                $envContent = $envContent -replace "DATABASE_URL=.*", "DATABASE_URL=$dbUrl"
+            } else { $envContent += "`nDATABASE_URL=$dbUrl" }
+            
+            Write-Success "AWS RDS configured"
+        }
+    }
+    
+    $envContent | Out-File -FilePath $envFile -Encoding UTF8
+    Write-Info "Saved to .env"
 }
 
 # =============================================================================
@@ -338,7 +327,6 @@ function Wait-ForHealthy {
 function Main {
     Clear-Host
 
-    # Banner
     Write-ColorOutput Magenta @"
 
   ██╗    ██╗██╗  ██╗███████╗██╗     ███████╗ ██████╗ ███╗   ██╗
@@ -348,54 +336,51 @@ function Main {
   ╚███╔███╔╝██║  ██║███████╗███████╗███████║╚██████╔╝██║ ╚████║
    ╚══╝╚══╝ ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝ ╚═════╝ ╚═╝  ╚═══╝
 
-  Smart Installer v3.0 - Real-Time Progress
+  Smart Installer v3.0
 
 "@
 
-    # Check prerequisites
     if (-not (Test-Docker)) {
-        Write-Err "Prerequisites not met. Please install Docker Desktop."
+        Write-Err "Prerequisites not met. Install Docker Desktop."
         Read-Host "Press Enter to exit"
         exit 1
     }
 
-    # Cleanup
+    $dbType = Select-Database
+    Configure-Database -Type $dbType
+
     Write-Header "Cleanup"
     Write-Info "Stopping existing containers..."
     docker-compose down 2>&1 | Out-Null
-    Write-Success "Cleanup done"
+    Write-Success "Done"
 
-    # Build
     $success = Invoke-RealTimeBuild
 
     if (-not $success) {
         Write-Header "Build Failed"
-        Write-Err "Installation failed. Check the log:"
-        Write-Host "  $LogFile"
-        Read-Host "Press Enter to view last 30 lines"
+        Write-Err "Check: $LogFile"
+        Read-Host "Press Enter for last 30 lines"
         Get-Content $LogFile | Select-Object -Last 30
         exit 1
     }
 
-    # Health check
     Wait-ForHealthy | Out-Null
 
-    # Done
     Write-Header "Installation Complete"
     Write-Success "Weavenote is running!"
     Write-Host ""
+    Write-ColorOutput Green "  Database:  $dbType"
     Write-ColorOutput Green "  Frontend:  http://localhost:8080"
     Write-ColorOutput Green "  API:       http://localhost:3001"
     Write-Host ""
-    Write-Info "Log file: $LogFile"
+    Write-Info "Log: $LogFile"
     Write-Host ""
-    Write-ColorOutput Cyan "  Commands:"
-    Write-Host "    Stop:     docker-compose down"
-    Write-Host "    Restart:  docker-compose restart"
-    Write-Host "    Logs:     docker-compose logs -f"
+    Write-ColorOutput Cyan "  Commands:  stop | restart | logs"
+    Write-Host "    docker-compose down"
+    Write-Host "    docker-compose restart"
+    Write-Host "    docker-compose logs -f"
     Write-Host ""
 
-    # Open browser
     $open = Read-Host "Open browser? (Y/n)"
     if ($open -ne "n") {
         Start-Process "http://localhost:8080"
