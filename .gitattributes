@@ -1,0 +1,33 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Shell scripts should always use LF line endings
+*.sh text eol=lf
+
+# PowerShell scripts should use CRLF on Windows
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+
+# JavaScript/TypeScript files
+*.js text
+*.ts text
+*.tsx text
+*.jsx text
+*.json text
+
+# Config files
+*.yml text
+*.yaml text
+*.toml text
+*.md text
+*.txt text
+
+# Docker files
+Dockerfile text
+docker-compose*.yml text
+.dockerignore text
+
+# Ensure these are treated as text
+*.prisma text
+*.sql text
+*.env.example text
