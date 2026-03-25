@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.6.2] - 2026-03-25
+
+### 🔧 Firebase DB Routing + On-Prem Spinoff Profile
+
+### Added
+- Added support for `VITE_FIREBASE_DATABASE_URL` in frontend runtime config and app config.
+- Added `docker-compose.onprem.yml` override profile for 100% on-prem deployment (no Firebase/Gemini vars).
+- Added `SPINOFF_ONPREM.md` with Firebase mapping and on-prem run instructions.
+
+### Changed
+- Updated Settings quick-add templates to include Firebase Realtime Database URL variable.
+
+---
+
 ## [1.6.1] - 2025-03-25
 
 ### 🛠️ Patch Release - Enhanced Text Formatting & Validation
@@ -316,4 +330,4 @@ This project uses **Semantic Versioning (SemVer)**:
 - **MINOR** version for backward-compatible features.
 - **PATCH** version for backward-compatible bug fixes.
 
-Current version: **1.6.1**.
+Current version: **1.6.2**.

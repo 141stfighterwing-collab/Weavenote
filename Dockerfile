@@ -76,7 +76,8 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.d/40-inject-env.sh && \
     echo '    storageBucket: "${VITE_FIREBASE_STORAGE_BUCKET:-}",' >> /docker-entrypoint.d/40-inject-env.sh && \
     echo '    messagingSenderId: "${VITE_FIREBASE_MESSAGING_SENDER_ID:-}",' >> /docker-entrypoint.d/40-inject-env.sh && \
     echo '    appId: "${VITE_FIREBASE_APP_ID:-}",' >> /docker-entrypoint.d/40-inject-env.sh && \
-    echo '    measurementId: "${VITE_FIREBASE_MEASUREMENT_ID:-}"' >> /docker-entrypoint.d/40-inject-env.sh && \
+    echo '    measurementId: "${VITE_FIREBASE_MEASUREMENT_ID:-}",' >> /docker-entrypoint.d/40-inject-env.sh && \
+    echo '    databaseURL: "${VITE_FIREBASE_DATABASE_URL:-}"' >> /docker-entrypoint.d/40-inject-env.sh && \
     echo '  }' >> /docker-entrypoint.d/40-inject-env.sh && \
     echo '};' >> /docker-entrypoint.d/40-inject-env.sh && \
     echo 'EOF' >> /docker-entrypoint.d/40-inject-env.sh && \
