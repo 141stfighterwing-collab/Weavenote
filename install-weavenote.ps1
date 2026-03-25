@@ -234,13 +234,13 @@ function Write-Success {
     Write-LogDebug "Success: $Message"
 }
 
-function Write-Warning {
+function Write-Warn {
     param([string]$Message)
     Write-Host "  [!] $Message" -ForegroundColor $COLORS.Warn
     Write-LogWarn $Message
 }
 
-function Write-Error {
+function Write-Err {
     param([string]$Message)
     Write-Host "  [X] $Message" -ForegroundColor $COLORS.Error
     Write-LogError $Message
@@ -439,7 +439,7 @@ function Invoke-WithRetry {
         catch {
             if ($attempt -lt $MaxRetries) {
                 if (-not $Silent) {
-                    Write-Warning "$Activity failed (Attempt $attempt/$MaxRetries). Retrying in $DelaySeconds seconds..."
+                    Write-Warn "$Activity failed (Attempt $attempt/$MaxRetries). Retrying in $DelaySeconds seconds..."
                 }
                 Start-Sleep -Seconds $DelaySeconds
             }
@@ -561,7 +561,7 @@ function Test-PowerShellVersion {
     $psEdition = $PSVersionTable.PSEdition
     
     if ((Compare-Version $psVersion $MIN_VERSIONS.PowerShell) -lt 0) {
-        Write-Error "PowerShell version $psVersion is below minimum required $($MIN_VERSIONS.PowerShell)"
+        Write-Err "PowerShell version $psVersion is below minimum required $($MIN_VERSIONS.PowerShell)"
         Write-Info "Please upgrade PowerShell from: https://docs.microsoft.com/powershell/scripting/install/installing-powershell"
         return $false
     }
@@ -579,7 +579,7 @@ function Test-DockerInstallation {
     Write-Info "Checking Docker..."
     
     if (-not (Test-Command "docker")) {
-        Write-Error "Docker is not installed"
+        Write-Err "Docker is not installed"
         Write-Info "Download from: https://www.docker.com/products/docker-desktop"
         
         if (-not $script:NoDocker) {
@@ -590,7 +590,7 @@ function Test-DockerInstallation {
         try {
             $dockerVersion = docker version --format "{{.Server.Version}}" 2>$null
             if (-not $dockerVersion) {
-                Write-Error "Docker is installed but not running"
+                Write-Err "Docker is installed but not running"
                 Write-Info "Please start Docker Desktop and try again"
                 
                 if (-not $script:NoDocker) {
@@ -599,7 +599,7 @@ function Test-DockerInstallation {
             }
             else {
                 if ((Compare-Version $dockerVersion $MIN_VERSIONS.Docker) -lt 0) {
-                    Write-Warning "Docker version $dockerVersion is below recommended $($MIN_VERSIONS.Docker)"
+                    Write-Warn "Docker version $dockerVersion is below recommended $($MIN_VERSIONS.Docker)"
                     Write-Info "Consider upgrading Docker for best compatibility"
                 }
                 else {
@@ -608,7 +608,7 @@ function Test-DockerInstallation {
             }
         }
         catch {
-            Write-Error "Docker check failed: $_"
+            Write-Err "Docker check failed: $_"
             if (-not $script:NoDocker) {
                 return $false
             }
@@ -638,7 +638,7 @@ function Test-DockerComposeInstallation {
         Write-LogDebug "Docker Compose found" -Context @{ Command = $composeCmd; Version = $version }
     }
     catch {
-        Write-Error "Docker Compose is not available"
+        Write-Err "Docker Compose is not available"
         Write-Info "Docker Compose is included with Docker Desktop. Please ensure Docker is properly installed."
         
         if (-not $script:NoDocker) {
@@ -662,7 +662,7 @@ function Test-GitInstallation {
         return $true
     }
     else {
-        Write-Warning "Git is not installed (optional, used for cloning repository)"
+        Write-Warn "Git is not installed (optional, used for cloning repository)"
         Write-Info "Download from: https://git-scm.com/downloads"
         return $true  # Optional, don't fail
     }
@@ -683,7 +683,7 @@ function Test-NodeJSInstallation {
         $nodeVersion = (node --version 2>$null) -replace 'v', ''
         
         if ((Compare-Version $nodeVersion $MIN_VERSIONS.NodeJS) -lt 0) {
-            Write-Error "Node.js version $nodeVersion is below minimum required $($MIN_VERSIONS.NodeJS)"
+            Write-Err "Node.js version $nodeVersion is below minimum required $($MIN_VERSIONS.NodeJS)"
             Write-Info "Download from: https://nodejs.org/"
             return $false
         }
@@ -699,7 +699,7 @@ function Test-NodeJSInstallation {
         return $true
     }
     else {
-        Write-Error "Node.js is not installed (required for -NoDocker mode)"
+        Write-Err "Node.js is not installed (required for -NoDocker mode)"
         Write-Info "Download from: https://nodejs.org/"
         return $false
     }
@@ -771,7 +771,7 @@ function Test-PortConflicts {
             $resolved[$name] = $port
         }
         else {
-            Write-Warning "Port $port ($name) is in use"
+            Write-Warn "Port $port ($name) is in use"
             
             # Try to detect what's using the port
             $portUser = Get-PortUser -Port $port
@@ -795,7 +795,7 @@ function Test-PortConflicts {
     
     if ($conflicts.Count -gt 0 -and -not $AutoResolve) {
         Write-Host ""
-        Write-Warning "Port conflicts detected. Options:"
+        Write-Warn "Port conflicts detected. Options:"
         Write-Info "  1. Stop the conflicting services and re-run"
         Write-Info "  2. Use -AutoResolve to automatically find available ports"
         Write-Info "  3. Specify different ports with -Port parameter"
@@ -869,7 +869,7 @@ function Read-JsonConfig {
         return $config
     }
     catch {
-        Write-Warning "Failed to parse JSON config: $_"
+        Write-Warn "Failed to parse JSON config: $_"
         return @{}
     }
 }
@@ -963,7 +963,7 @@ function Test-Configuration {
     if ($errors.Count -gt 0) {
         Write-Header "Configuration Validation Errors"
         foreach ($error in $errors) {
-            Write-Error $error
+            Write-Err $error
         }
         return $false
     }
@@ -1042,7 +1042,7 @@ function Get-DomainConfiguration {
             Write-Host ""
             $domain = Read-Host "  Enter your domain (e.g., notes.yourdomain.com)"
             while ([string]::IsNullOrWhiteSpace($domain)) {
-                Write-Error "Domain is required for production deployment"
+                Write-Err "Domain is required for production deployment"
                 $domain = Read-Host "  Enter your domain"
             }
             $config.DOMAIN = $domain
@@ -1078,7 +1078,7 @@ function Get-DomainConfiguration {
             Write-Host ""
             $domain = Read-Host "  Enter your domain (e.g., notes.yourdomain.com)"
             while ([string]::IsNullOrWhiteSpace($domain)) {
-                Write-Error "Domain is required for production deployment"
+                Write-Err "Domain is required for production deployment"
                 $domain = Read-Host "  Enter your domain"
             }
             $config.DOMAIN = $domain
@@ -1094,7 +1094,7 @@ function Get-DomainConfiguration {
             $config.EXPOSE_DB = ($exposeDb -eq "y" -or $exposeDb -eq "Y")
         }
         default {
-            Write-Warning "Invalid selection, defaulting to local development"
+            Write-Warn "Invalid selection, defaulting to local development"
             $config.FRONTEND_PORT = $script:Port
         }
     }
@@ -1155,7 +1155,7 @@ function Get-EnvironmentVariablesFromUser {
                 $envVars[$var.Name] = $value
             }
             else {
-                Write-Error "Required variable $($var.Name) not provided in non-interactive mode"
+                Write-Err "Required variable $($var.Name) not provided in non-interactive mode"
                 throw "Missing required configuration: $($var.Name)"
             }
         }
@@ -1172,7 +1172,7 @@ function Get-EnvironmentVariablesFromUser {
                 else {
                     $value = Read-Host "  Enter value for $($var.Name)"
                     while ([string]::IsNullOrWhiteSpace($value)) {
-                        Write-Error "Value cannot be empty"
+                        Write-Err "Value cannot be empty"
                         $value = Read-Host "  Enter value for $($var.Name)"
                     }
                     $envVars[$var.Name] = $value
@@ -1181,7 +1181,7 @@ function Get-EnvironmentVariablesFromUser {
             else {
                 $value = Read-Host "  Enter value for $($var.Name)"
                 while ([string]::IsNullOrWhiteSpace($value)) {
-                    Write-Error "Value cannot be empty - $($var.Name) is required"
+                    Write-Err "Value cannot be empty - $($var.Name) is required"
                     $value = Read-Host "  Enter value for $($var.Name)"
                 }
                 $envVars[$var.Name] = $value
@@ -1315,7 +1315,7 @@ VITE_FIREBASE_API_KEY=$($EnvVars['VITE_FIREBASE_API_KEY'])
         return $true
     }
     catch {
-        Write-Error "Failed to create environment file: $_"
+        Write-Err "Failed to create environment file: $_"
         Write-LogError "Failed to create .env file" -Exception $_
         return $false
     }
@@ -1350,7 +1350,7 @@ function Stop-ExistingContainers {
             }
         }
         catch {
-            Write-Warning "Could not stop $container"
+            Write-Warn "Could not stop $container"
         }
     }
 }
@@ -1397,14 +1397,14 @@ function Build-DockerImages {
             return $true
         }
         else {
-            Write-Error "Build failed with exit code: $LASTEXITCODE"
+            Write-Err "Build failed with exit code: $LASTEXITCODE"
             Write-Host $buildOutput
             Write-LogError "Docker build failed" -Context @{ ExitCode = $LASTEXITCODE }
             return $false
         }
     }
     catch {
-        Write-Error "Failed to build Docker images: $_"
+        Write-Err "Failed to build Docker images: $_"
         Write-LogError "Docker build exception" -Exception $_
         return $false
     }
@@ -1448,14 +1448,14 @@ function Start-DockerContainers {
             return $true
         }
         else {
-            Write-Error "Start failed with exit code: $LASTEXITCODE"
+            Write-Err "Start failed with exit code: $LASTEXITCODE"
             Write-Host $startOutput
             Write-LogError "Docker start failed" -Context @{ ExitCode = $LASTEXITCODE }
             return $false
         }
     }
     catch {
-        Write-Error "Failed to start containers: $_"
+        Write-Err "Failed to start containers: $_"
         Write-LogError "Docker start exception" -Exception $_
         return $false
     }
@@ -1546,7 +1546,7 @@ function Wait-ForDatabase {
         Start-Sleep -Seconds 2
     }
     
-    Write-Error "Database failed to start within $TimeoutSeconds seconds"
+    Write-Err "Database failed to start within $TimeoutSeconds seconds"
     Write-LogError "Database timeout" -Context @{ TimeoutSeconds = $TimeoutSeconds }
     return $false
 }
@@ -1575,7 +1575,7 @@ function Initialize-Database {
             Write-LogInfo "Migrations completed successfully"
         }
         else {
-            Write-Warning "Migrations may have warnings (this is normal for first run)"
+            Write-Warn "Migrations may have warnings (this is normal for first run)"
             Write-LogWarn "Migration warnings" -Context @{ Output = $migrateOutput }
         }
         
@@ -1600,7 +1600,7 @@ function Initialize-Database {
         return $true
     }
     catch {
-        Write-Warning "Database initialization had issues: $_"
+        Write-Warn "Database initialization had issues: $_"
         Write-Info "This may be normal if tables already exist"
         Write-LogWarn "Database initialization issues" -Exception $_
         return $true  # Don't fail on migration issues
@@ -1660,12 +1660,12 @@ function Test-ServiceHealth {
         
         if (-not $healthy) {
             if ($service.Critical) {
-                Write-Warning "$($service.Name) health check timed out"
+                Write-Warn "$($service.Name) health check timed out"
                 Write-LogWarn "$($service.Name) health check failed"
                 $allHealthy = $false
             }
             else {
-                Write-Warning "$($service.Name) health check timed out (non-critical)"
+                Write-Warn "$($service.Name) health check timed out (non-critical)"
             }
         }
     }
@@ -1903,7 +1903,7 @@ function Show-DockerStatus {
 .SYNOPSIS
     Writes to error log file
 #>
-function Write-ErrorLog {
+function Write-ErrLog {
     param(
         [string]$Message,
         [Exception]$Error
@@ -1920,7 +1920,7 @@ StackTrace: $($Error.StackTrace)
     
     $logEntry | Out-File -FilePath $logFile -Append -Encoding UTF8
     
-    Write-Error "Error: $Message"
+    Write-Err "Error: $Message"
     Write-Info "Error details saved to: $logFile"
 }
 
@@ -1943,7 +1943,7 @@ function Invoke-Cleanup {
     Write-Info "Removing orphaned resources..."
     docker system prune -f 2>$null | Out-Null
     
-    Write-Warning "Installation was rolled back due to errors"
+    Write-Warn "Installation was rolled back due to errors"
 }
 
 # =============================================================================
@@ -1984,7 +1984,7 @@ function Main {
     Write-Info "  Environment: $script:Environment"
     Write-Info "  Port: $script:Port"
     Write-Info "  Docker Mode: $(-not $script:NoDocker)"
-    if ($script:DryRun) { Write-Warning "  DRY-RUN MODE - No changes will be made" }
+    if ($script:DryRun) { Write-Warn "  DRY-RUN MODE - No changes will be made" }
     if ($script:Rebuild) { Write-Info "  Force Rebuild: Yes" }
     if ($VerboseMode) { Write-Info "  Verbose: Yes" }
     Write-Host ""
@@ -2003,7 +2003,7 @@ function Main {
         Write-Step -Step $currentStep -Total $totalSteps -Message "Checking Prerequisites"
         
         if (-not (Test-AllPrerequisites)) {
-            Write-Error "Prerequisites check failed. Please install missing components."
+            Write-Err "Prerequisites check failed. Please install missing components."
             Write-Info "Press any key to exit..."
             $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
             exit 1
@@ -2015,7 +2015,7 @@ function Main {
         
         $portCheck = Test-PortConflicts -FrontendPort $script:Port -ApiPort 3001 -DbPort 5432 -AutoResolve
         if (-not $portCheck.Success) {
-            Write-Error "Port conflicts detected. Please resolve conflicts or use -AutoResolve."
+            Write-Err "Port conflicts detected. Please resolve conflicts or use -AutoResolve."
             exit 1
         }
         
@@ -2174,7 +2174,7 @@ CORS_ORIGINS=$($envVars['CORS_ORIGINS'])
         return 0
     }
     catch {
-        Write-ErrorLog -Message "Installation failed" -Error $_
+        Write-ErrLog -Message "Installation failed" -Error $_
         
         Write-Host ""
         if (-not $script:NonInteractive) {
@@ -2188,7 +2188,7 @@ CORS_ORIGINS=$($envVars['CORS_ORIGINS'])
         }
         
         Write-Host ""
-        Write-Error "Installation failed. Check weavenote-install-error.log for details."
+        Write-Err "Installation failed. Check weavenote-install-error.log for details."
         Write-LogFatal "Installation failed" -Exception $_
         
         if (-not $script:NonInteractive) {
@@ -2209,7 +2209,7 @@ if ($IsWindows -or $null -eq $IsWindows) {
     $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
     
     if (-not $isAdmin) {
-        Write-Warning "Running without administrator privileges"
+        Write-Warn "Running without administrator privileges"
         Write-Info "Some operations may require elevated permissions"
         Write-Host ""
     }
