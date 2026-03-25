@@ -5,6 +5,17 @@ import {
     collection, query, where, getDocs, setDoc, doc, deleteDoc, writeBatch
 } from 'firebase/firestore';
 import { logTraffic } from './trafficService';
+import { 
+    isApiMode, 
+    loadNotesFromAPI, 
+    saveNoteToAPI, 
+    deleteNoteFromAPI, 
+    loadFoldersFromAPI, 
+    saveFolderToAPI, 
+    deleteFolderFromAPI,
+    restoreNoteInAPI,
+    updateNoteToAPI
+} from './apiDatabaseService';
 
 const GUEST_KEY = 'ideaweaver_guest_session';
 const GUEST_FOLDERS_KEY = 'ideaweaver_guest_folders';
@@ -35,12 +46,26 @@ const sanitizeForFirestore = <T>(data: T): T => {
 };
 
 export const loadNotes = async (userId: string | null): Promise<Note[]> => {
+    // API Mode - use backend
+    if (isApiMode() && userId) {
+        try {
+            const notes = await loadNotesFromAPI(userId);
+            return notes.sort((a, b) => b.createdAt - a.createdAt);
+        } catch (e: any) {
+            console.error("API load notes failed:", e);
+            throw e;
+        }
+    }
+
+    // Guest mode - use session storage
     if (!userId) {
         if (guestNotesCache) return [...guestNotesCache];
         const stored = sessionStorage.getItem(GUEST_KEY);
         guestNotesCache = stored ? JSON.parse(stored) : [];
         return [...guestNotesCache!];
     }
+
+    // Firebase mode
     if (!db) return [];
     try {
         const q = query(collection(db, 'notes'), where('userId', '==', userId));
@@ -56,6 +81,26 @@ export const loadNotes = async (userId: string | null): Promise<Note[]> => {
 };
 
 export const saveNote = async (note: Note, userId: string | null) => {
+    // API Mode - use backend
+    if (isApiMode() && userId) {
+        try {
+            // Check if note exists
+            const existingNotes = await loadNotesFromAPI(userId);
+            const exists = existingNotes.some(n => n.id === note.id);
+            
+            if (exists) {
+                await updateNoteToAPI(note.id, note, userId);
+            } else {
+                await saveNoteToAPI(note, userId);
+            }
+            return;
+        } catch (e: any) {
+            console.error("API save note failed:", e);
+            throw e;
+        }
+    }
+
+    // Guest mode
     if (!userId) {
         const notes: Note[] = await loadNotes(null).catch(() => []);
         const idx = notes.findIndex(n => n.id === note.id);
@@ -64,6 +109,8 @@ export const saveNote = async (note: Note, userId: string | null) => {
         sessionStorage.setItem(GUEST_KEY, JSON.stringify(notes));
         return;
     }
+
+    // Firebase mode
     if (!db) return;
     try {
         // FORCE the userId to be present at top level for security rules
@@ -78,24 +125,74 @@ export const saveNote = async (note: Note, userId: string | null) => {
 };
 
 export const deleteNote = async (noteId: string, userId: string | null) => {
+    // API Mode
+    if (isApiMode() && userId) {
+        try {
+            await deleteNoteFromAPI(noteId, userId);
+            return;
+        } catch (e: any) {
+            console.error("API delete note failed:", e);
+            throw e;
+        }
+    }
+
+    // Guest mode
     if (!userId) {
         const notes = await loadNotes(null).catch(() => []);
         guestNotesCache = notes.filter(n => n.id !== noteId);
         sessionStorage.setItem(GUEST_KEY, JSON.stringify(guestNotesCache));
         return;
     }
+
+    // Firebase mode
     if (!db) return;
     await deleteDoc(doc(db, 'notes', noteId));
     logTraffic('DELETE', 'firestore/notes', 200, 0);
 };
 
+export const restoreNote = async (noteId: string, userId: string | null) => {
+    // API Mode
+    if (isApiMode() && userId) {
+        try {
+            await restoreNoteInAPI(noteId, userId);
+            return;
+        } catch (e: any) {
+            console.error("API restore note failed:", e);
+            throw e;
+        }
+    }
+
+    // For guest/firebase mode, just update the note
+    const notes = await loadNotes(userId);
+    const note = notes.find(n => n.id === noteId);
+    if (note) {
+        note.isDeleted = false;
+        note.deletedAt = undefined;
+        await saveNote(note, userId);
+    }
+};
+
 export const loadFolders = async (userId: string | null): Promise<Folder[]> => {
+    // API Mode
+    if (isApiMode() && userId) {
+        try {
+            const folders = await loadFoldersFromAPI(userId);
+            return folders.sort((a, b) => a.order - b.order);
+        } catch (e: any) {
+            console.error("API load folders failed:", e);
+            throw e;
+        }
+    }
+
+    // Guest mode
     if (!userId) {
         if (guestFoldersCache) return [...guestFoldersCache];
         const stored = sessionStorage.getItem(GUEST_FOLDERS_KEY);
         guestFoldersCache = stored ? JSON.parse(stored) : [];
         return [...guestFoldersCache!];
     }
+
+    // Firebase mode
     if (!db) return [];
     try {
         const snapshot = await getDocs(query(collection(db, 'folders'), where('userId', '==', userId)));
@@ -106,6 +203,18 @@ export const loadFolders = async (userId: string | null): Promise<Folder[]> => {
 };
 
 export const saveFolder = async (folder: Folder, userId: string | null) => {
+    // API Mode
+    if (isApiMode() && userId) {
+        try {
+            await saveFolderToAPI(folder, userId);
+            return;
+        } catch (e: any) {
+            console.error("API save folder failed:", e);
+            throw e;
+        }
+    }
+
+    // Guest mode
     if (!userId) {
         const folders: Folder[] = await loadFolders(null).catch(() => []);
         const idx = folders.findIndex(f => f.id === folder.id);
@@ -114,23 +223,52 @@ export const saveFolder = async (folder: Folder, userId: string | null) => {
         sessionStorage.setItem(GUEST_FOLDERS_KEY, JSON.stringify(folders));
         return;
     }
+
+    // Firebase mode
     if (!db) return;
     // FORCE the userId for folder security
     await setDoc(doc(db, 'folders', folder.id), { ...folder, userId });
 };
 
 export const deleteFolder = async (folderId: string, userId: string | null) => {
+    // API Mode
+    if (isApiMode() && userId) {
+        try {
+            await deleteFolderFromAPI(folderId, userId);
+            return;
+        } catch (e: any) {
+            console.error("API delete folder failed:", e);
+            throw e;
+        }
+    }
+
+    // Guest mode
     if (!userId) {
         const folders = await loadFolders(null).catch(() => []);
         guestFoldersCache = folders.filter(f => f.id !== folderId);
         sessionStorage.setItem(GUEST_FOLDERS_KEY, JSON.stringify(guestFoldersCache));
         return;
     }
+
+    // Firebase mode
     if (!db) return;
     await deleteDoc(doc(db, 'folders', folderId));
 };
 
 export const syncAllNotes = async (notes: Note[], userId: string) => {
+    // API Mode - handled differently, sync one by one
+    if (isApiMode() && userId) {
+        for (const note of notes.slice(0, 490)) {
+            try {
+                await saveNoteToAPI({ ...note, userId }, userId);
+            } catch (e) {
+                console.error("Failed to sync note:", note.id, e);
+            }
+        }
+        return;
+    }
+
+    // Firebase mode
     if (!db || !userId) return;
     const batch = writeBatch(db);
     notes.slice(0, 490).forEach(note => {

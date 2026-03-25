@@ -263,7 +263,7 @@ function Write-Step {
     Write-Host "|" -ForegroundColor $COLORS.Progress
     Write-Host "  +--------------------------------------------------------------------+" -ForegroundColor $COLORS.Progress
     Write-Host ""
-    Write-LogDebug "Step $Step/$Total: $Message" -Context @{ Progress = "$progress%" }
+    Write-LogDebug "Step $Step/${Total}: $Message" -Context @{ Progress = "$progress%" }
 }
 
 function Show-ProgressBar {
