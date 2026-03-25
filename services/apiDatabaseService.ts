@@ -2,17 +2,18 @@
  * Database Adapter for Weavenote
  * 
  * This service provides a unified interface for data persistence,
- * supporting both Firebase (legacy) and the new PostgreSQL API.
+ * supporting both Firebase (default) and PostgreSQL API (self-hosted).
  * 
  * Configuration is controlled via VITE_API_URL environment variable:
- * - If set: Uses PostgreSQL API backend
- * - If not set: Falls back to Firebase
+ * - If NOT set (default): Uses Firebase (cloud)
+ * - If set: Uses PostgreSQL API backend (self-hosted)
  */
 
 import { Note, Folder, UserUsageStats } from '../types';
 
 // Database mode detection
-const API_URL = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) || '/api';
+// DEFAULT: Firebase mode (set VITE_API_URL to enable API/PostgreSQL mode)
+const API_URL = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) || '';
 const USE_API = API_URL && API_URL.length > 0;
 
 // Token management
