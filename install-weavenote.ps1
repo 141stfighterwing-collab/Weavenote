@@ -558,7 +558,7 @@ function Test-PowerShellVersion {
     Write-Info "Checking PowerShell version..."
     
     $psVersion = $PSVersionTable.PSVersion.ToString()
-    $psEdition = $PSVersionTable.PSEdition
+    $shellEdition = $PSVersionTable.PSEdition
     
     if ((Compare-Version $psVersion $MIN_VERSIONS.PowerShell) -lt 0) {
         Write-Err "PowerShell version $psVersion is below minimum required $($MIN_VERSIONS.PowerShell)"
@@ -566,8 +566,8 @@ function Test-PowerShellVersion {
         return $false
     }
     
-    Write-Success "PowerShell $psVersion ($psEdition edition) - Compatible"
-    Write-LogDebug "PowerShell details" -Context @{ Version = $psVersion; Edition = $psEdition }
+    Write-Success "PowerShell $psVersion ($shellEdition edition) - Compatible"
+    Write-LogDebug "PowerShell details" -Context @{ Version = $psVersion; Edition = $shellEdition }
     return $true
 }
 
