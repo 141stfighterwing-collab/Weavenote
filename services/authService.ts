@@ -291,7 +291,11 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
             return { success: true, user };
         } catch (e: any) {
             logSystemCheckpoint(`[AUTH_CHECKPOINT_API_ERROR] ${e.message}`, "error");
-            return { success: false, error: e.message || "Identity verification failed." };
+            if (e?.message === 'Backend API unreachable' && isFirebaseReady && auth && db) {
+                logSystemCheckpoint("[AUTH_CHECKPOINT_API_FALLBACK] API unreachable; falling back to Firebase login.", "warn");
+            } else {
+                return { success: false, error: e.message || "Identity verification failed." };
+            }
         }
     }
 

@@ -12,8 +12,8 @@
 import { Note, Folder, UserUsageStats } from '../types';
 
 // Database mode detection
-const API_URL = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) || '/api';
-const USE_API = API_URL && API_URL.length > 0;
+const API_URL = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) || '';
+const USE_API = !!(API_URL && API_URL.length > 0);
 
 // Token management
 let authToken: string | null = null;
@@ -45,10 +45,15 @@ const apiRequest = async <T>(
         ...options.headers,
     };
 
-    const response = await fetch(`${API_URL}${endpoint}`, {
-        ...options,
-        headers,
-    });
+    let response: Response;
+    try {
+        response = await fetch(`${API_URL}${endpoint}`, {
+            ...options,
+            headers,
+        });
+    } catch (error) {
+        throw new Error('Backend API unreachable');
+    }
 
     if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Request failed' }));

@@ -461,6 +461,7 @@ VITE_FIREBASE_STORAGE_BUCKET=
 VITE_FIREBASE_MESSAGING_SENDER_ID=
 VITE_FIREBASE_APP_ID=
 VITE_FIREBASE_MEASUREMENT_ID=
+VITE_FIREBASE_DATABASE_URL=          # Optional Firebase Realtime Database URL
 
 # pgAdmin (optional database admin UI)
 PGADMIN_EMAIL=admin@weavenote.local
@@ -473,6 +474,17 @@ PGADMIN_PASSWORD=admin
 2. **Navigate to ENV Settings**: Requires admin privileges
 3. **Add/Edit Variables**: Use the form or quick-add buttons
 4. **Import/Export**: Bulk manage settings via .env files
+
+
+### On-Prem Spinoff (100% Self-Hosted)
+
+Use the included override profile to run without Firebase/Gemini dependencies:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.onprem.yml up -d --build
+```
+
+See `SPINOFF_ONPREM.md` for the Firebase project mapping and on-prem profile details.
 
 ### Default Credentials
 
@@ -1181,7 +1193,7 @@ cat backup_20240101.sql | docker-compose exec -T postgres psql -U weavenote weav
 
 | Component | Version |
 |-----------|---------|
-| **WeaveNote** | 1.5.0 |
+| **WeaveNote** | 1.6.3 |
 | **Frontend** | React 18 + Vite 5 |
 | **Backend** | Node.js 20 + Express 4 |
 | **Database** | PostgreSQL 16 |
@@ -1193,6 +1205,8 @@ WeaveNote tracks all patches and updates in the `system_versions` table. View ve
 
 | Version | Date | Changes |
 |---------|------|---------|
+| **1.6.3** | 2026-03 | Sign-in fallback to Firebase when API is unreachable + hardcoded Firebase App ID |
+| **1.6.2** | 2026-03 | Firebase database URL wiring + on-prem spinoff override profile |
 | **1.5.0** | 2024-01 | Smart installer, auto-fix capabilities, Docker optimizations |
 | **1.4.0** | 2024-01 | Added project management features, Gantt charts |
 | **1.3.0** | 2024-01 | Mind map view, workflow editor |

@@ -502,6 +502,7 @@ service cloud.firestore {
                       { key: 'POSTGRES_PASSWORD', category: 'database', description: 'PostgreSQL Database Password' },
                       { key: 'JWT_SECRET', category: 'security', description: 'JWT Signing Secret' },
                       { key: 'VITE_FIREBASE_API_KEY', category: 'firebase', description: 'Firebase API Key' },
+                      { key: 'VITE_FIREBASE_DATABASE_URL', category: 'firebase', description: 'Firebase Realtime Database URL' },
                     ].map(template => (
                       <button
                         key={template.key}

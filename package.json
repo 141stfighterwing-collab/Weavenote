@@ -1,6 +1,6 @@
 {
   "name": "weavenote",
-  "version": "1.6.1",
+  "version": "1.6.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
