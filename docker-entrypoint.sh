@@ -15,7 +15,8 @@ window.__RUNTIME_CONFIG__ = {
     storageBucket: "${VITE_FIREBASE_STORAGE_BUCKET:-}",
     messagingSenderId: "${VITE_FIREBASE_MESSAGING_SENDER_ID:-}",
     appId: "${VITE_FIREBASE_APP_ID:-}",
-    measurementId: "${VITE_FIREBASE_MEASUREMENT_ID:-}"
+    measurementId: "${VITE_FIREBASE_MEASUREMENT_ID:-}",
+    databaseURL: "${VITE_FIREBASE_DATABASE_URL:-}"
   }
 };
 EOF
