@@ -111,6 +111,12 @@ app.use((err, req, res, next) => {
 
 const startServer = async () => {
   try {
+    // Check required environment variables
+    if (!config.jwt.secret) {
+      console.error('❌ CRITICAL ERROR: JWT_SECRET environment variable is not defined.');
+      process.exit(1);
+    }
+
     // Test database connection
     await prisma.$connect();
     console.log('✅ Database connected successfully');
