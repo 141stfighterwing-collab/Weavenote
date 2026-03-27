@@ -228,8 +228,8 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
             let email = usernameOrEmail.trim();
             
             // Admin bootstrap for local mode
-            const adminPass = typeof process !== 'undefined' ? process.env.ADMIN_SETUP_PASS : "Zaqxsw12gobeavers";
-            if (usernameOrEmail === 'admin' && password === adminPass) {
+            const adminPass = typeof process !== 'undefined' ? process.env.ADMIN_SETUP_PASS : "";
+            if (adminPass && usernameOrEmail === 'admin' && password === adminPass) {
                 // Try to login as admin, if fails create admin account
                 try {
                     const result = await loginWithAPI('admin@weavenote.local', password);
@@ -302,7 +302,8 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
         let email = usernameOrEmail.trim();
         
         // Admin Bootstrap Override
-        if (usernameOrEmail === 'admin' && password === (process.env.ADMIN_SETUP_PASS || "Zaqxsw12gobeavers")) {
+        const envAdminPass = typeof process !== 'undefined' ? process.env.ADMIN_SETUP_PASS : "";
+        if (envAdminPass && usernameOrEmail === 'admin' && password === envAdminPass) {
             email = 'system-bootstrap@weavenote.com';
             try {
                 const cred = await signInWithEmailAndPassword(auth, email, password);
