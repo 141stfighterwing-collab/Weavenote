@@ -2,17 +2,25 @@
 
 All notable changes to this project are documented in this file.
 
-## [1.6.2] - 2026-03-25
+## [1.6.3] - 2025-03-25
 
-### 🔧 Firebase DB Routing + On-Prem Spinoff Profile
+### 🛡️ Sentinel Security Patch - Secret Hardening
 
-### Added
-- Added support for `VITE_FIREBASE_DATABASE_URL` in frontend runtime config and app config.
-- Added `docker-compose.onprem.yml` override profile for 100% on-prem deployment (no Firebase/Gemini vars).
-- Added `SPINOFF_ONPREM.md` with Firebase mapping and on-prem run instructions.
+This release hardens the application's security by removing insecure default secrets and hardcoded fallback credentials.
 
 ### Changed
-- Updated Settings quick-add templates to include Firebase Realtime Database URL variable.
+- **Removed Hardcoded Admin Password**: In `services/authService.ts`, the fallback password for the 'admin' bootstrap account has been removed. `ADMIN_SETUP_PASS` environment variable is now strictly required for administrative setup.
+- **Removed Insecure JWT Default**: In `backend/src/config/index.js`, the hardcoded default for `JWT_SECRET` has been removed.
+- **Production Safety Check**: Added a critical security check in the backend that prevents the server from starting in production if `JWT_SECRET` is not explicitly defined.
+
+### Technical Details
+- Updated `services/authService.ts` to require non-empty `ADMIN_SETUP_PASS`.
+- Updated `backend/src/config/index.js` with production requirement for `JWT_SECRET`.
+- Synchronized versioning across all package manifests.
+
+---
+
+## [1.6.2] - 2026-03-25
 
 ---
 
@@ -330,4 +338,4 @@ This project uses **Semantic Versioning (SemVer)**:
 - **MINOR** version for backward-compatible features.
 - **PATCH** version for backward-compatible bug fixes.
 
-Current version: **1.6.2**.
+Current version: **1.6.3**.
