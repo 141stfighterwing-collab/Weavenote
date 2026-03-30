@@ -7,7 +7,7 @@ export const config = {
     url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@postgres:5432/weavenote',
   },
   jwt: {
-    secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production',
+    secret: process.env.JWT_SECRET || '',
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
   gemini: {

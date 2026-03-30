@@ -330,4 +330,16 @@ This project uses **Semantic Versioning (SemVer)**:
 - **MINOR** version for backward-compatible features.
 - **PATCH** version for backward-compatible bug fixes.
 
-Current version: **1.6.2**.
+## [1.6.3] - 2026-04-01
+
+### 🛡️ Sentinel: Security Hardening
+
+### Added
+- Implemented "fail secure" pattern in the backend: the server now terminates immediately if the `JWT_SECRET` environment variable is missing or empty.
+
+### Changed
+- Removed hardcoded admin bootstrap password ("Zaqxsw12gobeavers") in `services/authService.ts`.
+- Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
+- Removed insecure default fallback for `JWT_SECRET` in backend configuration.
+
+Current version: **1.6.3**.
