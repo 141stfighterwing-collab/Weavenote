@@ -22,7 +22,7 @@ test.describe('Weavenote Screenshot Tests', () => {
 
   test('Settings Panel - Access Point', async ({ page }) => {
     // Find and highlight the settings gear icon
-    const settingsButton = page.locator('button:has-text("⚙️")');
+    const settingsButton = page.getByLabel('Settings');
     await expect(settingsButton).toBeVisible();
     
     // Take screenshot showing the settings button location
@@ -46,7 +46,7 @@ test.describe('Weavenote Screenshot Tests', () => {
 
   test('Settings Panel - Visual Settings Tab', async ({ page }) => {
     // Open settings
-    await page.click('button:has-text("⚙️")');
+    await page.getByLabel('Settings').click();
     await page.waitForSelector('text=System Control');
     
     // Take screenshot of Visuals tab
@@ -58,7 +58,7 @@ test.describe('Weavenote Screenshot Tests', () => {
 
   test('Settings Panel - All Tabs Navigation', async ({ page }) => {
     // Open settings
-    await page.click('button:has-text("⚙️")');
+    await page.getByLabel('Settings').click();
     await page.waitForSelector('text=System Control');
     
     const tabs = [
@@ -91,7 +91,7 @@ test.describe('Weavenote Screenshot Tests', () => {
 
   test('Theme Selection', async ({ page }) => {
     // Open settings
-    await page.click('button:has-text("⚙️")');
+    await page.getByLabel('Settings').click();
     await page.waitForSelector('text=System Control');
     
     // Navigate to Visuals tab
@@ -106,11 +106,11 @@ test.describe('Weavenote Screenshot Tests', () => {
 
   test('Dark Mode Toggle', async ({ page }) => {
     // Open settings
-    await page.click('button:has-text("⚙️")');
+    await page.getByLabel('Settings').click();
     await page.waitForSelector('text=System Control');
     
     // Find dark mode toggle
-    const darkModeToggle = page.locator('text=Dark Mode').locator('..').locator('button');
+    const darkModeToggle = page.getByLabel('Toggle Dark Mode');
     
     // Take screenshot before toggle
     await page.screenshot({ 
@@ -137,7 +137,7 @@ test.describe('Weavenote Screenshot Tests', () => {
     });
     
     // Switch to mindmap view if available
-    const mindmapButton = page.locator('button').filter({ has: page.locator('circle') }).nth(1);
+    const mindmapButton = page.getByLabel('Mind map view');
     if (await mindmapButton.isVisible()) {
       await mindmapButton.click();
       await page.waitForTimeout(1000);
@@ -183,12 +183,12 @@ test.describe('Weavenote Screenshot Tests', () => {
     // for the ENV configuration
     
     // Open settings
-    await page.click('button:has-text("⚙️")');
+    await page.getByLabel('Settings').click();
     await page.waitForSelector('text=System Control');
     
     // Highlight the settings panel
     await page.evaluate(() => {
-      const panel = document.querySelector('[class*="fixed inset-0"]');
+      const panel = document.querySelector('[class*="fixed inset-0"]') as HTMLElement | null;
       if (panel) {
         panel.style.border = '3px solid #4F46E5';
       }
@@ -208,7 +208,7 @@ test.describe('Admin Settings Tests', () => {
     // Login as admin first
     
     // Navigate to settings
-    await page.click('button:has-text("⚙️")');
+    await page.getByLabel('Settings').click();
     await page.waitForSelector('text=System Control');
     
     // Click on ENV Settings tab
@@ -233,7 +233,7 @@ test.describe('Admin Settings Tests', () => {
     // This test requires admin login
     
     // Navigate to settings
-    await page.click('button:has-text("⚙️")');
+    await page.getByLabel('Settings').click();
     await page.waitForSelector('text=System Control');
     
     // Click on Versioning tab

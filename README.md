@@ -1193,7 +1193,7 @@ cat backup_20240101.sql | docker-compose exec -T postgres psql -U weavenote weav
 
 | Component | Version |
 |-----------|---------|
-| **WeaveNote** | 1.6.2 |
+| **WeaveNote** | 1.6.3 |
 | **Frontend** | React 18 + Vite 5 |
 | **Backend** | Node.js 20 + Express 4 |
 | **Database** | PostgreSQL 16 |
@@ -1205,7 +1205,7 @@ WeaveNote tracks all patches and updates in the `system_versions` table. View ve
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **1.6.2** | 2026-03 | Firebase database URL wiring + on-prem spinoff override profile |
+| **1.6.3** | 2026-03 | Firebase database URL wiring + on-prem spinoff override profile |
 | **1.5.0** | 2024-01 | Smart installer, auto-fix capabilities, Docker optimizations |
 | **1.4.0** | 2024-01 | Added project management features, Gantt charts |
 | **1.3.0** | 2024-01 | Mind map view, workflow editor |
