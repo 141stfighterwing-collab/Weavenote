@@ -17,6 +17,16 @@ import versionRouter from './routes/version.js';
 const app = express();
 
 // =============================================================================
+// Fail-fast Checks
+// =============================================================================
+
+if (!config.jwt.secret) {
+  console.error('❌ CRITICAL: JWT_SECRET environment variable is not defined.');
+  console.error('   Please set it in your .env file or environment.');
+  process.exit(1);
+}
+
+// =============================================================================
 // Security Middleware
 // =============================================================================
 

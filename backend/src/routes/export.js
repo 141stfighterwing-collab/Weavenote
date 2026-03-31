@@ -85,10 +85,11 @@ router.get('/notes/:format', authenticate, async (req, res, next) => {
           '',
         ].join('\n');
         
-        const escapeSql = (str) => str.replace(/'/g, "''");
+        // Escape single quotes and backslashes for SQL injection prevention in exports
+        const escapeSql = (str) => str.replace(/\\/g, '\\\\').replace(/'/g, "''");
         
         const inserts = notes.map(n => 
-          `INSERT INTO notes (id, title, content, category, type, color, created_at, folder_id, user_id) VALUES ('${escapeSql(n.id)}', '${escapeSql(n.title)}', '${escapeSql(n.content.substring(0, 5000))}', '${escapeSql(n.category)}', '${escapeSql(n.type)}', '${escapeSql(n.color)}', '${n.createdAt.toISOString()}', ${n.folderId ? `'${escapeSql(n.folderId)}'` : 'NULL'}, '${escapeSql(userId)}');`
+          `INSERT INTO notes (id, title, content, category, type, color, created_at, folder_id, user_id) VALUES ('${escapeSql(n.id)}', '${escapeSql(n.title)}', '${escapeSql(n.content.substring(0, 5000))}', '${escapeSql(n.category || 'general')}', '${escapeSql(n.type || 'quick')}', '${escapeSql(n.color || 'yellow')}', '${n.createdAt.toISOString()}', ${n.folderId ? `'${escapeSql(n.folderId)}'` : 'NULL'}, '${escapeSql(userId)}');`
         );
         
         content = [sqlHeader, ...inserts].join('\n');
