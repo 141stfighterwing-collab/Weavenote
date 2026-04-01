@@ -272,7 +272,12 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
         <div className="flex justify-between items-center mb-4 border-b border-slate-50 dark:border-slate-700 pb-2">
           <h3 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 text-xs uppercase tracking-wider">⚡ Quick References</h3>
-          <button onClick={() => setShowTemplateForm(prev => !prev)} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors" title="Add Template">
+          <button
+            onClick={() => setShowTemplateForm(prev => !prev)}
+            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors focus-visible:ring-2 focus-visible:ring-primary-500 outline-none"
+            title="Add Template"
+            aria-label="Add Quick Reference Template"
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </button>
         </div>
@@ -294,7 +299,12 @@ const Sidebar: React.FC<SidebarProps> = ({
             const isEditing = editingTemplateId === template.id;
             return (
               <div key={template.id} className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-                <button onClick={() => toggleTemplateExpansion(template.id)} className="w-full px-3 py-2 text-left text-xs font-bold flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/40 text-slate-700 dark:text-slate-200">
+                <button
+                  onClick={() => toggleTemplateExpansion(template.id)}
+                  className="w-full px-3 py-2 text-left text-xs font-bold flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/40 text-slate-700 dark:text-slate-200 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 outline-none"
+                  aria-expanded={isExpanded}
+                  aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${template.title}`}
+                >
                   <span className="truncate pr-2">{template.title}</span>
                   <span className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="m9 18 6-6-6-6"/></svg>
@@ -337,7 +347,12 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
           <div className="flex justify-between items-center mb-4 border-b border-slate-50 dark:border-slate-700 pb-2">
             <h3 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 text-xs uppercase tracking-wider">🗂️ Folders</h3>
-            <button onClick={() => setIsCreatingFolder(true)} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors">
+            <button
+              onClick={() => setIsCreatingFolder(true)}
+              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors focus-visible:ring-2 focus-visible:ring-primary-500 outline-none"
+              aria-label="Create new folder"
+              title="Create new folder"
+            >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             </button>
           </div>
@@ -383,8 +398,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                        >
                            <button 
                              onClick={(e) => toggleFolderExpansion(e, folder.id)}
-                             className={`p-2 transition-transform duration-200 transform ${isExpanded ? 'rotate-90' : ''}`}
+                             className={`p-2 transition-transform duration-200 transform ${isExpanded ? 'rotate-90' : ''} focus-visible:ring-2 focus-visible:ring-primary-500 outline-none rounded`}
                              title={isExpanded ? "Collapse" : "Expand"}
+                             aria-expanded={isExpanded}
+                             aria-label={isExpanded ? "Collapse Folder" : "Expand Folder"}
                            >
                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="m9 18 6-6 6-6"/></svg>
                            </button>
@@ -400,8 +417,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                              <span className="text-[10px] opacity-40 font-mono text-right min-w-[14px]">{folderNotes.length}</span>
                              <button 
                                onClick={(e) => { e.stopPropagation(); onDeleteFolder(folder.id); }}
-                               className="opacity-0 group-hover/folder:opacity-100 p-1 hover:text-red-500 transition-opacity"
+                               className="opacity-0 group-hover/folder:opacity-100 focus-visible:opacity-100 p-1 hover:text-red-500 transition-opacity focus-visible:ring-2 focus-visible:ring-rose-500 outline-none rounded"
                                title="Delete Folder"
+                               aria-label={`Delete folder ${folder.name}`}
                              >
                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                              </button>

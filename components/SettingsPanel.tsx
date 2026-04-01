@@ -393,7 +393,11 @@ service cloud.firestore {
                     <h4 className="font-black text-white uppercase tracking-tight">Dark Mode</h4>
                     <p className="text-xs text-slate-500 mt-1">Toggle dark/light theme</p>
                   </div>
-                  <button onClick={toggleDarkMode} className={`w-14 h-7 rounded-full transition-all relative ${darkMode ? 'bg-primary-500' : 'bg-slate-600'}`}>
+                  <button
+                    onClick={toggleDarkMode}
+                    className={`w-14 h-7 rounded-full transition-all relative focus-visible:ring-2 focus-visible:ring-primary-500 outline-none ${darkMode ? 'bg-primary-500' : 'bg-slate-600'}`}
+                    aria-label={`Switch to ${darkMode ? 'light' : 'dark'} mode`}
+                  >
                     <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${darkMode ? 'right-1' : 'left-1'}`} />
                   </button>
                 </div>
