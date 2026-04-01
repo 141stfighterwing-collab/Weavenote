@@ -111,6 +111,13 @@ app.use((err, req, res, next) => {
 
 const startServer = async () => {
   try {
+    // SECURITY: Fail secure - ensure JWT_SECRET is provided
+    if (!config.jwt.secret) {
+      console.error('❌ CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing.');
+      console.error('The application cannot start without a secure JWT_SECRET.');
+      process.exit(1);
+    }
+
     // Test database connection
     await prisma.$connect();
     console.log('✅ Database connected successfully');
