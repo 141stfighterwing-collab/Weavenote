@@ -330,4 +330,19 @@ This project uses **Semantic Versioning (SemVer)**:
 - **MINOR** version for backward-compatible features.
 - **PATCH** version for backward-compatible bug fixes.
 
-Current version: **1.6.2**.
+## [1.6.3] - 2025-04-01
+
+### 🎨 Palette: Accessibility & Focus States
+
+Small touches of delight and accessibility improvements to make WeaveNote more intuitive for everyone.
+
+### Added
+- **Aria Labels**: Added descriptive `aria-label` and `title` to all icon-only buttons (color picker, edit, delete, folder actions).
+- **Focus Rings**: Implemented high-visibility `focus-visible` rings for keyboard navigation on all interactive elements.
+- **Improved Sidebar UX**: Hover-only "Delete Folder" button is now visible on focus, ensuring keyboard users can manage folders.
+- **Accessibility Patterns**: Implemented `aria-expanded` states for collapsible folders and templates.
+
+### Fixed
+- Fixed pre-existing TypeScript errors in `NoteCard.tsx`, `types.ts`, and `tests/screenshots.spec.ts` to ensure consistent project health.
+
+Current version: **1.6.3**.
