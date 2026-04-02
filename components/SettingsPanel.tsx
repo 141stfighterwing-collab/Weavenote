@@ -366,19 +366,19 @@ service cloud.firestore {
         <div className="flex flex-1 overflow-hidden">
           {/* Sidebar */}
           <div className="w-64 border-r border-slate-700/50 bg-[#0f172a] p-4 space-y-1.5 overflow-y-auto">
-            <button onClick={() => setActiveTab('appearance')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'appearance' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>🎨 Visuals</button>
-            <button onClick={() => setActiveTab('my-security')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'my-security' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>🛡️ My Security</button>
-            <button onClick={() => setActiveTab('ai-engine')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'ai-engine' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>✨ AI Engine</button>
-            <button onClick={() => setActiveTab('health')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'health' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>🔍 Diagnostics</button>
+            <button onClick={() => setActiveTab('appearance')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${activeTab === 'appearance' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>🎨 Visuals</button>
+            <button onClick={() => setActiveTab('my-security')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${activeTab === 'my-security' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>🛡️ My Security</button>
+            <button onClick={() => setActiveTab('ai-engine')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${activeTab === 'ai-engine' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>✨ AI Engine</button>
+            <button onClick={() => setActiveTab('health')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${activeTab === 'health' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>🔍 Diagnostics</button>
             
             {userIsAdmin && (
               <>
                 <div className="pt-6 pb-2 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-t border-slate-800 mt-4">Administrator</div>
-                <button onClick={() => setActiveTab('env-settings')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'env-settings' ? 'bg-cyan-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>🔐 ENV Settings</button>
-                <button onClick={() => setActiveTab('version')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'version' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>📦 Versioning</button>
-                <button onClick={() => setActiveTab('admin-users')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'admin-users' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>👥 User Base</button>
-                <button onClick={() => setActiveTab('admin-cloud')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'admin-cloud' ? 'bg-amber-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>☁️ Cloud Setup</button>
-                <button onClick={() => setActiveTab('admin-logs')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'admin-logs' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>📜 System Logs</button>
+                <button onClick={() => setActiveTab('env-settings')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${activeTab === 'env-settings' ? 'bg-cyan-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>🔐 ENV Settings</button>
+                <button onClick={() => setActiveTab('version')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all outline-none focus-visible:ring-2 focus-visible:ring-purple-500 ${activeTab === 'version' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>📦 Versioning</button>
+                <button onClick={() => setActiveTab('admin-users')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${activeTab === 'admin-users' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>👥 User Base</button>
+                <button onClick={() => setActiveTab('admin-cloud')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${activeTab === 'admin-cloud' ? 'bg-amber-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>☁️ Cloud Setup</button>
+                <button onClick={() => setActiveTab('admin-logs')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all outline-none focus-visible:ring-2 focus-visible:ring-rose-500 ${activeTab === 'admin-logs' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>📜 System Logs</button>
               </>
             )}
           </div>
@@ -393,7 +393,13 @@ service cloud.firestore {
                     <h4 className="font-black text-white uppercase tracking-tight">Dark Mode</h4>
                     <p className="text-xs text-slate-500 mt-1">Toggle dark/light theme</p>
                   </div>
-                  <button onClick={toggleDarkMode} className={`w-14 h-7 rounded-full transition-all relative ${darkMode ? 'bg-primary-500' : 'bg-slate-600'}`}>
+                  <button
+                    role="switch"
+                    aria-checked={darkMode}
+                    aria-label="Toggle Dark Mode"
+                    onClick={toggleDarkMode}
+                    className={`w-14 h-7 rounded-full transition-all relative outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${darkMode ? 'bg-primary-500' : 'bg-slate-600'}`}
+                  >
                     <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${darkMode ? 'right-1' : 'left-1'}`} />
                   </button>
                 </div>
@@ -401,7 +407,7 @@ service cloud.firestore {
                     <h4 className="font-black text-white uppercase tracking-tight mb-4">Theme Selector</h4>
                     <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
                         {(['default', 'ocean', 'forest', 'sunset', 'rose', 'midnight', 'coffee', 'neon', 'cyberpunk', 'nord', 'dracula', 'lavender', 'earth', 'yellow', 'hyperblue'] as Theme[]).map(t => (
-                          <button key={t} onClick={() => setTheme(t)} className={`px-4 py-3 rounded-xl text-[10px] font-black border transition-all uppercase tracking-tighter ${theme === t ? 'border-primary-600 bg-primary-600 text-white shadow-xl scale-[1.05]' : 'border-slate-700 text-slate-500 hover:border-primary-400'}`}>
+                          <button key={t} onClick={() => setTheme(t)} className={`px-4 py-3 rounded-xl text-[10px] font-black border transition-all uppercase tracking-tighter outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${theme === t ? 'border-primary-600 bg-primary-600 text-white shadow-xl scale-[1.05]' : 'border-slate-700 text-slate-500 hover:border-primary-400'}`}>
                             {t}
                           </button>
                         ))}
