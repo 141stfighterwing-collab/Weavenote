@@ -28,7 +28,8 @@ interface NoteCardProps {
 
 const NoteCard: React.FC<NoteCardProps> = ({ 
   note, folders = [], onDelete, onTagClick, onEdit, onExpand, 
-  readOnly = false, onToggleCheckbox, onToggleComplete, onMoveToFolder, onChangeColor, onUpdateColors
+  readOnly = false, onToggleCheckbox, onToggleComplete, onMoveToFolder, onChangeColor, onUpdateColors,
+  onViewImage
 }) => {
   const checkboxCounter = useRef(0);
   checkboxCounter.current = 0;
@@ -244,7 +245,14 @@ const NoteCard: React.FC<NoteCardProps> = ({
         <div className="flex items-center justify-end gap-2 pt-4 border-t border-black/5">
             <div className="flex items-center gap-1 shrink-0 relative">
             <div className="relative">
-                <button onClick={(e) => { e.stopPropagation(); setShowColorPicker(!showColorPicker); setShowCustomColorPicker(false); }} className={`p-2 rounded-xl shadow-sm hover:scale-110 transition-transform ${isMatrix ? 'bg-[#39ff14]/10 text-[#39ff14]' : 'bg-white/50 text-slate-600'}`}>🎨</button>
+                <button
+                  aria-label="Change note color"
+                  title="Change color"
+                  onClick={(e) => { e.stopPropagation(); setShowColorPicker(!showColorPicker); setShowCustomColorPicker(false); }}
+                  className={`p-2 rounded-xl shadow-sm hover:scale-110 focus-visible:ring-2 focus-visible:ring-primary-500 outline-none transition-transform ${isMatrix ? 'bg-[#39ff14]/10 text-[#39ff14]' : 'bg-white/50 text-slate-600'}`}
+                >
+                  🎨
+                </button>
                 {showColorPicker && (
                     <div className="absolute bottom-full right-0 mb-3 p-3 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border dark:border-slate-700 flex flex-col gap-3 w-44 z-50">
                         <div className="flex flex-wrap gap-1.5">
@@ -323,8 +331,22 @@ const NoteCard: React.FC<NoteCardProps> = ({
                     </div>
                 )}
             </div>
-            <button onClick={(e) => { e.stopPropagation(); onEdit(note); }} className={`p-2 rounded-xl shadow-sm hover:scale-110 transition-transform ${isMatrix ? 'bg-[#39ff14]/10 text-[#39ff14]' : 'bg-white/50 text-slate-600'}`}>✏️</button>
-            <button onClick={(e) => { e.stopPropagation(); onDelete(note.id); }} className="p-2 bg-rose-500/20 text-rose-700 rounded-xl shadow-sm hover:scale-110 transition-transform">🗑️</button>
+            <button
+              aria-label="Edit note"
+              title="Edit note"
+              onClick={(e) => { e.stopPropagation(); onEdit(note); }}
+              className={`p-2 rounded-xl shadow-sm hover:scale-110 focus-visible:ring-2 focus-visible:ring-primary-500 outline-none transition-transform ${isMatrix ? 'bg-[#39ff14]/10 text-[#39ff14]' : 'bg-white/50 text-slate-600'}`}
+            >
+              ✏️
+            </button>
+            <button
+              aria-label="Delete note"
+              title="Delete note"
+              onClick={(e) => { e.stopPropagation(); onDelete(note.id); }}
+              className="p-2 bg-rose-500/20 text-rose-700 rounded-xl shadow-sm hover:scale-110 focus-visible:ring-2 focus-visible:ring-rose-500 outline-none transition-transform"
+            >
+              🗑️
+            </button>
             </div>
         </div>
       </div>
