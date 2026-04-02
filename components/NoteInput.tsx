@@ -240,25 +240,26 @@ const NoteInput: React.FC<NoteInputProps> = ({
             </div>
 
             <div className="flex gap-0.5 border-r dark:border-slate-700 pr-2 mr-1 text-slate-600 dark:text-slate-300">
-                <button onClick={() => execCommand('bold')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded font-black text-xs px-2.5">B</button>
-                <button onClick={() => execCommand('italic')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded italic text-xs px-2.5">I</button>
-                <button onClick={() => execCommand('underline')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded underline text-xs px-2.5">U</button>
-                <button onClick={() => execCommand('strikeThrough')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded line-through text-xs px-2.5">S</button>
+                <button aria-label="Bold" onClick={() => execCommand('bold')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded font-black text-xs px-2.5">B</button>
+                <button aria-label="Italic" onClick={() => execCommand('italic')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded italic text-xs px-2.5">I</button>
+                <button aria-label="Underline" onClick={() => execCommand('underline')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded underline text-xs px-2.5">U</button>
+                <button aria-label="Strikethrough" onClick={() => execCommand('strikeThrough')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded line-through text-xs px-2.5">S</button>
             </div>
 
             <div className="flex gap-0.5 border-r dark:border-slate-700 pr-2 mr-1">
-                <button onClick={() => execCommand('insertUnorderedList')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-slate-600 dark:text-slate-300">Bullet</button>
-                <button onClick={() => execCommand('insertText', '- [ ] ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-primary-600">Task</button>
+                <button aria-label="Bullet List" onClick={() => execCommand('insertUnorderedList')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-slate-600 dark:text-slate-300">Bullet</button>
+                <button aria-label="Task List" onClick={() => execCommand('insertText', '- [ ] ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-primary-600">Task</button>
             </div>
 
             <div className="flex gap-0.5 border-r dark:border-slate-700 pr-2 mr-1 text-slate-600 dark:text-slate-300">
-                <button onClick={() => { const sel = window.getSelection(); if (sel) { const range = sel.getRangeAt(0); const sup = document.createElement('sup'); sup.textContent = sel.toString(); range.deleteContents(); range.insertNode(sup); } }} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2" title="Superscript">X²</button>
-                <button onClick={() => { const sel = window.getSelection(); if (sel) { const range = sel.getRangeAt(0); const sub = document.createElement('sub'); sub.textContent = sel.toString(); range.deleteContents(); range.insertNode(sub); } }} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2" title="Subscript">X₂</button>
+                <button aria-label="Superscript" onClick={() => { const sel = window.getSelection(); if (sel) { const range = sel.getRangeAt(0); const sup = document.createElement('sup'); sup.textContent = sel.toString(); range.deleteContents(); range.insertNode(sup); } }} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2" title="Superscript">X²</button>
+                <button aria-label="Subscript" onClick={() => { const sel = window.getSelection(); if (sel) { const range = sel.getRangeAt(0); const sub = document.createElement('sub'); sub.textContent = sel.toString(); range.deleteContents(); range.insertNode(sub); } }} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2" title="Subscript">X₂</button>
             </div>
 
             <div className="flex gap-1 items-center relative">
                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".pdf,.txt,.md" />
                 <button 
+                  aria-label="Ingest Document"
                   onClick={() => fileInputRef.current?.click()} 
                   disabled={isIngesting}
                   className={`p-1.5 rounded flex items-center gap-2 px-3 text-[10px] font-black uppercase transition-all ${isIngesting ? 'bg-indigo-400 text-white cursor-wait animate-pulse' : (activeType === 'document' ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'hover:bg-white dark:hover:bg-slate-700 text-slate-500')}`}
@@ -266,10 +267,10 @@ const NoteInput: React.FC<NoteInputProps> = ({
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                     {isIngesting ? <span>Processing...</span> : (activeType === 'document' && <span>Ingest Document</span>)}
                 </button>
-                <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base">😀</button>
-                <button onClick={() => setShowColorPicker(!showColorPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base">🎨</button>
-                <button onClick={() => setShowGifPicker(!showGifPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" title="Insert GIF">🎬</button>
-                <button onClick={() => setShowImageDialog(!showImageDialog)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" title="Insert Image URL">🖼️</button>
+                <button aria-label="Insert Emoji" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base">😀</button>
+                <button aria-label="Text Color and Highlight" onClick={() => setShowColorPicker(!showColorPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base">🎨</button>
+                <button aria-label="Insert GIF" onClick={() => setShowGifPicker(!showGifPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" title="Insert GIF">🎬</button>
+                <button aria-label="Insert Image from URL" onClick={() => setShowImageDialog(!showImageDialog)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" title="Insert Image URL">🖼️</button>
 
                 {showEmojiPicker && (
                     <div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-2xl z-50 grid grid-cols-4 gap-1 min-w-[140px]">
@@ -450,7 +451,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
             <div className="flex flex-wrap gap-1.5 p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border dark:border-slate-700 min-h-[48px] items-center">
                 {tags.map(tag => (
                     <span key={tag} style={getTagStyle(tag)} className="px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
-                        #{tag} <button type="button" onClick={() => setTags(tags.filter(t => t !== tag))} className="hover:text-red-500">✕</button>
+                        #{tag} <button aria-label="Remove tag" type="button" onClick={() => setTags(tags.filter(t => t !== tag))} className="hover:text-red-500">✕</button>
                     </span>
                 ))}
                 <input 
