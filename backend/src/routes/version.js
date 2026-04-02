@@ -131,45 +131,22 @@ router.post('/apply', authenticate, requireRole('super_admin'), async (req, res,
 // Rollback to a previous version
 router.post('/rollback/:version', authenticate, requireRole('super_admin'), async (req, res, next) => {
   try {
-    const { version: targetVersion } = req.params;
-    const userId = req.user.id;
+    const targetVersion = z.string().regex(/^\d+\.\d+\.\d+$/).parse(req.params.version);
+    const target = await prisma.systemVersion.findUnique({ where: { version: targetVersion } });
+    if (!target) return res.status(404).json({ error: 'Target version not found' });
 
-    const version = await prisma.systemVersion.findUnique({
-      where: { version: targetVersion },
-    });
+    const current = await prisma.systemVersion.findFirst({ where: { status: 'applied' }, orderBy: { appliedAt: 'desc' } });
+    if (current && target.appliedAt >= current.appliedAt) return res.status(400).json({ error: 'Must rollback to an older version' });
 
-    if (!version) {
-      return res.status(404).json({ error: 'Version not found' });
-    }
+    await prisma.$transaction([
+      prisma.systemVersion.updateMany({ where: { appliedAt: { gt: target.appliedAt }, status: 'applied' }, data: { status: 'rolled_back' } }),
+      prisma.versionHistory.create({ data: { versionId: target.id, action: 'ROLLBACK', details: `Rolled back to ${targetVersion}`, userId: req.user.id } }),
+      prisma.auditLog.create({ data: { userId: req.user.id, action: 'VERSION_ROLLBACK', details: `Rolled back to ${targetVersion}`, ipAddress: req.ip } })
+    ]);
 
-    // Mark current version as rolled back
-    await prisma.systemVersion.update({
-      where: { id: version.id },
-      data: { status: 'rolled_back' },
-    });
-
-    // Create history entry
-    await prisma.versionHistory.create({
-      data: {
-        versionId: version.id,
-        action: 'ROLLBACK',
-        details: `Rolled back to version ${targetVersion}`,
-        userId,
-      },
-    });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        userId,
-        action: 'VERSION_ROLLBACK',
-        details: `Rolled back system to version ${targetVersion}`,
-        ipAddress: req.ip,
-      },
-    });
-
-    res.json({ message: `Rolled back to version ${targetVersion}`, version });
+    res.json({ message: `Successfully rolled back to version ${targetVersion}`, version: target });
   } catch (error) {
+    if (error instanceof z.ZodError) return res.status(400).json({ error: 'Invalid version format. Use x.y.z' });
     next(error);
   }
 });
