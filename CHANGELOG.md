@@ -342,4 +342,19 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+## [1.6.4] - 2026-05-15
+
+### 🎨 Palette: Accessibility & UX Polish
+
+### Added
+- **A11y Enhancement**: Added `aria-label` and `title` attributes to all icon-only buttons in the note editor toolbar and note cards.
+- **Keyboard Navigation**: Implemented `focus-visible` ring styles and visibility rules for all interactive elements, including sidebar action buttons.
+- **Semantic UI**: Updated the Dark Mode toggle to use `role="switch"` and `aria-checked` for better screen reader support.
+
+### Changed
+- Improved Playwright test robustness by using accessible labels for the Dark Mode toggle.
+
+### Fixed
+- Resolved several TypeScript linting errors in `NoteCard.tsx`, `types.ts`, and `screenshots.spec.ts`.
+
+Current version: **1.6.4**.
