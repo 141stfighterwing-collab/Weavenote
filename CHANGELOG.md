@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.6.4] - 2026-04-15
+
+### 🎨 Palette: Note Composer Accessibility Improvements
+
+### Added
+- Added `aria-label` attributes to all formatting toolbar buttons (Bold, Italic, Underline, Strikethrough, Bullet, Task, Superscript, Subscript, Emoji, Color, GIF, Image).
+- Added `aria-label` to Note Type selector buttons.
+- Implemented focus rings (`focus-visible`) for all interactive buttons in the `NoteInput` component to support keyboard navigation.
+
 ## [1.6.2] - 2026-03-25
 
 ### 🔧 Firebase DB Routing + On-Prem Spinoff Profile
@@ -342,4 +351,4 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+Current version: **1.6.4**.
