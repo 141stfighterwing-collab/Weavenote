@@ -110,7 +110,7 @@ test.describe('Weavenote Screenshot Tests', () => {
     await page.waitForSelector('text=System Control');
     
     // Find dark mode toggle
-    const darkModeToggle = page.locator('text=Dark Mode').locator('..').locator('button');
+    const darkModeToggle = page.getByLabel('Toggle Dark Mode');
     
     // Take screenshot before toggle
     await page.screenshot({ 
@@ -188,7 +188,7 @@ test.describe('Weavenote Screenshot Tests', () => {
     
     // Highlight the settings panel
     await page.evaluate(() => {
-      const panel = document.querySelector('[class*="fixed inset-0"]');
+      const panel = document.querySelector('[class*="fixed inset-0"]') as HTMLElement | null;
       if (panel) {
         panel.style.border = '3px solid #4F46E5';
       }
