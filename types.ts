@@ -142,6 +142,7 @@ export interface User {
   uid: string;
   username: string;
   email: string;
+  isGuest?: boolean;
   permission: Permission;
   status: UserStatus;
   statusUntil?: number; // timestamp for temporary suspensions

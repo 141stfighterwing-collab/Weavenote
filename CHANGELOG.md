@@ -342,4 +342,20 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+## [1.6.4] - 2026-04-10
+
+### 🎨 Palette: UI/UX & Accessibility Enhancements
+
+### Added
+- **Toolbar Accessibility**: Added `aria-label` and `title` attributes to all formatting buttons (Bold, Italic, etc.) and pickers (Emoji, Color, GIF, Image) in the `NoteInput` toolbar.
+- **Focus States**: Implemented `focus-visible` ring styles and removed default focus outlines for better keyboard navigation visibility across the note input toolbar.
+- **Accessible Toggles**: Enhanced the Dark Mode toggle in the Settings Panel with `role="switch"`, `aria-checked`, and `aria-label="Toggle Dark Mode"`.
+
+### Fixed
+- **Type Safety**: Resolved several TypeScript lint errors:
+  - Destructured missing `onViewImage` prop in `NoteCard`.
+  - Added `isGuest` property to the `User` interface.
+  - Fixed DOM element casting in Playwright screenshot tests.
+- **Test Robustness**: Updated Playwright selectors to use more reliable `getByLabel` locators for interactive elements.
+
+Current version: **1.6.4**.
