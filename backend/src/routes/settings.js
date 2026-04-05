@@ -9,8 +9,15 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
-// Encryption key from environment or generate a default (should be set in production)
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
+// SECURITY: Fail secure - ensure ENCRYPTION_KEY is provided
+if (!process.env.ENCRYPTION_KEY) {
+  console.error('❌ CRITICAL SECURITY ERROR: ENCRYPTION_KEY environment variable is missing.');
+  console.error('The application cannot start without a stable ENCRYPTION_KEY to protect sensitive settings.');
+  process.exit(1);
+}
+
+// Encryption key from environment
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 const ALGORITHM = 'aes-256-gcm';
 
 // Encrypt sensitive data
