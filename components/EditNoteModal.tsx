@@ -178,22 +178,22 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
                     <div className="space-y-4">
                         <div>
                             <div className="flex justify-between mb-1">
-                                <span className="text-[10px] font-bold text-slate-500">Progress</span>
+                                <label htmlFor="edit-progress" className="text-[10px] font-bold text-slate-500">Progress</label>
                                 <span className="text-[10px] font-black text-emerald-600">{manualProgress}%</span>
                             </div>
-                            <input type="range" min="0" max="100" value={manualProgress} onChange={(e) => setManualProgress(parseInt(e.target.value))} className="w-full accent-emerald-500" />
+                            <input id="edit-progress" type="range" min="0" max="100" value={manualProgress} onChange={(e) => setManualProgress(parseInt(e.target.value))} className="w-full accent-emerald-500" />
                         </div>
                     </div>
                 </div>
 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Objectives</label>
-                        <textarea value={objectives} onChange={(e) => setObjectives(e.target.value)} className="w-full h-32 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white" />
+                        <label htmlFor="edit-objectives" className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Objectives</label>
+                        <textarea id="edit-objectives" value={objectives} onChange={(e) => setObjectives(e.target.value)} className="w-full h-32 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white" />
                     </div>
                     <div>
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Deliverables</label>
-                        <textarea value={deliverables} onChange={(e) => setDeliverables(e.target.value)} className="w-full h-32 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white" />
+                        <label htmlFor="edit-deliverables" className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Deliverables</label>
+                        <textarea id="edit-deliverables" value={deliverables} onChange={(e) => setDeliverables(e.target.value)} className="w-full h-32 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white" />
                     </div>
                 </div>
             </div>
@@ -242,16 +242,16 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
                             {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                         <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 mx-1" />
-                        <button type="button" onClick={() => execCommand('bold')} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs font-black text-slate-600 dark:text-slate-300">B</button>
-                        <button type="button" onClick={() => execCommand('italic')} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs italic text-slate-600 dark:text-slate-300">I</button>
-                        <button type="button" onClick={() => execCommand('underline')} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs underline text-slate-600 dark:text-slate-300">U</button>
-                        <button type="button" onClick={() => execCommand('strikeThrough')} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs line-through text-slate-600 dark:text-slate-300">S</button>
+                        <button type="button" onClick={() => execCommand('bold')} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs font-black text-slate-600 dark:text-slate-300" aria-label="Bold" title="Bold">B</button>
+                        <button type="button" onClick={() => execCommand('italic')} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs italic text-slate-600 dark:text-slate-300" aria-label="Italic" title="Italic">I</button>
+                        <button type="button" onClick={() => execCommand('underline')} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs underline text-slate-600 dark:text-slate-300" aria-label="Underline" title="Underline">U</button>
+                        <button type="button" onClick={() => execCommand('strikeThrough')} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs line-through text-slate-600 dark:text-slate-300" aria-label="Strikethrough" title="Strikethrough">S</button>
                         <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 mx-1" />
-                        <button type="button" onClick={() => { const sel = window.getSelection(); if (sel && sel.rangeCount > 0) { const range = sel.getRangeAt(0); const sup = document.createElement('sup'); sup.textContent = sel.toString(); range.deleteContents(); range.insertNode(sup); } }} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-[10px] font-black text-slate-600 dark:text-slate-300" title="Superscript">X²</button>
-                        <button type="button" onClick={() => { const sel = window.getSelection(); if (sel && sel.rangeCount > 0) { const range = sel.getRangeAt(0); const sub = document.createElement('sub'); sub.textContent = sel.toString(); range.deleteContents(); range.insertNode(sub); } }} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-[10px] font-black text-slate-600 dark:text-slate-300" title="Subscript">X₂</button>
+                        <button type="button" onClick={() => { const sel = window.getSelection(); if (sel && sel.rangeCount > 0) { const range = sel.getRangeAt(0); const sup = document.createElement('sup'); sup.textContent = sel.toString(); range.deleteContents(); range.insertNode(sup); } }} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-[10px] font-black text-slate-600 dark:text-slate-300" aria-label="Superscript" title="Superscript">X²</button>
+                        <button type="button" onClick={() => { const sel = window.getSelection(); if (sel && sel.rangeCount > 0) { const range = sel.getRangeAt(0); const sub = document.createElement('sub'); sub.textContent = sel.toString(); range.deleteContents(); range.insertNode(sub); } }} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-[10px] font-black text-slate-600 dark:text-slate-300" aria-label="Subscript" title="Subscript">X₂</button>
                         <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 mx-1" />
                         <div className="relative">
-                            <button type="button" onClick={() => setShowColorPicker(!showColorPicker)} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs text-slate-600 dark:text-slate-300">🎨</button>
+                            <button type="button" onClick={() => setShowColorPicker(!showColorPicker)} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs text-slate-600 dark:text-slate-300" aria-label="Color Picker" title="Color Picker">🎨</button>
                             {showColorPicker && (
                                 <div className="absolute top-full left-0 mt-1 p-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-2xl z-50 min-w-[240px]">
                                     <div className="text-[9px] font-black uppercase text-slate-400 mb-2">Text Color</div>
@@ -302,8 +302,8 @@ const EditNoteModal: React.FC<EditNoteModalProps> = ({ note, isOpen, onClose, on
                                 </div>
                             )}
                         </div>
-                        <button type="button" onClick={() => setShowGifPicker(!showGifPicker)} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs text-slate-600 dark:text-slate-300" title="Insert GIF">🎬</button>
-                        <button type="button" onClick={() => setShowImageDialog(!showImageDialog)} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs text-slate-600 dark:text-slate-300" title="Insert Image URL">🖼️</button>
+                        <button type="button" onClick={() => setShowGifPicker(!showGifPicker)} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs text-slate-600 dark:text-slate-300" aria-label="Insert GIF" title="Insert GIF">🎬</button>
+                        <button type="button" onClick={() => setShowImageDialog(!showImageDialog)} className="px-2 py-1 hover:bg-white dark:hover:bg-slate-800 rounded text-xs text-slate-600 dark:text-slate-300" aria-label="Insert Image URL" title="Insert Image URL">🖼️</button>
                         
                         {showGifPicker && (
                             <div className="absolute top-full left-0 mt-1 p-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-2xl z-50 min-w-[280px]">

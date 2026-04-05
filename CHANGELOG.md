@@ -342,4 +342,15 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+Current version: **1.6.4**.
+
+## [1.6.4] - 2026-04-02
+
+### 🎨 Palette: Accessibility & Micro-UX Refinement
+
+### Added
+- Added `aria-label` and `title` attributes to formatting toolbar buttons (Bold, Italic, Underline, Strikethrough, Superscript, Subscript, Bullet List, Task List, Emoji Picker, Color Picker, GIF, and Image) in both `NoteInput` and `EditNoteModal` for better screen reader support and tooltips.
+- Linked form labels to textareas and range inputs in the Project section of `NoteInput` and `EditNoteModal` using `htmlFor` and `id` attributes to improve accessibility and click targets.
+
+### Changed
+- Converted "Progress" span to a semantic `<label>` in `EditNoteModal` to properly associate it with the range input.
