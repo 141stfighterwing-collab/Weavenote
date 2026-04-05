@@ -110,7 +110,7 @@ test.describe('Weavenote Screenshot Tests', () => {
     await page.waitForSelector('text=System Control');
     
     // Find dark mode toggle
-    const darkModeToggle = page.locator('text=Dark Mode').locator('..').locator('button');
+    const darkModeToggle = page.getByLabel('Toggle Dark Mode');
     
     // Take screenshot before toggle
     await page.screenshot({ 
