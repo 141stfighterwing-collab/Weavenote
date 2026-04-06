@@ -342,4 +342,17 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+Current version: **1.6.4**.
+
+## [1.6.4] - 2026-04-06
+
+### 🎨 Palette: Accessibility & UX Improvements
+
+### Added
+- Added `aria-label`, `aria-expanded`, and `role="switch"` attributes to interactive elements in Sidebar and SettingsPanel for better screen reader support.
+- Implemented `focus-visible` ring styles (`ring-primary-500`) across all sidebar buttons and the dark mode toggle.
+- Enhanced keyboard accessibility for the folder delete button, making it visible on focus.
+
+### Fixed
+- Fixed TypeScript errors in `NoteCard.tsx`, `types.ts`, and `screenshots.spec.ts` that were blocking build and linting.
+- Updated Playwright tests to use robust accessibility-based selectors.
