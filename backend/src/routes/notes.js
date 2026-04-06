@@ -36,14 +36,10 @@ const noteSchema = z.object({
 });
 
 // Get all notes for a user
-router.get('/', optionalAuth, async (req, res, next) => {
+router.get('/', authenticate, async (req, res, next) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user.id;
     const { type, folderId, isDeleted, search, limit = 100, offset = 0 } = req.query;
-    
-    if (!userId) {
-      return res.json([]); // Return empty for guest users
-    }
     
     const where = { userId };
     
@@ -128,9 +124,9 @@ router.get('/', optionalAuth, async (req, res, next) => {
 });
 
 // Get a single note
-router.get('/:id', optionalAuth, async (req, res, next) => {
+router.get('/:id', authenticate, async (req, res, next) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user.id;
     const { id } = req.params;
     
     const note = await prisma.note.findFirst({
