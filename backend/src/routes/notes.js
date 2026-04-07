@@ -36,14 +36,13 @@ const noteSchema = z.object({
 });
 
 // Get all notes for a user
-router.get('/', optionalAuth, async (req, res, next) => {
+// SECURITY: Using 'authenticate' instead of 'optionalAuth' to prevent IDOR attacks.
+// Prisma ignores 'undefined' in 'where' clauses, so an unauthenticated request
+// would otherwise return notes belonging to ANY user.
+router.get('/', authenticate, async (req, res, next) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user.id;
     const { type, folderId, isDeleted, search, limit = 100, offset = 0 } = req.query;
-    
-    if (!userId) {
-      return res.json([]); // Return empty for guest users
-    }
     
     const where = { userId };
     
@@ -128,9 +127,12 @@ router.get('/', optionalAuth, async (req, res, next) => {
 });
 
 // Get a single note
-router.get('/:id', optionalAuth, async (req, res, next) => {
+// SECURITY: Using 'authenticate' instead of 'optionalAuth' to prevent IDOR attacks.
+// Prisma ignores 'undefined' in 'where' clauses, so an unauthenticated request
+// would otherwise return notes belonging to ANY user if the note ID is known.
+router.get('/:id', authenticate, async (req, res, next) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user.id;
     const { id } = req.params;
     
     const note = await prisma.note.findFirst({
