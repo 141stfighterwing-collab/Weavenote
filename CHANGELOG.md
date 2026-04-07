@@ -342,4 +342,14 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+Current version: **1.6.4**.
+
+## [1.6.4] - 2025-05-23
+
+### 🛡️ Sentinel: Security Hardening - IDOR Mitigation
+
+### Changed
+- Mitigated an Insecure Direct Object Reference (IDOR) vulnerability in `backend/src/routes/notes.js`.
+- Updated `GET /api/notes` and `GET /api/notes/:id` to use the mandatory `authenticate` middleware instead of `optionalAuth`.
+- Removed redundant guest-user fallback logic in note retrieval routes to ensure ownership checks are always enforced.
+- Added security-focused code comments to the modified routes to prevent future regressions.
