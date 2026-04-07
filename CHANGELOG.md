@@ -342,4 +342,21 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+Current version: **1.6.4**.
+
+## [1.6.4] - 2026-04-05
+
+### 🎨 Palette: UX & Accessibility Enhancements
+
+### Added
+- **Keyboard Shortcut**: Added `Cmd/Ctrl + Enter` shortcut to the note composer (title and editor) for instant saving and synthesis.
+- **Accessibility Labels**: Added comprehensive ARIA labels and tooltips to all formatting toolbar and picker buttons.
+- **Improved Form Semantics**: Linked project objectives, deliverables, and progress labels to their respective inputs for better screen reader support.
+
+### Changed
+- **Enhanced Focus States**: Improved keyboard navigation in the Settings Panel and Sidebar with high-visibility focus rings and better element visibility.
+- **Refined Tooltips**: Added keyboard shortcut hints to primary action buttons.
+
+### Fixed
+- Fixed several TypeScript compilation errors in `NoteCard.tsx` and `types.ts`.
+- Improved robustness of automated screenshot tests with better accessibility-based selectors.

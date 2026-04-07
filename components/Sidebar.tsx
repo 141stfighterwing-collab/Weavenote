@@ -400,8 +400,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                              <span className="text-[10px] opacity-40 font-mono text-right min-w-[14px]">{folderNotes.length}</span>
                              <button 
                                onClick={(e) => { e.stopPropagation(); onDeleteFolder(folder.id); }}
-                               className="opacity-0 group-hover/folder:opacity-100 p-1 hover:text-red-500 transition-opacity"
+                               className="opacity-0 group-hover/folder:opacity-100 focus-visible:opacity-100 p-1 hover:text-red-500 transition-opacity outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
                                title="Delete Folder"
+                               aria-label={`Delete folder ${folder.name}`}
                              >
                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                              </button>
