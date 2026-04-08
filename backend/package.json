@@ -1,6 +1,6 @@
 {
   "name": "weavenote-backend",
-  "version": "1.6.3",
+  "version": "1.6.4",
   "description": "Weavenote Backend API with PostgreSQL",
   "type": "module",
   "main": "src/index.js",
