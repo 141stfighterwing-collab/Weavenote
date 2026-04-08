@@ -330,6 +330,24 @@ This project uses **Semantic Versioning (SemVer)**:
 - **MINOR** version for backward-compatible features.
 - **PATCH** version for backward-compatible bug fixes.
 
+## [1.6.4] - 2026-04-08
+
+### 🎨 Palette: Accessibility & UX Polish
+
+### Added
+- Added ARIA labels and titles to all icon-only buttons in the formatting toolbar, sidebar, and settings panel.
+- Implemented `focus-visible` rings for all interactive buttons to improve keyboard navigation.
+- Added `role="switch"` and `aria-checked` to the Dark Mode toggle for better screen reader support.
+
+### Changed
+- Updated the folder delete button in the Sidebar to be visible when focused by keyboard, resolving a major accessibility gap.
+- Improved the Dark Mode toggle locator in Playwright tests to use the new accessible label.
+
+### Fixed
+- Fixed TypeScript error in `components/NoteCard.tsx` by correctly destructuring and typing the `onViewImage` prop.
+- Added missing `isGuest` property to the `User` interface in `types.ts`.
+- Fixed TypeScript error in `tests/screenshots.spec.ts` by casting the settings panel container to `HTMLElement`.
+
 ## [1.6.3] - 2026-04-01
 
 ### 🛡️ Sentinel: Security Hardening
