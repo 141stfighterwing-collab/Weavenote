@@ -240,20 +240,20 @@ const NoteInput: React.FC<NoteInputProps> = ({
             </div>
 
             <div className="flex gap-0.5 border-r dark:border-slate-700 pr-2 mr-1 text-slate-600 dark:text-slate-300">
-                <button onClick={() => execCommand('bold')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded font-black text-xs px-2.5">B</button>
-                <button onClick={() => execCommand('italic')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded italic text-xs px-2.5">I</button>
-                <button onClick={() => execCommand('underline')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded underline text-xs px-2.5">U</button>
-                <button onClick={() => execCommand('strikeThrough')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded line-through text-xs px-2.5">S</button>
+                <button onClick={() => execCommand('bold')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded font-black text-xs px-2.5 focus-visible:ring-2 focus-visible:ring-primary-500 outline-none" aria-label="Bold" title="Bold">B</button>
+                <button onClick={() => execCommand('italic')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded italic text-xs px-2.5 focus-visible:ring-2 focus-visible:ring-primary-500 outline-none" aria-label="Italic" title="Italic">I</button>
+                <button onClick={() => execCommand('underline')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded underline text-xs px-2.5 focus-visible:ring-2 focus-visible:ring-primary-500 outline-none" aria-label="Underline" title="Underline">U</button>
+                <button onClick={() => execCommand('strikeThrough')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded line-through text-xs px-2.5 focus-visible:ring-2 focus-visible:ring-primary-500 outline-none" aria-label="Strikethrough" title="Strikethrough">S</button>
             </div>
 
             <div className="flex gap-0.5 border-r dark:border-slate-700 pr-2 mr-1">
-                <button onClick={() => execCommand('insertUnorderedList')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-slate-600 dark:text-slate-300">Bullet</button>
-                <button onClick={() => execCommand('insertText', '- [ ] ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-primary-600">Task</button>
+                <button onClick={() => execCommand('insertUnorderedList')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-slate-600 dark:text-slate-300 focus-visible:ring-2 focus-visible:ring-primary-500 outline-none" aria-label="Bullet List" title="Bullet List">Bullet</button>
+                <button onClick={() => execCommand('insertText', '- [ ] ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-primary-600 focus-visible:ring-2 focus-visible:ring-primary-500 outline-none" aria-label="Add Task" title="Add Task">Task</button>
             </div>
 
             <div className="flex gap-0.5 border-r dark:border-slate-700 pr-2 mr-1 text-slate-600 dark:text-slate-300">
-                <button onClick={() => { const sel = window.getSelection(); if (sel) { const range = sel.getRangeAt(0); const sup = document.createElement('sup'); sup.textContent = sel.toString(); range.deleteContents(); range.insertNode(sup); } }} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2" title="Superscript">X²</button>
-                <button onClick={() => { const sel = window.getSelection(); if (sel) { const range = sel.getRangeAt(0); const sub = document.createElement('sub'); sub.textContent = sel.toString(); range.deleteContents(); range.insertNode(sub); } }} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2" title="Subscript">X₂</button>
+                <button onClick={() => { const sel = window.getSelection(); if (sel) { const range = sel.getRangeAt(0); const sup = document.createElement('sup'); sup.textContent = sel.toString(); range.deleteContents(); range.insertNode(sup); } }} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 focus-visible:ring-2 focus-visible:ring-primary-500 outline-none" aria-label="Superscript" title="Superscript">X²</button>
+                <button onClick={() => { const sel = window.getSelection(); if (sel) { const range = sel.getRangeAt(0); const sub = document.createElement('sub'); sub.textContent = sel.toString(); range.deleteContents(); range.insertNode(sub); } }} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 focus-visible:ring-2 focus-visible:ring-primary-500 outline-none" aria-label="Subscript" title="Subscript">X₂</button>
             </div>
 
             <div className="flex gap-1 items-center relative">
@@ -261,15 +261,17 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 <button 
                   onClick={() => fileInputRef.current?.click()} 
                   disabled={isIngesting}
-                  className={`p-1.5 rounded flex items-center gap-2 px-3 text-[10px] font-black uppercase transition-all ${isIngesting ? 'bg-indigo-400 text-white cursor-wait animate-pulse' : (activeType === 'document' ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'hover:bg-white dark:hover:bg-slate-700 text-slate-500')}`}
+                  className={`p-1.5 rounded flex items-center gap-2 px-3 text-[10px] font-black uppercase transition-all focus-visible:ring-2 focus-visible:ring-primary-500 outline-none ${isIngesting ? 'bg-indigo-400 text-white cursor-wait animate-pulse' : (activeType === 'document' ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'hover:bg-white dark:hover:bg-slate-700 text-slate-500')}`}
+                  aria-label="Upload Document"
+                  title="Upload Document"
                 >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                     {isIngesting ? <span>Processing...</span> : (activeType === 'document' && <span>Ingest Document</span>)}
                 </button>
-                <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base">😀</button>
-                <button onClick={() => setShowColorPicker(!showColorPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base">🎨</button>
-                <button onClick={() => setShowGifPicker(!showGifPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" title="Insert GIF">🎬</button>
-                <button onClick={() => setShowImageDialog(!showImageDialog)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" title="Insert Image URL">🖼️</button>
+                <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base focus-visible:ring-2 focus-visible:ring-primary-500 outline-none" aria-label="Emoji Picker" title="Emoji Picker">😀</button>
+                <button onClick={() => setShowColorPicker(!showColorPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base focus-visible:ring-2 focus-visible:ring-primary-500 outline-none" aria-label="Color Picker" title="Color Picker">🎨</button>
+                <button onClick={() => setShowGifPicker(!showGifPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base focus-visible:ring-2 focus-visible:ring-primary-500 outline-none" aria-label="Insert GIF" title="Insert GIF">🎬</button>
+                <button onClick={() => setShowImageDialog(!showImageDialog)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base focus-visible:ring-2 focus-visible:ring-primary-500 outline-none" aria-label="Insert Image URL" title="Insert Image URL">🖼️</button>
 
                 {showEmojiPicker && (
                     <div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-2xl z-50 grid grid-cols-4 gap-1 min-w-[140px]">

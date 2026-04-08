@@ -151,6 +151,7 @@ export interface User {
   country?: string;
   countryFlag?: string;
   aiUsageCount?: number;
+  isGuest?: boolean;
 }
 
 export interface UserUsageStats {

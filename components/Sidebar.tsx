@@ -91,10 +91,10 @@ const Calendar: React.FC<{ activeDate: Date | null; onDateClick: (d: Date | null
             <div className="flex items-center justify-between mb-3 px-1">
                 <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200">{monthNames[viewDate.getMonth()]} {viewDate.getFullYear()}</h4>
                 <div className="flex gap-1">
-                    <button onClick={handlePrev} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
+                    <button onClick={handlePrev} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded focus-visible:ring-2 focus-visible:ring-primary-500 outline-none" aria-label="Previous Month" title="Previous Month">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="m15 18-6-6 6-6"/></svg>
                     </button>
-                    <button onClick={handleNext} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
+                    <button onClick={handleNext} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded focus-visible:ring-2 focus-visible:ring-primary-500 outline-none" aria-label="Next Month" title="Next Month">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="m9 18 6-6-6-6"/></svg>
                     </button>
                 </div>
@@ -337,7 +337,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
           <div className="flex justify-between items-center mb-4 border-b border-slate-50 dark:border-slate-700 pb-2">
             <h3 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 text-xs uppercase tracking-wider">🗂️ Folders</h3>
-            <button onClick={() => setIsCreatingFolder(true)} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors">
+            <button onClick={() => setIsCreatingFolder(true)} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors focus-visible:ring-2 focus-visible:ring-primary-500 outline-none" aria-label="Add Folder" title="Add Folder">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             </button>
           </div>
@@ -400,7 +400,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                              <span className="text-[10px] opacity-40 font-mono text-right min-w-[14px]">{folderNotes.length}</span>
                              <button 
                                onClick={(e) => { e.stopPropagation(); onDeleteFolder(folder.id); }}
-                               className="opacity-0 group-hover/folder:opacity-100 p-1 hover:text-red-500 transition-opacity"
+                               className="opacity-0 group-hover/folder:opacity-100 focus-visible:opacity-100 p-1 hover:text-red-500 transition-opacity focus-visible:ring-2 focus-visible:ring-primary-500 outline-none rounded-md"
+                               aria-label={`Delete ${folder.name} folder`}
                                title="Delete Folder"
                              >
                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
