@@ -240,15 +240,15 @@ const NoteInput: React.FC<NoteInputProps> = ({
             </div>
 
             <div className="flex gap-0.5 border-r dark:border-slate-700 pr-2 mr-1 text-slate-600 dark:text-slate-300">
-                <button onClick={() => execCommand('bold')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded font-black text-xs px-2.5">B</button>
-                <button onClick={() => execCommand('italic')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded italic text-xs px-2.5">I</button>
-                <button onClick={() => execCommand('underline')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded underline text-xs px-2.5">U</button>
-                <button onClick={() => execCommand('strikeThrough')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded line-through text-xs px-2.5">S</button>
+                <button onClick={() => execCommand('bold')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded font-black text-xs px-2.5" aria-label="Bold">B</button>
+                <button onClick={() => execCommand('italic')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded italic text-xs px-2.5" aria-label="Italic">I</button>
+                <button onClick={() => execCommand('underline')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded underline text-xs px-2.5" aria-label="Underline">U</button>
+                <button onClick={() => execCommand('strikeThrough')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded line-through text-xs px-2.5" aria-label="Strike-through">S</button>
             </div>
 
             <div className="flex gap-0.5 border-r dark:border-slate-700 pr-2 mr-1">
-                <button onClick={() => execCommand('insertUnorderedList')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-slate-600 dark:text-slate-300">Bullet</button>
-                <button onClick={() => execCommand('insertText', '- [ ] ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-primary-600">Task</button>
+                <button onClick={() => execCommand('insertUnorderedList')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-slate-600 dark:text-slate-300" aria-label="Bullet list">Bullet</button>
+                <button onClick={() => execCommand('insertText', '- [ ] ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-primary-600" aria-label="Task list">Task</button>
             </div>
 
             <div className="flex gap-0.5 border-r dark:border-slate-700 pr-2 mr-1 text-slate-600 dark:text-slate-300">
@@ -266,10 +266,10 @@ const NoteInput: React.FC<NoteInputProps> = ({
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                     {isIngesting ? <span>Processing...</span> : (activeType === 'document' && <span>Ingest Document</span>)}
                 </button>
-                <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base">😀</button>
-                <button onClick={() => setShowColorPicker(!showColorPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base">🎨</button>
-                <button onClick={() => setShowGifPicker(!showGifPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" title="Insert GIF">🎬</button>
-                <button onClick={() => setShowImageDialog(!showImageDialog)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" title="Insert Image URL">🖼️</button>
+                <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" aria-label="Insert Emoji">😀</button>
+                <button onClick={() => setShowColorPicker(!showColorPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" aria-label="Text and Background Colors">🎨</button>
+                <button onClick={() => setShowGifPicker(!showGifPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" title="Insert GIF" aria-label="Insert GIF">🎬</button>
+                <button onClick={() => setShowImageDialog(!showImageDialog)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" title="Insert Image URL" aria-label="Insert Image URL">🖼️</button>
 
                 {showEmojiPicker && (
                     <div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-2xl z-50 grid grid-cols-4 gap-1 min-w-[140px]">
