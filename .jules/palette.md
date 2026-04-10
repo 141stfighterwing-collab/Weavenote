@@ -1,0 +1,3 @@
+## 2026-04-01 - Accessible Toolbars and Keyboard Productivity
+**Learning:** Formatting toolbars with icon-only buttons require explicit `aria-label` and `title` attributes to be usable by screen readers and provide hover context. Keyboard shortcuts (Cmd/Ctrl + Enter) significantly improve the flow for capture-heavy applications. Clear focus indicators via `focus-visible` are essential for keyboard navigation through complex toolsets.
+**Action:** Always implement `aria-label` and `title` for toolbar actions. Ensure all interactive elements have `focus-visible` rings. Implement standard keyboard shortcuts for primary submission actions.
