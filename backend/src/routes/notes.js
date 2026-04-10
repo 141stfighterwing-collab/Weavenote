@@ -133,6 +133,12 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
     const userId = req.user?.id;
     const { id } = req.params;
     
+    // SECURITY: Ensure userId is provided when using optionalAuth to prevent IDOR.
+    // Prisma ignores 'undefined' in where clauses, so we must explicitly check.
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const note = await prisma.note.findFirst({
       where: { id, userId },
       include: {
