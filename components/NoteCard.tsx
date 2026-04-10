@@ -28,7 +28,7 @@ interface NoteCardProps {
 
 const NoteCard: React.FC<NoteCardProps> = ({ 
   note, folders = [], onDelete, onTagClick, onEdit, onExpand, 
-  readOnly = false, onToggleCheckbox, onToggleComplete, onMoveToFolder, onChangeColor, onUpdateColors
+  readOnly = false, onToggleCheckbox, onToggleComplete, onMoveToFolder, onChangeColor, onUpdateColors, onViewImage
 }) => {
   const checkboxCounter = useRef(0);
   checkboxCounter.current = 0;
