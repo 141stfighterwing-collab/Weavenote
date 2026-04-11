@@ -337,7 +337,12 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
           <div className="flex justify-between items-center mb-4 border-b border-slate-50 dark:border-slate-700 pb-2">
             <h3 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 text-xs uppercase tracking-wider">🗂️ Folders</h3>
-            <button onClick={() => setIsCreatingFolder(true)} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors">
+            <button
+              onClick={() => setIsCreatingFolder(true)}
+              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors focus-visible:ring-2 focus-visible:ring-primary-500 outline-none"
+              aria-label="Create new folder"
+              title="Create new folder"
+            >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             </button>
           </div>
@@ -362,7 +367,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   onDragOver={(e) => handleDragOver(e, null)}
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, undefined)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all group/all-notes ${activeFolderId === null ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50'} ${dragOverFolderId === 'null' ? 'ring-2 ring-primary-500 ring-inset bg-primary-100/50' : ''}`}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all group/all-notes focus-visible:ring-2 focus-visible:ring-primary-500 outline-none ${activeFolderId === null ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50'} ${dragOverFolderId === 'null' ? 'ring-2 ring-primary-500 ring-inset bg-primary-100/50' : ''}`}
                >
                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                  All Notes
@@ -383,7 +388,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                        >
                            <button 
                              onClick={(e) => toggleFolderExpansion(e, folder.id)}
-                             className={`p-2 transition-transform duration-200 transform ${isExpanded ? 'rotate-90' : ''}`}
+                             className={`p-2 transition-transform duration-200 transform focus-visible:ring-2 focus-visible:ring-primary-500 outline-none ${isExpanded ? 'rotate-90' : ''}`}
+                             aria-label={isExpanded ? "Collapse folder" : "Expand folder"}
+                             aria-expanded={isExpanded}
                              title={isExpanded ? "Collapse" : "Expand"}
                            >
                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="m9 18 6-6 6-6"/></svg>
@@ -391,7 +398,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                            
                            <button 
                               onClick={() => onFolderClick(folder.id)} 
-                              className="flex-1 text-left py-2 text-sm font-medium truncate"
+                              className="flex-1 text-left py-2 text-sm font-medium truncate focus-visible:ring-2 focus-visible:ring-primary-500 outline-none"
                            >
                              {folder.name}
                            </button>
@@ -400,7 +407,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                              <span className="text-[10px] opacity-40 font-mono text-right min-w-[14px]">{folderNotes.length}</span>
                              <button 
                                onClick={(e) => { e.stopPropagation(); onDeleteFolder(folder.id); }}
-                               className="opacity-0 group-hover/folder:opacity-100 p-1 hover:text-red-500 transition-opacity"
+                               className="opacity-0 group-hover/folder:opacity-100 focus-visible:opacity-100 p-1 hover:text-red-500 transition-opacity focus-visible:ring-2 focus-visible:ring-rose-500 outline-none"
+                               aria-label="Delete folder"
                                title="Delete Folder"
                              >
                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
@@ -414,7 +422,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                              <button 
                                 key={note.id}
                                 onClick={() => onNoteClick(note)}
-                                className="w-full text-left px-2 py-1 text-[11px] text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors truncate"
+                                className="w-full text-left px-2 py-1 text-[11px] text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors truncate focus-visible:ring-2 focus-visible:ring-primary-500 outline-none"
                              >
                                • {note.title}
                              </button>
