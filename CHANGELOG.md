@@ -330,6 +330,15 @@ This project uses **Semantic Versioning (SemVer)**:
 - **MINOR** version for backward-compatible features.
 - **PATCH** version for backward-compatible bug fixes.
 
+## [1.6.4] - 2026-04-01
+
+### 🛡️ Sentinel: IDOR Protection
+
+### Fixed
+- Mitigated an IDOR vulnerability in `backend/src/routes/notes.js` where unauthenticated guests could potentially access any note by ID due to Prisma ignoring `undefined` in where clauses. Added explicit authentication check for the single note retrieval endpoint.
+
+---
+
 ## [1.6.3] - 2026-04-01
 
 ### 🛡️ Sentinel: Security Hardening
@@ -342,4 +351,4 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+Current version: **1.6.4**.

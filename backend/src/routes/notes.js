@@ -133,6 +133,12 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
     const userId = req.user?.id;
     const { id } = req.params;
     
+    // SECURITY: If userId is undefined (guest), ensure we don't accidentally
+    // allow access to all notes. Prisma ignores undefined in where clauses.
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const note = await prisma.note.findFirst({
       where: { id, userId },
       include: {
