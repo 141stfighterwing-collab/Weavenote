@@ -342,4 +342,19 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+---
+
+## [1.6.4] - 2026-04-13
+
+### 🎨 Palette: Accessibility & UX Polish
+
+### Added
+- Keyboard shortcuts (`Ctrl+Enter` / `Cmd+Enter`) in the note creation interface for saving and AI synthesis.
+- Comprehensive ARIA labels and title tooltips for all formatting toolbar buttons, including icon-only buttons like Emoji, Color, GIF, and Image URL pickers.
+- Visual shortcut hints in button tooltips for better discoverability.
+- Keyboard accessibility for folder management: the folder delete button is now visible on focus and includes a focus ring.
+
+### Fixed
+- Fixed a potential crash and TypeScript error in `NoteCard.tsx` where the `onViewImage` prop was used but not correctly destructured.
+
+Current version: **1.6.4**.
