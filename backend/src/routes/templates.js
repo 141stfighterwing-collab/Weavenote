@@ -19,13 +19,14 @@ router.get('/', optionalAuth, async (req, res, next) => {
   try {
     const userId = req.user?.id;
     
+    // SECURITY: If userId is undefined (guest), only return global templates (userId: null)
+    // Prisma ignores 'undefined' in filters, which can lead to authorization bypass
+    const where = userId
+      ? { OR: [{ userId }, { userId: null }] }
+      : { userId: null };
+
     const templates = await prisma.template.findMany({
-      where: {
-        OR: [
-          { userId },
-          { userId: null }, // Global templates
-        ],
-      },
+      where,
       orderBy: { createdAt: 'desc' },
     });
     
