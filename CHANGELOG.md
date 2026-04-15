@@ -2,6 +2,31 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.6.4] - 2026-04-15
+
+### 🎨 Palette: Accessibility & Efficiency Boost
+
+### Added
+- Implemented `Cmd/Ctrl + Enter` keyboard shortcut for note submission across title, editor, and tag inputs.
+- Added `aria-label` and `title` attributes to all icon-only toolbar buttons for improved accessibility.
+- Added `role="textbox"` and `aria-multiline` to `contentEditable` editors to support assistive technologies.
+- Added keyboard shortcut hints to "Save Raw" and "Synthesis" button tooltips.
+
+### Changed
+- Improved project form accessibility by linking labels to textareas with `id` and `htmlFor`.
+- Refined tag input behavior to handle both tag creation and shortcut submission.
+
+---
+
+## [1.6.3] - 2026-04-01
+
+### 🛡️ Sentinel: Security Hardening
+
+### Changed
+- Removed hardcoded secrets and implemented fail-secure startup check for mandatory encryption keys.
+
+---
+
 ## [1.6.2] - 2026-03-25
 
 ### 🔧 Firebase DB Routing + On-Prem Spinoff Profile
