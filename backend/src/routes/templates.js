@@ -19,13 +19,15 @@ router.get('/', optionalAuth, async (req, res, next) => {
   try {
     const userId = req.user?.id;
     
+    // SECURITY: Prisma 5+ ignores 'undefined' in filters. Inside an OR clause,
+    // { userId: undefined } becomes {}, matching ALL records.
+    // We must explicitly handle unauthenticated requests.
+    const where = userId
+      ? { OR: [{ userId }, { userId: null }] }
+      : { userId: null };
+
     const templates = await prisma.template.findMany({
-      where: {
-        OR: [
-          { userId },
-          { userId: null }, // Global templates
-        ],
-      },
+      where,
       orderBy: { createdAt: 'desc' },
     });
     
