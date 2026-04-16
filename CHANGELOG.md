@@ -2,7 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
-## [1.6.2] - 2026-03-25
+## [1.6.4] - 2026-04-02
+
+### 🎨 Palette: Keyboard Shortcuts & Accessibility Enhancements
+
+### Added
+- Added `Cmd/Ctrl + Enter` keyboard shortcut for the note composer (Title input and Editors) to trigger Synthesis/Save Raw.
+- Added `aria-label` and `title` attributes to all icon-only buttons in the formatting toolbar and sidebar.
+- Added ARIA roles and multiline descriptions to `contentEditable` editors for better screen reader support.
+
+### Changed
+- Updated primary action button tooltips to include keyboard shortcut hints.
+- Improved calendar and folder action accessibility in the sidebar.
+
+## [1.6.3] - 2026-04-01
 
 ### 🔧 Firebase DB Routing + On-Prem Spinoff Profile
 

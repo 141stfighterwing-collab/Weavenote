@@ -1193,7 +1193,7 @@ cat backup_20240101.sql | docker-compose exec -T postgres psql -U weavenote weav
 
 | Component | Version |
 |-----------|---------|
-| **WeaveNote** | 1.6.3 |
+| **WeaveNote** | 1.6.4 |
 | **Frontend** | React 18 + Vite 5 |
 | **Backend** | Node.js 20 + Express 4 |
 | **Database** | PostgreSQL 16 |
