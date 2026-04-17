@@ -128,9 +128,9 @@ router.get('/', optionalAuth, async (req, res, next) => {
 });
 
 // Get a single note
-router.get('/:id', optionalAuth, async (req, res, next) => {
+router.get('/:id', authenticate, async (req, res, next) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user.id;
     const { id } = req.params;
     
     const note = await prisma.note.findFirst({
