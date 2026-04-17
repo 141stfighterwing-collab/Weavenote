@@ -342,4 +342,21 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+Current version: **1.6.4**.
+
+## [1.6.4] - 2026-05-14
+
+### 🎨 Palette: UX & Accessibility Polish
+
+This release focuses on micro-UX improvements to make the note-taking experience more fluid and accessible.
+
+### Added
+- **Keyboard Shortcuts**: Added `Ctrl+Enter` (or `Cmd+Enter` on Mac) as a universal shortcut to save notes from any input field in the composer.
+- **Accessibility Labels**: Implemented descriptive `aria-label` and `role` attributes for formatting tools and content editors to support screen readers.
+- **Visual Hints**: Added keyboard shortcut reminders to button tooltips (e.g., "Save Raw (Ctrl+Enter)", "Bold (Ctrl+B)").
+- **Form Polish**: Linked project labels to their corresponding inputs for a better click target experience and screen reader association.
+
+### Technical Details
+| Component | Improvements |
+|-----------|--------------|
+| NoteInput.tsx | Added accessibility attributes, shortcut hints, and keyboard event listeners. |
