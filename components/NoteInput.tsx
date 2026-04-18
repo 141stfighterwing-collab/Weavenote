@@ -224,36 +224,43 @@ const NoteInput: React.FC<NoteInputProps> = ({
               type="text" value={title} onChange={(e) => setTitle(e.target.value)} 
               placeholder={activeType === 'project' ? "Project Identity Title..." : "Title of this Idea block..."} 
               className="flex-1 px-5 py-4 bg-transparent focus:outline-none font-bold text-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500" 
+              aria-label="Note Title"
+              onKeyDown={(e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAction(!isGuest);
+                }
+              }}
             />
         </div>
 
-        <div className="flex flex-wrap items-center gap-1 p-2 bg-slate-50 dark:bg-slate-900/50 border-b dark:border-slate-700 relative">
+        <div className="flex flex-wrap items-center gap-1 p-2 bg-slate-50 dark:bg-slate-900/50 border-b dark:border-slate-700 relative" role="toolbar" aria-label="Formatting tools">
             <div className="flex gap-0.5 border-r dark:border-slate-700 pr-2 mr-1">
-                <select onChange={(e) => execCommand('fontName', e.target.value)} className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded px-1.5 py-1 text-[10px] font-bold outline-none max-w-[85px] text-slate-900 dark:text-slate-100">
+                <select onChange={(e) => execCommand('fontName', e.target.value)} aria-label="Font Family" className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded px-1.5 py-1 text-[10px] font-bold outline-none max-w-[85px] text-slate-900 dark:text-slate-100">
                     <option value="">Font</option>
                     {FONTS.map(f => <option key={f} value={f}>{f}</option>)}
                 </select>
-                <select onChange={(e) => execCommand('fontSize', e.target.value)} className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded px-1.5 py-1 text-[10px] font-bold outline-none text-slate-900 dark:text-slate-100">
+                <select onChange={(e) => execCommand('fontSize', e.target.value)} aria-label="Font Size" className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded px-1.5 py-1 text-[10px] font-bold outline-none text-slate-900 dark:text-slate-100">
                     <option value="">Size</option>
                     {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
             </div>
 
             <div className="flex gap-0.5 border-r dark:border-slate-700 pr-2 mr-1 text-slate-600 dark:text-slate-300">
-                <button onClick={() => execCommand('bold')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded font-black text-xs px-2.5">B</button>
-                <button onClick={() => execCommand('italic')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded italic text-xs px-2.5">I</button>
-                <button onClick={() => execCommand('underline')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded underline text-xs px-2.5">U</button>
-                <button onClick={() => execCommand('strikeThrough')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded line-through text-xs px-2.5">S</button>
+                <button onClick={() => execCommand('bold')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded font-black text-xs px-2.5" aria-label="Bold" title="Bold">B</button>
+                <button onClick={() => execCommand('italic')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded italic text-xs px-2.5" aria-label="Italic" title="Italic">I</button>
+                <button onClick={() => execCommand('underline')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded underline text-xs px-2.5" aria-label="Underline" title="Underline">U</button>
+                <button onClick={() => execCommand('strikeThrough')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded line-through text-xs px-2.5" aria-label="Strikethrough" title="Strikethrough">S</button>
             </div>
 
             <div className="flex gap-0.5 border-r dark:border-slate-700 pr-2 mr-1">
-                <button onClick={() => execCommand('insertUnorderedList')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-slate-600 dark:text-slate-300">Bullet</button>
-                <button onClick={() => execCommand('insertText', '- [ ] ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-primary-600">Task</button>
+                <button onClick={() => execCommand('insertUnorderedList')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-slate-600 dark:text-slate-300" aria-label="Bullet List" title="Bullet List">Bullet</button>
+                <button onClick={() => execCommand('insertText', '- [ ] ')} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2 uppercase text-primary-600" aria-label="Task List Item" title="Task List Item">Task</button>
             </div>
 
             <div className="flex gap-0.5 border-r dark:border-slate-700 pr-2 mr-1 text-slate-600 dark:text-slate-300">
-                <button onClick={() => { const sel = window.getSelection(); if (sel) { const range = sel.getRangeAt(0); const sup = document.createElement('sup'); sup.textContent = sel.toString(); range.deleteContents(); range.insertNode(sup); } }} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2" title="Superscript">X²</button>
-                <button onClick={() => { const sel = window.getSelection(); if (sel) { const range = sel.getRangeAt(0); const sub = document.createElement('sub'); sub.textContent = sel.toString(); range.deleteContents(); range.insertNode(sub); } }} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2" title="Subscript">X₂</button>
+                <button onClick={() => { const sel = window.getSelection(); if (sel) { const range = sel.getRangeAt(0); const sup = document.createElement('sup'); sup.textContent = sel.toString(); range.deleteContents(); range.insertNode(sup); } }} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2" title="Superscript" aria-label="Superscript">X²</button>
+                <button onClick={() => { const sel = window.getSelection(); if (sel) { const range = sel.getRangeAt(0); const sub = document.createElement('sub'); sub.textContent = sel.toString(); range.deleteContents(); range.insertNode(sub); } }} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-[10px] font-black px-2" title="Subscript" aria-label="Subscript">X₂</button>
             </div>
 
             <div className="flex gap-1 items-center relative">
@@ -261,19 +268,21 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 <button 
                   onClick={() => fileInputRef.current?.click()} 
                   disabled={isIngesting}
+                  aria-label="Ingest Document"
+                  title="Ingest Document"
                   className={`p-1.5 rounded flex items-center gap-2 px-3 text-[10px] font-black uppercase transition-all ${isIngesting ? 'bg-indigo-400 text-white cursor-wait animate-pulse' : (activeType === 'document' ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'hover:bg-white dark:hover:bg-slate-700 text-slate-500')}`}
                 >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                     {isIngesting ? <span>Processing...</span> : (activeType === 'document' && <span>Ingest Document</span>)}
                 </button>
-                <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base">😀</button>
-                <button onClick={() => setShowColorPicker(!showColorPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base">🎨</button>
-                <button onClick={() => setShowGifPicker(!showGifPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" title="Insert GIF">🎬</button>
-                <button onClick={() => setShowImageDialog(!showImageDialog)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" title="Insert Image URL">🖼️</button>
+                <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" aria-label="Emoji Picker" title="Emoji Picker">😀</button>
+                <button onClick={() => setShowColorPicker(!showColorPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" aria-label="Color Picker" title="Color Picker">🎨</button>
+                <button onClick={() => setShowGifPicker(!showGifPicker)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" aria-label="Insert GIF" title="Insert GIF">🎬</button>
+                <button onClick={() => setShowImageDialog(!showImageDialog)} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded text-base" aria-label="Insert Image URL" title="Insert Image URL">🖼️</button>
 
                 {showEmojiPicker && (
-                    <div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-2xl z-50 grid grid-cols-4 gap-1 min-w-[140px]">
-                        {EMOJIS.map(e => <button key={e} onClick={() => { execCommand('insertText', e); setShowEmojiPicker(false); }} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-lg">{e}</button>)}
+                    <div className="absolute top-full left-0 mt-1 p-2 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl shadow-2xl z-50 grid grid-cols-4 gap-1 min-w-[140px]" role="dialog" aria-label="Choose an emoji">
+                        {EMOJIS.map(e => <button key={e} onClick={() => { execCommand('insertText', e); setShowEmojiPicker(false); }} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-lg" aria-label={`Insert ${e}`}>{e}</button>)}
                     </div>
                 )}
                 {showColorPicker && (
@@ -406,21 +415,21 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-[fadeIn_0.3s_ease-out]">
                     <div className="space-y-4 bg-slate-50 dark:bg-slate-900/40 p-5 rounded-2xl border dark:border-slate-700">
                         <div>
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Primary Objectives / Goals</label>
-                            <textarea value={projectObjectives} onChange={(e) => setProjectObjectives(e.target.value)} placeholder="What are we trying to achieve?" className="w-full h-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-900 dark:text-white" />
+                            <label htmlFor="project-objectives" className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Primary Objectives / Goals</label>
+                            <textarea id="project-objectives" value={projectObjectives} onChange={(e) => setProjectObjectives(e.target.value)} placeholder="What are we trying to achieve?" className="w-full h-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-900 dark:text-white" />
                         </div>
                         <div>
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Key Deliverables</label>
-                            <textarea value={projectDeliverables} onChange={(e) => setProjectDeliverables(e.target.value)} placeholder="Specific items to be produced..." className="w-full h-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-900 dark:text-white" />
+                            <label htmlFor="project-deliverables" className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Key Deliverables</label>
+                            <textarea id="project-deliverables" value={projectDeliverables} onChange={(e) => setProjectDeliverables(e.target.value)} placeholder="Specific items to be produced..." className="w-full h-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-900 dark:text-white" />
                         </div>
                     </div>
                     <div className="space-y-4 bg-slate-50 dark:bg-slate-900/40 p-5 rounded-2xl border dark:border-slate-700 flex flex-col justify-center text-center">
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Manual Progress Monitor</label>
+                        <label htmlFor="project-progress" className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Manual Progress Monitor</label>
                         <div className="flex justify-between items-center mb-2 font-black text-xs px-2">
                             <span className="text-slate-500">Milestone %</span>
                             <span className="text-emerald-500 text-lg">{projectProgress}%</span>
                         </div>
-                        <input type="range" min="0" max="100" value={projectProgress} onChange={(e) => setProjectProgress(parseInt(e.target.value))} className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500 shadow-inner" />
+                        <input id="project-progress" type="range" min="0" max="100" value={projectProgress} onChange={(e) => setProjectProgress(parseInt(e.target.value))} className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500 shadow-inner" />
                         <p className="text-[9px] text-slate-400 mt-4 italic">Adjust to reflect real-world completion before synthesis.</p>
                     </div>
                 </div>
@@ -430,6 +439,13 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 <div className="flex-1 flex flex-col min-w-0">
                     <div 
                         ref={editorRef} contentEditable onPaste={handlePaste}
+                        role="textbox" aria-multiline="true" aria-label="Note Content"
+                        onKeyDown={(e) => {
+                          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAction(!isGuest);
+                          }
+                        }}
                         className="flex-1 p-6 focus:outline-none text-base whitespace-pre-wrap leading-relaxed empty:before:content-['Describe_your_idea..._Paste_fragments...'] empty:before:text-slate-400 dark:empty:before:text-slate-500 overflow-y-auto custom-scrollbar border-2 border-transparent focus:border-primary-100 rounded-2xl bg-slate-50/50 dark:bg-slate-900/40 text-slate-900 dark:text-white resize-y shadow-inner"
                     />
                 </div>
@@ -439,6 +455,13 @@ const NoteInput: React.FC<NoteInputProps> = ({
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Source Snippet (Black Box)</label>
                         <div 
                             ref={codeEditorRef} contentEditable
+                            role="textbox" aria-multiline="true" aria-label="Source Code Snippet"
+                            onKeyDown={(e) => {
+                              if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAction(!isGuest);
+                              }
+                            }}
                             className="flex-1 p-6 focus:outline-none text-sm font-mono whitespace-pre bg-black text-[#39ff14] selection:bg-[#39ff14]/30 overflow-y-auto custom-scrollbar rounded-2xl border border-[#39ff14]/20 shadow-2xl resize-y empty:before:content-['//_Paste_raw_source_code_here..._High-contrast_view_active.'] empty:before:text-[#39ff14]/50"
                         />
                     </div>
@@ -466,10 +489,20 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 {aiStep ? `✨ ${aiStep}` : "Engine: Intelligence Idle"}
             </div>
             <div className="flex gap-3">
-                <button onClick={() => handleAction(false)} disabled={isProcessing || isIngesting} className="px-6 py-2 rounded-full font-bold text-[10px] bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 uppercase tracking-widest border border-slate-200 dark:border-slate-600 hover:shadow-md transition-all active:scale-95 disabled:opacity-50">Save Raw</button>
+                <button
+                    onClick={() => handleAction(false)}
+                    disabled={isProcessing || isIngesting}
+                    className="px-6 py-2 rounded-full font-bold text-[10px] bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 uppercase tracking-widest border border-slate-200 dark:border-slate-600 hover:shadow-md transition-all active:scale-95 disabled:opacity-50"
+                    title={isGuest ? "Save Raw (Ctrl+Enter)" : "Save Raw"}
+                    aria-label={isGuest ? "Save Raw (Ctrl+Enter)" : "Save Raw"}
+                >
+                    Save Raw
+                </button>
                 <button 
                   onClick={() => handleAction(true)} disabled={isProcessing || isGuest || isIngesting} 
                   className={`px-8 py-2 rounded-full font-black text-[10px] transition-all shadow-xl uppercase tracking-widest relative overflow-hidden group ${isGuest || isIngesting ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-primary-600 via-indigo-600 to-indigo-800 text-white hover:brightness-110 active:scale-95'}`}
+                  title={isGuest ? "Synthesis (Login required)" : "Synthesis (Ctrl+Enter)"}
+                  aria-label={isGuest ? "Synthesis (Login required)" : "Synthesis (Ctrl+Enter)"}
                 >
                   {isProcessing ? 'Neural Syncing...' : '✨ Synthesis'}
                 </button>
