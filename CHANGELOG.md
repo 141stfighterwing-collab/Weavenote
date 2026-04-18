@@ -342,4 +342,23 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+Current version: **1.6.4**.
+
+## [1.6.4] - 2026-04-02
+
+### 🎨 Palette: Accessibility & Keyboard UX
+
+This release focuses on making the workspace more inclusive and efficient with enhanced keyboard support and accessibility improvements.
+
+### Added
+- **Keyboard Shortcuts**: Added `Ctrl/Cmd + Enter` support in NoteInput (Title, Main Editor, Code Editor) to trigger note saving or synthesis.
+- **Shortcut Hints**: Added keyboard shortcut hints to Save and Synthesis button tooltips.
+- **Accessibility Roles**: Added `role="toolbar"`, `role="textbox"`, and `role="switch"` to appropriate UI elements.
+
+### Changed
+- **Enhanced Buttons**: Added ARIA labels and descriptive titles to all icon-only toolbar buttons in the editor.
+- **Accessible Form Labels**: Linked project planning form labels directly to their inputs for better screen reader support.
+- **Keyboard Navigation**: Improved focus states and accessibility for folder delete buttons and theme switches.
+
+### Fixed
+- **Type Safety**: Resolved a pre-existing TypeScript error in `NoteCard.tsx` related to image viewing props.
