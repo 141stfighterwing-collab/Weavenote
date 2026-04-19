@@ -181,6 +181,15 @@ const NoteInput: React.FC<NoteInputProps> = ({
     setProjectObjectives(''); setProjectDeliverables(''); setProjectProgress(0);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      if (!isProcessing && !isIngesting) {
+        handleAction(false); // Save Raw
+      }
+    }
+  };
+
   // Insert image/GIF from URL with optional width
   const insertImageFromUrl = (url: string, width?: string) => {
     if (!url.trim()) return;
@@ -222,6 +231,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
         <div className="flex items-center justify-between border-b dark:border-slate-700">
             <input 
               type="text" value={title} onChange={(e) => setTitle(e.target.value)} 
+              onKeyDown={handleKeyDown}
               placeholder={activeType === 'project' ? "Project Identity Title..." : "Title of this Idea block..."} 
               className="flex-1 px-5 py-4 bg-transparent focus:outline-none font-bold text-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500" 
             />
@@ -407,11 +417,11 @@ const NoteInput: React.FC<NoteInputProps> = ({
                     <div className="space-y-4 bg-slate-50 dark:bg-slate-900/40 p-5 rounded-2xl border dark:border-slate-700">
                         <div>
                             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Primary Objectives / Goals</label>
-                            <textarea value={projectObjectives} onChange={(e) => setProjectObjectives(e.target.value)} placeholder="What are we trying to achieve?" className="w-full h-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-900 dark:text-white" />
+                            <textarea value={projectObjectives} onChange={(e) => setProjectObjectives(e.target.value)} onKeyDown={handleKeyDown} placeholder="What are we trying to achieve?" className="w-full h-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-900 dark:text-white" />
                         </div>
                         <div>
                             <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Key Deliverables</label>
-                            <textarea value={projectDeliverables} onChange={(e) => setProjectDeliverables(e.target.value)} placeholder="Specific items to be produced..." className="w-full h-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-900 dark:text-white" />
+                            <textarea value={projectDeliverables} onChange={(e) => setProjectDeliverables(e.target.value)} onKeyDown={handleKeyDown} placeholder="Specific items to be produced..." className="w-full h-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-900 dark:text-white" />
                         </div>
                     </div>
                     <div className="space-y-4 bg-slate-50 dark:bg-slate-900/40 p-5 rounded-2xl border dark:border-slate-700 flex flex-col justify-center text-center">
@@ -430,16 +440,24 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 <div className="flex-1 flex flex-col min-w-0">
                     <div 
                         ref={editorRef} contentEditable onPaste={handlePaste}
+                        onKeyDown={handleKeyDown}
                         className="flex-1 p-6 focus:outline-none text-base whitespace-pre-wrap leading-relaxed empty:before:content-['Describe_your_idea..._Paste_fragments...'] empty:before:text-slate-400 dark:empty:before:text-slate-500 overflow-y-auto custom-scrollbar border-2 border-transparent focus:border-primary-100 rounded-2xl bg-slate-50/50 dark:bg-slate-900/40 text-slate-900 dark:text-white resize-y shadow-inner"
+                        role="textbox"
+                        aria-multiline="true"
+                        aria-label="Note content"
                     />
                 </div>
 
                 {activeType === 'code' && (
                     <div className="flex-1 flex flex-col min-w-0 animate-[fadeIn_0.3s_ease-out]">
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Source Snippet (Black Box)</label>
+                        <label id="code-box-label" className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Source Snippet (Black Box)</label>
                         <div 
                             ref={codeEditorRef} contentEditable
+                            onKeyDown={handleKeyDown}
                             className="flex-1 p-6 focus:outline-none text-sm font-mono whitespace-pre bg-black text-[#39ff14] selection:bg-[#39ff14]/30 overflow-y-auto custom-scrollbar rounded-2xl border border-[#39ff14]/20 shadow-2xl resize-y empty:before:content-['//_Paste_raw_source_code_here..._High-contrast_view_active.'] empty:before:text-[#39ff14]/50"
+                            role="textbox"
+                            aria-multiline="true"
+                            aria-labelledby="code-box-label"
                         />
                     </div>
                 )}
@@ -455,8 +473,22 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 ))}
                 <input 
                     type="text" value={tagInput} onChange={e => setTagInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const val = tagInput.trim().toLowerCase().replace('#',''); if (val && !tags.includes(val)) { setTags([...tags, val]); setTagInput(''); } } }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        if (e.metaKey || e.ctrlKey) {
+                          handleKeyDown(e);
+                        } else {
+                          e.preventDefault();
+                          const val = tagInput.trim().toLowerCase().replace('#','');
+                          if (val && !tags.includes(val)) {
+                            setTags([...tags, val]);
+                            setTagInput('');
+                          }
+                        }
+                      }
+                    }}
                     placeholder="Hashtags..." className="bg-transparent outline-none text-[10px] font-bold text-slate-600 dark:text-slate-400 min-w-[120px] flex-1"
+                    aria-label="Add tags"
                 />
             </div>
         </div>
@@ -466,10 +498,21 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 {aiStep ? `✨ ${aiStep}` : "Engine: Intelligence Idle"}
             </div>
             <div className="flex gap-3">
-                <button onClick={() => handleAction(false)} disabled={isProcessing || isIngesting} className="px-6 py-2 rounded-full font-bold text-[10px] bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 uppercase tracking-widest border border-slate-200 dark:border-slate-600 hover:shadow-md transition-all active:scale-95 disabled:opacity-50">Save Raw</button>
                 <button 
-                  onClick={() => handleAction(true)} disabled={isProcessing || isGuest || isIngesting} 
+                  onClick={() => handleAction(false)}
+                  disabled={isProcessing || isIngesting}
+                  className="px-6 py-2 rounded-full font-bold text-[10px] bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 uppercase tracking-widest border border-slate-200 dark:border-slate-600 hover:shadow-md transition-all active:scale-95 disabled:opacity-50"
+                  title="Save Raw (Ctrl+Enter)"
+                  aria-label="Save Raw"
+                >
+                  Save Raw
+                </button>
+                <button
+                  onClick={() => handleAction(true)}
+                  disabled={isProcessing || isGuest || isIngesting}
                   className={`px-8 py-2 rounded-full font-black text-[10px] transition-all shadow-xl uppercase tracking-widest relative overflow-hidden group ${isGuest || isIngesting ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-primary-600 via-indigo-600 to-indigo-800 text-white hover:brightness-110 active:scale-95'}`}
+                  title={isGuest ? "Synthesis (Login required)" : "Synthesis"}
+                  aria-label="Synthesis"
                 >
                   {isProcessing ? 'Neural Syncing...' : '✨ Synthesis'}
                 </button>

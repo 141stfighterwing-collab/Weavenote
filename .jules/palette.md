@@ -1,0 +1,3 @@
+## 2026-04-03 - [Keyboard Shortcuts & Accessibility Convergence]
+**Learning:** Combining high-impact keyboard shortcuts (like `Cmd/Ctrl + Enter` for saving) with visible tooltip hints significantly improves power-user productivity without cluttering the UI. At the same time, using semantic ARIA roles like `textbox` on `contentEditable` elements is essential for screen reader users to perceive these custom editors correctly.
+**Action:** Always include keyboard shortcut hints in button tooltips when implementing new shortcuts, and ensure custom interactive elements have appropriate ARIA roles and labels.
