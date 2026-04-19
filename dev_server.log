@@ -1,0 +1,13 @@
+
+> weavenote@1.6.4 dev /app
+> vite
+
+
+  VITE v5.4.21  ready in 319 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+9:39:13 AM [vite] hmr update /components/NoteInput.tsx
+9:40:19 AM [vite] hmr update /components/NoteInput.tsx
+9:40:44 AM [vite] hmr update /components/NoteInput.tsx
+9:42:20 AM [vite] page reload playwright-report/index.html

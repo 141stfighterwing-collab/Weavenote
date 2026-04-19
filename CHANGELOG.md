@@ -322,6 +322,21 @@ If upgrading from a previous version:
 
 ---
 
+## [1.6.4] - 2026-04-03
+
+### 🎨 Palette: UX & Accessibility Improvements
+
+### Added
+- **Keyboard Shortcuts**: Implemented `Cmd/Ctrl + Enter` to quickly save notes from any input field (Title, Editor, Tag Input) in the Note composer.
+- **ARIA Enhancements**: Added comprehensive ARIA roles (`tablist`, `tab`, `toolbar`, `textbox`) and labels to the note composer for improved screen reader support.
+- **Improved Tooltips**: Added descriptive `title` attributes to all formatting and action buttons, including keyboard shortcut hints.
+- **Accessible Forms**: Explicitly linked labels to project form fields using `htmlFor` and `id` attributes.
+
+### Fixed
+- Fixed several TypeScript compilation and linting errors across the codebase (`NoteCard`, `types.ts`, `screenshots.spec.ts`).
+
+---
+
 ## Versioning
 
 This project uses **Semantic Versioning (SemVer)**:
@@ -342,4 +357,4 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+Current version: **1.6.4**.
