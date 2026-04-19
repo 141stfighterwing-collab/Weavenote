@@ -17,14 +17,16 @@ const templateSchema = z.object({
 // Get all templates
 router.get('/', optionalAuth, async (req, res, next) => {
   try {
-    const userId = req.user?.id;
+    const user = req.user;
     
     const templates = await prisma.template.findMany({
-      where: {
+      where: user ? {
         OR: [
-          { userId },
+          { userId: user.id },
           { userId: null }, // Global templates
         ],
+      } : {
+        userId: null, // Only global templates for guests
       },
       orderBy: { createdAt: 'desc' },
     });
