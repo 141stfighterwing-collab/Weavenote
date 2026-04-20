@@ -134,7 +134,16 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
     const { id } = req.params;
     
     const note = await prisma.note.findFirst({
-      where: { id, userId },
+      where: userId ? {
+        id,
+        OR: [
+          { userId },
+          { userId: null },
+        ],
+      } : {
+        id,
+        userId: null,
+      },
       include: {
         tags: true,
         projectData: {
