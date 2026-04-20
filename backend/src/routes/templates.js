@@ -20,11 +20,13 @@ router.get('/', optionalAuth, async (req, res, next) => {
     const userId = req.user?.id;
     
     const templates = await prisma.template.findMany({
-      where: {
+      where: userId ? {
         OR: [
           { userId },
           { userId: null }, // Global templates
         ],
+      } : {
+        userId: null, // Only global templates for unauthenticated users
       },
       orderBy: { createdAt: 'desc' },
     });
