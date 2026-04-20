@@ -1,3 +1,18 @@
+## [1.6.4] - 2026-04-20
+
+### 🎨 Palette: Accessibility & Efficiency Boost
+
+### Added
+- **Keyboard Shortcut**: Added `Ctrl+Enter` (Windows/Linux) and `Cmd+Enter` (macOS) support to `NoteInput` for quickly saving notes from any field (Title, Content, or Tags).
+- **Accessibility Roles**: Added `role="toolbar"` to formatting bars and `role="textbox"` with `aria-multiline="true"` to all `contentEditable` editors.
+- **Descriptive Labels**: Added `aria-label` and `title` tooltips to all icon-only buttons in the note composer and formatting toolbar.
+- **Shortcut Hints**: Added keyboard shortcut hints to the "Save Raw" button tooltip.
+- **Enhanced Toggle**: Improved the Dark Mode toggle in Settings with semantic `role="switch"` and `aria-checked` state for better screen reader support.
+
+### Fixed
+- Fixed pre-existing TypeScript errors in `types.ts`, `NoteCard.tsx`, and `screenshots.spec.ts` to ensure a clean build.
+- Updated Playwright tests to use robust role-based locators for the Dark Mode toggle.
+
 # Changelog
 
 All notable changes to this project are documented in this file.
