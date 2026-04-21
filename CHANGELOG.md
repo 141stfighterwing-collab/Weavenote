@@ -330,6 +330,19 @@ This project uses **Semantic Versioning (SemVer)**:
 - **MINOR** version for backward-compatible features.
 - **PATCH** version for backward-compatible bug fixes.
 
+## [1.6.4] - 2026-04-21
+
+### 🎨 Palette: UX & Accessibility Enhancements
+
+### Added
+- **Keyboard Shortcuts**: Implemented `Ctrl/Cmd + Enter` global shortcut in the note editor (title, content, and tags) to quickly trigger 'Save Raw'.
+- **Accessibility (A11y)**: Added semantic ARIA roles and labels to the formatting toolbar and content editors to support screen readers.
+- **Enhanced Tooltips**: Added keyboard shortcut hints to primary action buttons for better discoverability.
+
+### Fixed
+- **Form Accessibility**: Properly associated form labels with their respective inputs (objectives, deliverables, progress) using `id` and `htmlFor`.
+- **Type Safety**: Resolved internal TypeScript errors in `NoteCard`, `authService`, and test suites to maintain a clean build.
+
 ## [1.6.3] - 2026-04-01
 
 ### 🛡️ Sentinel: Security Hardening
@@ -342,4 +355,4 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+Current version: **1.6.4**.
