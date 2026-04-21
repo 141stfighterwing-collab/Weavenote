@@ -19,13 +19,18 @@ router.get('/', optionalAuth, async (req, res, next) => {
   try {
     const userId = req.user?.id;
     
+    // SECURITY: Explicitly handle unauthenticated requests to ensure only global
+    // templates are returned, preventing Prisma from ignoring the userId filter
+    // in the OR clause when it is undefined.
+    const where = userId ? {
+      OR: [
+        { userId },
+        { userId: null },
+      ],
+    } : { userId: null };
+
     const templates = await prisma.template.findMany({
-      where: {
-        OR: [
-          { userId },
-          { userId: null }, // Global templates
-        ],
-      },
+      where,
       orderBy: { createdAt: 'desc' },
     });
     
