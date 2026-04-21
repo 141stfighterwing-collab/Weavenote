@@ -188,7 +188,7 @@ test.describe('Weavenote Screenshot Tests', () => {
     
     // Highlight the settings panel
     await page.evaluate(() => {
-      const panel = document.querySelector('[class*="fixed inset-0"]');
+      const panel = document.querySelector('[class*="fixed inset-0"]') as HTMLElement | null;
       if (panel) {
         panel.style.border = '3px solid #4F46E5';
       }
