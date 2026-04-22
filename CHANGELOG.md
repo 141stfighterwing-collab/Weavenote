@@ -330,6 +330,22 @@ This project uses **Semantic Versioning (SemVer)**:
 - **MINOR** version for backward-compatible features.
 - **PATCH** version for backward-compatible bug fixes.
 
+## [1.6.4] - 2026-04-01
+
+### 🎨 Palette: Accessibility and Productivity Enhancements
+
+### Added
+- **Keyboard Shortcuts**: Added `Ctrl+Enter` (Windows/Linux) and `Cmd+Enter` (macOS) to save notes quickly from the editor, title, and tag inputs.
+- **Enhanced Accessibility**: Added `aria-label` and `title` attributes to all icon-only buttons in the editor toolbar and note cards to improve screen reader support and provide better tooltips.
+- **UX Tooltips**: Added keyboard shortcut hints to primary action buttons.
+
+### Changed
+- Improved tag management with ARIA labels on remove buttons.
+
+Current version: **1.6.4**.
+
+---
+
 ## [1.6.3] - 2026-04-01
 
 ### 🛡️ Sentinel: Security Hardening
@@ -341,5 +357,3 @@ This project uses **Semantic Versioning (SemVer)**:
 - Removed hardcoded admin bootstrap password ("Zaqxsw12gobeavers") in `services/authService.ts`.
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
-
-Current version: **1.6.3**.
