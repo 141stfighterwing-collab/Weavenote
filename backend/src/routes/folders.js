@@ -15,7 +15,7 @@ const folderSchema = z.object({
 // Get all folders for a user
 router.get('/', optionalAuth, async (req, res, next) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.id || null;
     
     if (!userId) {
       return res.json([]); // Return empty for guest users
