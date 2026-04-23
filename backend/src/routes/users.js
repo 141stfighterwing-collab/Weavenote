@@ -161,6 +161,20 @@ router.patch('/admin/:id/status', authenticate, async (req, res, next) => {
         status,
         statusUntil: statusUntil ? new Date(statusUntil) : null,
       },
+      select: {
+        id: true,
+        uid: true,
+        email: true,
+        username: true,
+        role: true,
+        permission: true,
+        status: true,
+        statusUntil: true,
+        lastLogin: true,
+        createdAt: true,
+        updatedAt: true,
+        aiUsageCount: true,
+      },
     });
     
     res.json(user);
