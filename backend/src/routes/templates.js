@@ -19,6 +19,15 @@ router.get('/', optionalAuth, async (req, res, next) => {
   try {
     const userId = req.user?.id;
     
+    // If not authenticated, only return global templates (userId: null)
+    if (!userId) {
+      const globalTemplates = await prisma.template.findMany({
+        where: { userId: null },
+        orderBy: { createdAt: 'desc' },
+      });
+      return res.json(globalTemplates);
+    }
+
     const templates = await prisma.template.findMany({
       where: {
         OR: [
