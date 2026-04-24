@@ -330,6 +330,19 @@ This project uses **Semantic Versioning (SemVer)**:
 - **MINOR** version for backward-compatible features.
 - **PATCH** version for backward-compatible bug fixes.
 
+## [1.6.4] - 2026-05-15
+
+### 🎨 Palette: Accessibility & Micro-UX Enhancements
+
+### Added
+- **NoteInput Shortcuts**: Implemented `Ctrl/Cmd + Enter` global shortcut in the NoteInput component (Title, Editor, Tag inputs) to trigger the "Save Raw" action.
+- **Shortcut Hints**: Added tooltip hints to the "Save Raw" button to improve keyboard shortcut discoverability.
+- **Accessibility Attributes**: Added missing `aria-label` and `title` attributes to all icon-only buttons in the formatting toolbar and NoteCard actions.
+- **Keyboard Navigation**: Enhanced folder delete buttons in the sidebar to be visible and accessible via keyboard focus.
+
+### Changed
+- Improved ARIA roles for better screen reader support in the NoteInput editor and toolbar areas.
+
 ## [1.6.3] - 2026-04-01
 
 ### 🛡️ Sentinel: Security Hardening
