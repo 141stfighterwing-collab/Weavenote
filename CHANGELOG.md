@@ -330,6 +330,14 @@ This project uses **Semantic Versioning (SemVer)**:
 - **MINOR** version for backward-compatible features.
 - **PATCH** version for backward-compatible bug fixes.
 
+## [1.6.4] - 2026-04-02
+
+### 🛡️ Sentinel: Fix Prisma Authorization Bypass
+
+### Fixed
+- **Security**: Hardened `GET /api/notes/:id` against Insecure Direct Object Reference (IDOR). Unauthenticated requests (via `optionalAuth`) no longer bypass ownership checks due to Prisma's `undefined` filter behavior.
+- **Security**: Secured `GET /api/templates` to ensure anonymous users only receive global templates. Prevented a vulnerability where `undefined` user filters in an `OR` query could return all templates.
+
 ## [1.6.3] - 2026-04-01
 
 ### 🛡️ Sentinel: Security Hardening
@@ -342,4 +350,4 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+Current version: **1.6.4**.
