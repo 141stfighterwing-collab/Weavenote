@@ -1,3 +1,8 @@
+## [1.6.4] - 2025-05-22
+
+### Fixed
+- SECURITY: Fixed IDOR vulnerability in GET /api/notes/:id route by hardening Prisma where clause against undefined values.
+
 # Changelog
 
 All notable changes to this project are documented in this file.

@@ -133,8 +133,10 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
     const userId = req.user?.id;
     const { id } = req.params;
     
+    // SECURITY: Ensure userId is explicitly handled to prevent IDOR via Prisma's undefined behavior
+    // If userId is undefined (guest), we must filter for userId: null to only show system notes
     const note = await prisma.note.findFirst({
-      where: { id, userId },
+      where: { id, userId: userId || null },
       include: {
         tags: true,
         projectData: {
