@@ -137,6 +137,15 @@ const NoteInput: React.FC<NoteInputProps> = ({
     }
   };
 
+  const handleGlobalKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      if (!isProcessing && !isIngesting) {
+        handleAction(false);
+      }
+    }
+  };
+
   const handleAction = async (useAI: boolean) => {
     const htmlContent = editorRef.current?.innerHTML || '';
     const code = codeEditorRef.current?.innerText || '';
@@ -222,6 +231,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
         <div className="flex items-center justify-between border-b dark:border-slate-700">
             <input 
               type="text" value={title} onChange={(e) => setTitle(e.target.value)} 
+              onKeyDown={handleGlobalKeyDown}
               placeholder={activeType === 'project' ? "Project Identity Title..." : "Title of this Idea block..."} 
               className="flex-1 px-5 py-4 bg-transparent focus:outline-none font-bold text-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500" 
             />
@@ -430,6 +440,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 <div className="flex-1 flex flex-col min-w-0">
                     <div 
                         ref={editorRef} contentEditable onPaste={handlePaste}
+                        onKeyDown={handleGlobalKeyDown}
                         className="flex-1 p-6 focus:outline-none text-base whitespace-pre-wrap leading-relaxed empty:before:content-['Describe_your_idea..._Paste_fragments...'] empty:before:text-slate-400 dark:empty:before:text-slate-500 overflow-y-auto custom-scrollbar border-2 border-transparent focus:border-primary-100 rounded-2xl bg-slate-50/50 dark:bg-slate-900/40 text-slate-900 dark:text-white resize-y shadow-inner"
                     />
                 </div>
@@ -439,6 +450,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
                         <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Source Snippet (Black Box)</label>
                         <div 
                             ref={codeEditorRef} contentEditable
+                            onKeyDown={handleGlobalKeyDown}
                             className="flex-1 p-6 focus:outline-none text-sm font-mono whitespace-pre bg-black text-[#39ff14] selection:bg-[#39ff14]/30 overflow-y-auto custom-scrollbar rounded-2xl border border-[#39ff14]/20 shadow-2xl resize-y empty:before:content-['//_Paste_raw_source_code_here..._High-contrast_view_active.'] empty:before:text-[#39ff14]/50"
                         />
                     </div>
@@ -455,7 +467,22 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 ))}
                 <input 
                     type="text" value={tagInput} onChange={e => setTagInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const val = tagInput.trim().toLowerCase().replace('#',''); if (val && !tags.includes(val)) { setTags([...tags, val]); setTagInput(''); } } }}
+                    onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (e.metaKey || e.ctrlKey) {
+                                if (!isProcessing && !isIngesting) {
+                                    handleAction(false);
+                                }
+                            } else {
+                                const val = tagInput.trim().toLowerCase().replace('#','');
+                                if (val && !tags.includes(val)) {
+                                    setTags([...tags, val]);
+                                    setTagInput('');
+                                }
+                            }
+                        }
+                    }}
                     placeholder="Hashtags..." className="bg-transparent outline-none text-[10px] font-bold text-slate-600 dark:text-slate-400 min-w-[120px] flex-1"
                 />
             </div>
@@ -466,7 +493,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 {aiStep ? `✨ ${aiStep}` : "Engine: Intelligence Idle"}
             </div>
             <div className="flex gap-3">
-                <button onClick={() => handleAction(false)} disabled={isProcessing || isIngesting} className="px-6 py-2 rounded-full font-bold text-[10px] bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 uppercase tracking-widest border border-slate-200 dark:border-slate-600 hover:shadow-md transition-all active:scale-95 disabled:opacity-50">Save Raw</button>
+                <button onClick={() => handleAction(false)} disabled={isProcessing || isIngesting} title="Save Raw (Cmd/Ctrl + Enter)" className="px-6 py-2 rounded-full font-bold text-[10px] bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 uppercase tracking-widest border border-slate-200 dark:border-slate-600 hover:shadow-md transition-all active:scale-95 disabled:opacity-50">Save Raw</button>
                 <button 
                   onClick={() => handleAction(true)} disabled={isProcessing || isGuest || isIngesting} 
                   className={`px-8 py-2 rounded-full font-black text-[10px] transition-all shadow-xl uppercase tracking-widest relative overflow-hidden group ${isGuest || isIngesting ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-primary-600 via-indigo-600 to-indigo-800 text-white hover:brightness-110 active:scale-95'}`}
