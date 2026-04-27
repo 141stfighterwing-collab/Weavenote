@@ -22,7 +22,7 @@ router.get('/', optionalAuth, async (req, res, next) => {
     const templates = await prisma.template.findMany({
       where: {
         OR: [
-          { userId },
+          { userId: userId || null },
           { userId: null }, // Global templates
         ],
       },

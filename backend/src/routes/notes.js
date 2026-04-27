@@ -45,7 +45,7 @@ router.get('/', optionalAuth, async (req, res, next) => {
       return res.json([]); // Return empty for guest users
     }
     
-    const where = { userId };
+    const where = { userId: userId || null }; // SECURITY: Explicit check to prevent IDOR with undefined
     
     if (type) where.type = type;
     if (folderId !== undefined) where.folderId = folderId === 'null' ? null : folderId;
@@ -133,8 +133,12 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
     const userId = req.user?.id;
     const { id } = req.params;
     
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const note = await prisma.note.findFirst({
-      where: { id, userId },
+      where: { id, userId: userId || null }, // SECURITY: Explicit check to prevent IDOR with undefined
       include: {
         tags: true,
         projectData: {
