@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../db.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -114,12 +114,8 @@ router.get('/stats', authenticate, async (req, res, next) => {
 });
 
 // Admin: Get all users
-router.get('/admin/all', authenticate, async (req, res, next) => {
+router.get('/admin/all', authenticate, requireRole('admin', 'super_admin'), async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    
     const users = await prisma.user.findMany({
       select: {
         id: true,
@@ -146,12 +142,8 @@ router.get('/admin/all', authenticate, async (req, res, next) => {
 });
 
 // Admin: Update user status
-router.patch('/admin/:id/status', authenticate, async (req, res, next) => {
+router.patch('/admin/:id/status', authenticate, requireRole('admin', 'super_admin'), async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    
     const { id } = req.params;
     const { status, statusUntil } = req.body;
     
@@ -160,6 +152,19 @@ router.patch('/admin/:id/status', authenticate, async (req, res, next) => {
       data: {
         status,
         statusUntil: statusUntil ? new Date(statusUntil) : null,
+      },
+      select: {
+        id: true,
+        uid: true,
+        email: true,
+        username: true,
+        role: true,
+        permission: true,
+        status: true,
+        statusUntil: true,
+        lastLogin: true,
+        createdAt: true,
+        aiUsageCount: true,
       },
     });
     

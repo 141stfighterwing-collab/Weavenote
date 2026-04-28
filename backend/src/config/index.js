@@ -16,6 +16,9 @@ export const config = {
   admin: {
     setupPass: process.env.ADMIN_SETUP_PASS || '',
   },
+  security: {
+    encryptionKey: process.env.ENCRYPTION_KEY || '',
+  },
   cors: {
     origins: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:8080'],
   },
