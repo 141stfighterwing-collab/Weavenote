@@ -111,10 +111,16 @@ app.use((err, req, res, next) => {
 
 const startServer = async () => {
   try {
-    // SECURITY: Fail secure - ensure JWT_SECRET is provided
+    // SECURITY: Fail secure - ensure critical security variables are provided
     if (!config.jwt.secret) {
       console.error('❌ CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing.');
       console.error('The application cannot start without a secure JWT_SECRET.');
+      process.exit(1);
+    }
+
+    if (!config.security.encryptionKey) {
+      console.error('❌ CRITICAL SECURITY ERROR: ENCRYPTION_KEY environment variable is missing.');
+      console.error('The application cannot start without a secure ENCRYPTION_KEY.');
       process.exit(1);
     }
 
