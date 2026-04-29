@@ -342,4 +342,35 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+Current version: **1.6.4**.
+
+---
+
+## [1.6.4] - 2026-04-15
+
+### 🎨 Palette: Micro-UX & Accessibility Enhancements
+
+This update focuses on small touches that make the interface more intuitive, accessible, and pleasant to use, including new keyboard shortcuts and improved screen reader support.
+
+### Added
+
+#### ⌨️ Keyboard Shortcuts
+- **Cmd/Ctrl + Enter**: Added a global "Save Raw" shortcut that works from the note title, main editor, and tag input fields. This allows for rapid note creation without reaching for the mouse.
+- **Visual Feedback**: Added shortcut hints to button tooltips to improve discoverability.
+
+#### ♿ Accessibility Improvements
+- **ARIA Labels**: Added descriptive `aria-label` attributes to all icon-only buttons in the toolbar (Bold, Italic, Emoji, etc.) and note cards (Edit, Delete, Color).
+- **Tooltips**: Ensured all interactive elements have descriptive `title` attributes for visual tooltips and screen reader support.
+- **Input Labels**: Improved placeholder text and associations for complex inputs.
+
+### Changed
+
+- Updated "Save Raw" button tooltip to include the new keyboard shortcut hint.
+- Refined focus states and keyboard navigation for the main note input area.
+
+### Technical Details
+
+| Component | Changes |
+|-----------|---------|
+| NoteInput.tsx | Implemented Cmd/Ctrl+Enter shortcut and added ARIA labels to all toolbar buttons. |
+| NoteCard.tsx | Added ARIA labels and titles to action buttons (Edit, Delete, Color). |

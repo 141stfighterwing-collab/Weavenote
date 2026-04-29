@@ -1,0 +1,10 @@
+
+> weavenote@1.6.4 dev /app
+> vite
+
+Re-optimizing dependencies because lockfile has changed
+
+  VITE v5.4.21  ready in 400 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
