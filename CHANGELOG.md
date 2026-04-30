@@ -342,4 +342,17 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+Current version: **1.6.4**.
+
+## [1.6.4] - 2026-04-05
+
+### 🎨 Palette: Keyboard Shortcuts & Accessibility
+
+### Added
+- Implemented `Cmd/Ctrl + Enter` keyboard shortcut for the note editor (Title, Content, Code, and Tags) to trigger "Save Raw".
+- Added `aria-label` and `title` attributes with keyboard shortcut hints to "Save Raw" and "Synthesis" buttons.
+- Added comprehensive accessibility attributes (`aria-label`, `title`) to all editor toolbar controls including font/size selects, formatting buttons, and media tools.
+
+### Fixed
+- Fixed missing `onViewImage` prop destructuring in `NoteCard.tsx` to resolve TypeScript errors.
+- Improved accessibility of the Dark Mode toggle in `SettingsPanel.tsx` using `role="switch"` and `aria-checked`.
