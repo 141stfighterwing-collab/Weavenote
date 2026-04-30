@@ -111,6 +111,13 @@ app.use((err, req, res, next) => {
 
 const startServer = async () => {
   try {
+    // SECURITY: Fail secure - ensure DATABASE_URL is provided
+    if (!config.database.url) {
+      console.error('❌ CRITICAL SECURITY ERROR: DATABASE_URL environment variable is missing.');
+      console.error('The application cannot start without a valid DATABASE_URL.');
+      process.exit(1);
+    }
+
     // SECURITY: Fail secure - ensure JWT_SECRET is provided
     if (!config.jwt.secret) {
       console.error('❌ CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing.');
