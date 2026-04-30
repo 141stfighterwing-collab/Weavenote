@@ -4,7 +4,7 @@ dotenv.config();
 export const config = {
   port: parseInt(process.env.PORT || '3001', 10),
   database: {
-    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@postgres:5432/weavenote',
+    url: process.env.DATABASE_URL || '',
   },
   jwt: {
     secret: process.env.JWT_SECRET || '',
