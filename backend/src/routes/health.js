@@ -15,9 +15,9 @@ router.get('/', async (req, res) => {
     await prisma.$queryRaw`SELECT 1`;
     health.database = 'connected';
   } catch (error) {
+    console.error('Health check database error:', error);
     health.status = 'degraded';
     health.database = 'disconnected';
-    health.error = error.message;
   }
 
   const statusCode = health.status === 'ok' ? 200 : 503;

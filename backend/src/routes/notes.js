@@ -41,11 +41,7 @@ router.get('/', optionalAuth, async (req, res, next) => {
     const userId = req.user?.id;
     const { type, folderId, isDeleted, search, limit = 100, offset = 0 } = req.query;
     
-    if (!userId) {
-      return res.json([]); // Return empty for guest users
-    }
-    
-    const where = { userId };
+    const where = { userId: userId || null };
     
     if (type) where.type = type;
     if (folderId !== undefined) where.folderId = folderId === 'null' ? null : folderId;
@@ -134,7 +130,7 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
     const { id } = req.params;
     
     const note = await prisma.note.findFirst({
-      where: { id, userId },
+      where: { id, userId: userId || null },
       include: {
         tags: true,
         projectData: {
