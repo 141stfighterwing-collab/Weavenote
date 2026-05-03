@@ -330,6 +330,17 @@ This project uses **Semantic Versioning (SemVer)**:
 - **MINOR** version for backward-compatible features.
 - **PATCH** version for backward-compatible bug fixes.
 
+## [1.6.4] - 2025-04-01
+
+### 🎨 Palette: UX & Accessibility Enhancements
+
+### Added
+- **Keyboard Shortcut**: Added `⌘/Ctrl + Enter` shortcut to quickly save notes from the title input, main editor, and tag input.
+- **Accessibility Labels**: Added `aria-label` and `title` attributes to all formatting and tool buttons in the note composer for better screen reader support and discoverability.
+
+### Changed
+- Improved "Save Raw" and "Synthesis" button tooltips to include shortcut hints and state information.
+
 ## [1.6.3] - 2026-04-01
 
 ### 🛡️ Sentinel: Security Hardening
@@ -342,4 +353,4 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+Current version: **1.6.4**.
