@@ -17,7 +17,6 @@ router.get('/', async (req, res) => {
   } catch (error) {
     health.status = 'degraded';
     health.database = 'disconnected';
-    health.error = error.message;
   }
 
   const statusCode = health.status === 'ok' ? 200 : 503;
