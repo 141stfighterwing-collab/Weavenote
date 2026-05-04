@@ -342,4 +342,27 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+Current version: **1.6.4**.
+
+## [1.6.4] - 2026-05-04
+
+### 🎨 Palette: Micro-UX & Accessibility Enhancements
+
+This release improves the application's accessibility, keyboard discoverability, and micro-interactions for a smoother user experience.
+
+### Added
+- **Keyboard Shortcut**: Added `Cmd/Ctrl + Enter` shortcut to `NoteInput` component. Users can now quickly save "Raw" notes from the title, editor, or tag inputs without reaching for the mouse.
+- **Shortcut Hint**: Added visual hint for the keyboard shortcut in the "Save Raw" button tooltip.
+- **ARIA Labels**: Added descriptive `aria-label` and `title` attributes to all icon-only buttons in the note formatting toolbar (Bold, Italic, Bullet List, etc.) and tool buttons (Emoji, Color, GIF, Image URL).
+- **Keyboard Discoverability**: Improved keyboard navigation in the Sidebar. The folder delete button is now visible and clearly highlighted when focused via keyboard, even if not hovered.
+
+### Changed
+- **Focus Indicators**: Implemented consistent, high-contrast focus rings (`focus-visible`) for all interactive elements in the note creation area and sidebar folder actions to assist keyboard-only users.
+- **Interactive Feedback**: Enhanced visual feedback for destructive actions in the folder sidebar with improved focus states.
+
+### Technical Details
+| Component | Changes |
+|-----------|---------|
+| NoteInput.tsx | Implemented `onKeyDown` shortcut logic, added ARIA labels, and updated tooltips. |
+| Sidebar.tsx | Enhanced folder delete button visibility and focus accessibility. |
+| NoteCard.tsx | Fixed minor linting error by properly destructuring `onViewImage` prop. |
