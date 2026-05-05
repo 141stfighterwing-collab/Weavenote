@@ -19,10 +19,11 @@ router.get('/', optionalAuth, async (req, res, next) => {
   try {
     const userId = req.user?.id;
     
+    // SECURITY: Use userId || null to prevent Prisma from ignoring the filter if undefined
     const templates = await prisma.template.findMany({
       where: {
         OR: [
-          { userId },
+          { userId: userId || null },
           { userId: null }, // Global templates
         ],
       },

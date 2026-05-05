@@ -9,8 +9,8 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
-// Encryption key from environment or generate a default (should be set in production)
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
+// SECURITY: Use encryption key from config (guaranteed by fail-secure check in index.js)
+const ENCRYPTION_KEY = config.security.encryptionKey;
 const ALGORITHM = 'aes-256-gcm';
 
 // Encrypt sensitive data

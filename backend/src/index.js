@@ -118,6 +118,13 @@ const startServer = async () => {
       process.exit(1);
     }
 
+    // SECURITY: Fail secure - ensure ENCRYPTION_KEY is provided
+    if (!config.security.encryptionKey) {
+      console.error('❌ CRITICAL SECURITY ERROR: ENCRYPTION_KEY environment variable is missing.');
+      console.error('The application cannot start without a secure ENCRYPTION_KEY.');
+      process.exit(1);
+    }
+
     // Test database connection
     await prisma.$connect();
     console.log('✅ Database connected successfully');
