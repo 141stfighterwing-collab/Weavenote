@@ -342,4 +342,17 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+## [1.6.4] - 2026-05-05
+
+### 🎨 Palette: Micro-UX & Accessibility Enhancements
+
+### Added
+- Implemented `Cmd/Ctrl + Enter` keyboard shortcut for the title input, main editor, and tag input in `NoteInput.tsx` to trigger the 'Save Raw' action.
+- Added descriptive `aria-label` and `title` attributes to all icon-only formatting and tool buttons in `NoteInput.tsx` and action buttons in `NoteCard.tsx`.
+- Enhanced the folder delete button in `Sidebar.tsx` with `focus-visible` styles and clear accessibility labels to improve discoverability for keyboard and screen-reader users.
+
+### Changed
+- Improved synthesis button feedback in `NoteInput.tsx` for guest users.
+- Fixed a pre-existing TypeScript error in `NoteCard.tsx` related to the `onViewImage` prop.
+
+Current version: **1.6.4**.
