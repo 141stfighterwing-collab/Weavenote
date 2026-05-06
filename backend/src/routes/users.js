@@ -2,29 +2,53 @@ import { Router } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../db.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, requireRole } from '../middleware/auth.js';
 
 const router = Router();
+
+// Validation schemas
+const profileUpdateSchema = z.object({
+  username: z.string().min(3).max(50).optional(),
+  email: z.string().email().optional(),
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8),
+});
+
+const adminStatusSchema = z.object({
+  status: z.enum(['active', 'suspended', 'pending', 'banned']),
+  statusUntil: z.string().optional().nullable(),
+});
 
 // Update user profile
 router.patch('/profile', authenticate, async (req, res, next) => {
   try {
-    const { username, email } = req.body;
+    const data = profileUpdateSchema.parse(req.body);
     const userId = req.user.id;
     
     const updateData = {};
-    if (username) updateData.username = username;
-    if (email) {
-      const existing = await prisma.user.findUnique({ where: { email } });
+    if (data.username) updateData.username = data.username;
+    if (data.email) {
+      const existing = await prisma.user.findUnique({ where: { email: data.email } });
       if (existing && existing.id !== userId) {
         return res.status(409).json({ error: 'Email already in use' });
       }
-      updateData.email = email;
+      updateData.email = data.email;
     }
     
     const user = await prisma.user.update({
       where: { id: userId },
       data: updateData,
+      select: {
+        id: true,
+        uid: true,
+        email: true,
+        username: true,
+        role: true,
+        permission: true,
+      },
     });
     
     res.json({
@@ -36,6 +60,9 @@ router.patch('/profile', authenticate, async (req, res, next) => {
       permission: user.permission,
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
     next(error);
   }
 });
@@ -43,7 +70,7 @@ router.patch('/profile', authenticate, async (req, res, next) => {
 // Change password
 router.post('/change-password', authenticate, async (req, res, next) => {
   try {
-    const { currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
     const userId = req.user.id;
     
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -72,6 +99,9 @@ router.post('/change-password', authenticate, async (req, res, next) => {
     
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
     next(error);
   }
 });
@@ -114,12 +144,8 @@ router.get('/stats', authenticate, async (req, res, next) => {
 });
 
 // Admin: Get all users
-router.get('/admin/all', authenticate, async (req, res, next) => {
+router.get('/admin/all', authenticate, requireRole('admin', 'super_admin'), async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    
     const users = await prisma.user.findMany({
       select: {
         id: true,
@@ -146,14 +172,10 @@ router.get('/admin/all', authenticate, async (req, res, next) => {
 });
 
 // Admin: Update user status
-router.patch('/admin/:id/status', authenticate, async (req, res, next) => {
+router.patch('/admin/:id/status', authenticate, requireRole('admin', 'super_admin'), async (req, res, next) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    
     const { id } = req.params;
-    const { status, statusUntil } = req.body;
+    const { status, statusUntil } = adminStatusSchema.parse(req.body);
     
     const user = await prisma.user.update({
       where: { id },
@@ -161,10 +183,27 @@ router.patch('/admin/:id/status', authenticate, async (req, res, next) => {
         status,
         statusUntil: statusUntil ? new Date(statusUntil) : null,
       },
+      select: {
+        id: true,
+        uid: true,
+        email: true,
+        username: true,
+        role: true,
+        status: true,
+        statusUntil: true,
+        permission: true,
+        lastLogin: true,
+        aiUsageCount: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
     
     res.json(user);
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
     next(error);
   }
 });
