@@ -1,23 +1,20 @@
 {
   "name": "weavenote",
-  "version": "1.6.3",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "start": "serve -s dist -l 8080",
-    "test": "playwright test",
-    "test:ui": "playwright test --ui",
-    "screenshots": "playwright test --project=chromium --reporter=html",
-    "show-report": "playwright show-report"
+    "start": "serve -s dist -l 8080"
   },
   "dependencies": {
     "@google/genai": "*",
     "d3": "^7.9.0",
     "firebase": "^10.12.0",
     "jszip": "^3.10.1",
+    "motion": "^12.38.0",
     "pdfjs-dist": "^4.10.38",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -28,16 +25,11 @@
     "serve": "^14.2.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.42.0",
-    "@testing-library/react": "^16.3.2",
     "@types/d3": "^7.4.3",
-    "@types/jsdom": "^28.0.0",
     "@types/jszip": "^3.4.1",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
-    "jsdom": "^28.1.0",
-    "tsx": "^4.21.0",
     "typescript": "^5.5.3",
     "vite": "^5.4.1"
   }

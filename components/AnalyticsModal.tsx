@@ -47,41 +47,6 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
     return [...notes].sort((a, b) => (b.accessCount || 0) - (a.accessCount || 0)).slice(0, 5).filter(n => (n.accessCount || 0) > 0);
   }, [notes]);
 
-  const cadenceStats = useMemo(() => {
-    const now = Date.now();
-    const oneDayMs = 24 * 60 * 60 * 1000;
-    const weekThreshold = now - (7 * oneDayMs);
-    const monthThreshold = now - (30 * oneDayMs);
-
-    let last7Days = 0;
-    let last30Days = 0;
-
-    const words = notes.reduce((sum, note) => {
-      if (note.createdAt >= weekThreshold) last7Days += 1;
-      if (note.createdAt >= monthThreshold) last30Days += 1;
-      return sum + (note.wordCount !== undefined ? note.wordCount : (note.rawContent || "").trim().split(/\s+/).filter(Boolean).length);
-    }, 0);
-
-    const taggedNotes = notes.filter(note => note.tags.length > 0).length;
-    const tagCoverage = notes.length > 0 ? Math.round((taggedNotes / notes.length) * 100) : 0;
-    const averageWords = notes.length > 0 ? Math.round(words / notes.length) : 0;
-
-    const dayMap = new Map<string, number>();
-    notes.forEach(note => {
-      const dayLabel = new Date(note.createdAt).toLocaleDateString('en-US', { weekday: 'short' });
-      dayMap.set(dayLabel, (dayMap.get(dayLabel) || 0) + 1);
-    });
-    const bestDayEntry = Array.from(dayMap.entries()).sort(([, a], [, b]) => b - a)[0];
-
-    return {
-      last7Days,
-      last30Days,
-      averageWords,
-      tagCoverage,
-      bestDay: bestDayEntry ? `${bestDayEntry[0]} (${bestDayEntry[1]})` : 'N/A',
-    };
-  }, [notes]);
-
   const typeCounts = useMemo(() => {
     const counts: Record<NoteType, number> = {
         quick: 0, notebook: 0, deep: 0, code: 0, project: 0, contact: 0, document: 0
@@ -140,42 +105,13 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
 
   const persona: Persona = useMemo(() => {
     if (notes.length === 0) return { title: "The Blank Canvas", emoji: "🎨", description: "Ready to start creating ideas.", color: "bg-slate-100 text-slate-600" };
-
-    const tagCounts: Record<string, number> = {};
-    for (let i = 0; i < notes.length; i++) {
-        const tags = notes[i].tags;
-        for (let j = 0; j < tags.length; j++) {
-            const lower = tags[j].toLowerCase();
-            tagCounts[lower] = (tagCounts[lower] || 0) + 1;
-        }
-    }
-
+    const allTags = notes.flatMap(n => n.tags.map(t => t.toLowerCase()));
     const personas = [
         { id: 'cyber', title: "Cybersecurity Specialist", emoji: "🛡️", description: "Securing networks and hunting threats.", color: "bg-slate-800 text-green-400 border-green-500", keywords: ['security', 'cyber', 'hack', 'firewall', 'auth', 'token', 'exploit', 'vuln', 'cve', 'pentest', 'crypto', 'phish', 'malware'] },
         { id: 'dev', title: "Code Wizard", emoji: "💻", description: "Turning coffee into code and fixing bugs.", color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200", keywords: ['code', 'dev', 'git', 'api', 'bug', 'react', 'js', 'ts', 'python', 'java', 'html', 'css', 'frontend', 'backend', 'fullstack', 'deploy', 'repo'] }
     ];
-
     let bestMatch = null, maxScore = 0;
-    const entries = Object.entries(tagCounts);
-    for (let i = 0; i < personas.length; i++) {
-        const p = personas[i];
-        let score = 0;
-        for (let j = 0; j < entries.length; j++) {
-            const tag = entries[j][0];
-            const count = entries[j][1];
-            for (let k = 0; k < p.keywords.length; k++) {
-                if (tag.includes(p.keywords[k])) {
-                    score += count;
-                    break;
-                }
-            }
-        }
-        if (score > maxScore) {
-            maxScore = score;
-            bestMatch = p;
-        }
-    }
-
+    personas.forEach(p => { const score = allTags.filter(t => p.keywords.some(k => t.includes(k))).length; if (score > maxScore) { maxScore = score; bestMatch = p; } });
     if (bestMatch && maxScore > 0) return { title: (bestMatch as any).title, emoji: (bestMatch as any).emoji, description: (bestMatch as any).description, color: (bestMatch as any).color };
     return { title: "The Idea Weaver", emoji: "🕸️", description: "Spinning a web of diverse thoughts.", color: "bg-primary-100 text-primary-800" };
   }, [notes]);
@@ -205,18 +141,18 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-surface-container-high border border-outline-variant rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh]">
         
-        <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-            <span className="text-primary-500">📊</span> Analytics & Awards
+        <div className="p-5 border-b border-outline-variant flex justify-between items-center bg-surface-container-low">
+          <h2 className="text-xl font-bold text-on-surface flex items-center gap-2">
+            <span className="text-primary material-symbols-outlined text-[20px]">monitoring</span> Analytics & Awards
           </h2>
-          <button onClick={onClose} className="p-2 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          <button onClick={onClose} className="p-2 rounded-full text-outline hover:text-on-surface hover:bg-surface-variant transition-colors">
+            <span className="material-symbols-outlined text-[24px]">close</span>
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto custom-scrollbar">
+        <div className="p-6 overflow-y-auto custom-scrollbar bg-surface-dim">
             
             {/* CLAIMABLE AWARD BANNER */}
             {currentPendingMilestone && (
@@ -240,16 +176,16 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
             {/* HALL OF FAME ACHIEVEMENTS */}
             <div className="mb-10">
               <div className="flex items-center gap-4 mb-6">
-                 <h4 className="text-xs font-black uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                 <h4 className="text-xs font-black uppercase tracking-[0.3em] text-outline flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[14px]">military_tech</span>
                     Achievement Hall of Fame
                  </h4>
-                 <div className="h-px flex-1 bg-slate-100 dark:bg-slate-700"></div>
+                 <div className="h-px flex-1 bg-outline-variant"></div>
               </div>
               <div className="flex flex-wrap gap-6 min-h-[80px] p-2">
                 {acknowledgedMilestones.length === 0 ? (
-                    <div className="w-full text-center py-6 border-2 border-dashed border-slate-100 dark:border-slate-700 rounded-2xl">
-                        <p className="text-sm text-slate-400 italic">Unlock shields by hitting note count milestones (10, 20, 30...).</p>
+                    <div className="w-full text-center py-6 border-2 border-dashed border-outline-variant rounded-2xl">
+                        <p className="text-sm text-outline italic">Unlock shields by hitting note count milestones (10, 20, 30...).</p>
                     </div>
                 ) : acknowledgedMilestones.map(m => {
                   const info = getMilestoneInfo(m);
@@ -289,23 +225,23 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-6">Volume Matrix</h3>
+                <div className="bg-surface-container-low p-5 rounded-xl border border-outline-variant">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-outline mb-6">Volume Matrix</h3>
                     <div className="flex items-end justify-between h-40 gap-2 px-2">
                         {[
-                            { label: 'Quick', count: typeCounts.quick, color: 'bg-yellow-400' },
-                            { label: 'NoteB', count: typeCounts.notebook, color: 'bg-slate-400' },
-                            { label: 'Deep', count: typeCounts.deep, color: 'bg-blue-400' },
-                            { label: 'Code', count: typeCounts.code, color: 'bg-indigo-400' },
-                            { label: 'Project', count: typeCounts.project, color: 'bg-green-400' },
-                            { label: 'Doc', count: typeCounts.document, color: 'bg-slate-400' },
+                            { label: 'Quick', count: typeCounts.quick, color: 'bg-secondary-container' },
+                            { label: 'NoteB', count: typeCounts.notebook, color: 'bg-surface-variant' },
+                            { label: 'Deep', count: typeCounts.deep, color: 'bg-primary' },
+                            { label: 'Code', count: typeCounts.code, color: 'bg-tertiary' },
+                            { label: 'Project', count: typeCounts.project, color: 'bg-teal-600' },
+                            { label: 'Doc', count: typeCounts.document, color: 'bg-surface-variant' },
                         ].map((item) => (
                             <div key={item.label} className="flex flex-col items-center justify-end w-full group h-full">
-                                <div className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="text-xs font-bold text-on-surface mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     {item.count}
                                 </div>
                                 <div 
-                                    className={`w-full max-w-[40px] rounded-t-lg transition-all duration-700 ${item.color} hover:brightness-110 shadow-sm`}
+                                    className={`w-full max-w-[40px] rounded-t-lg transition-all duration-700 ${item.color} ${item.color.includes('-container') ? 'text-on-secondary-container' : 'text-on-primary'} hover:brightness-110 shadow-sm`}
                                     style={{ height: maxTypeCount > 0 ? `${(item.count / maxTypeCount) * 100}%` : '4px', minHeight: '4px' }}
                                 ></div>
                                 <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-2 uppercase tracking-tighter">{item.label}</div>
@@ -446,24 +382,6 @@ const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ notes, isOpen, onClose 
                  <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm text-center transform hover:-translate-y-1 transition-transform opacity-80">
                     <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{tagStats.length}</p>
                     <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Nodes</p>
-                </div>
-            </div>
-
-            <div className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-xl border border-slate-200 dark:border-slate-700 mb-8">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">Growth Signals</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                    {[
-                        { label: 'Last 7 Days', value: cadenceStats.last7Days, tone: 'text-blue-600 dark:text-blue-400' },
-                        { label: 'Last 30 Days', value: cadenceStats.last30Days, tone: 'text-indigo-600 dark:text-indigo-400' },
-                        { label: 'Avg Words / Note', value: cadenceStats.averageWords, tone: 'text-green-600 dark:text-green-400' },
-                        { label: 'Tag Coverage', value: `${cadenceStats.tagCoverage}%`, tone: 'text-amber-600 dark:text-amber-400' },
-                        { label: 'Peak Day', value: cadenceStats.bestDay, tone: 'text-purple-600 dark:text-purple-400' }
-                    ].map(metric => (
-                        <div key={metric.label} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 px-4 py-3">
-                            <p className="text-[10px] uppercase font-black tracking-widest text-slate-400">{metric.label}</p>
-                            <p className={`mt-2 text-lg font-black ${metric.tone}`}>{metric.value}</p>
-                        </div>
-                    ))}
                 </div>
             </div>
 

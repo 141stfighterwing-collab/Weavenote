@@ -3,94 +3,382 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WeaveNote</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>WeaveNote | High-Performance Workspace</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              primary: {
-                50: 'rgb(var(--color-primary-50) / <alpha-value>)',
-                100: 'rgb(var(--color-primary-100) / <alpha-value>)',
-                200: 'rgb(var(--color-primary-200) / <alpha-value>)',
-                300: 'rgb(var(--color-primary-300) / <alpha-value>)',
-                400: 'rgb(var(--color-primary-400) / <alpha-value>)',
-                500: 'rgb(var(--color-primary-500) / <alpha-value>)',
-                600: 'rgb(var(--color-primary-600) / <alpha-value>)',
-                700: 'rgb(var(--color-primary-700) / <alpha-value>)',
-                800: 'rgb(var(--color-primary-800) / <alpha-value>)',
-                900: 'rgb(var(--color-primary-900) / <alpha-value>)',
-              }
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "var(--primary)",
+                        "surface-dim": "var(--surface-dim)",
+                        "error-container": "var(--error-container)",
+                        "surface-container-low": "var(--surface-container-low)",
+                        "secondary": "var(--secondary)",
+                        "secondary-container": "var(--secondary-container)",
+                        "on-tertiary": "var(--on-tertiary)",
+                        "surface-container-highest": "var(--surface-container-highest)",
+                        "on-primary-fixed": "var(--on-primary)",
+                        "on-secondary-container": "var(--on-secondary-container)",
+                        "on-error-container": "var(--on-error-container)",
+                        "surface-variant": "var(--surface-variant)",
+                        "tertiary": "var(--tertiary)",
+                        "outline-variant": "var(--outline-variant)",
+                        "on-secondary": "var(--on-secondary)",
+                        "on-primary": "var(--on-primary)",
+                        "inverse-on-surface": "var(--on-surface)",
+                        "surface-container": "var(--surface-container)",
+                        "surface-bright": "var(--surface-container-highest)",
+                        "on-tertiary-container": "var(--on-tertiary)",
+                        "background": "var(--surface)",
+                        "primary": "var(--primary)",
+                        "primary-container": "var(--primary-container)",
+                        "inverse-surface": "var(--surface)",
+                        "tertiary-container": "var(--tertiary-container)",
+                        "on-error": "var(--on-error)",
+                        "on-surface-variant": "var(--on-surface-variant)",
+                        "inverse-primary": "var(--primary)",
+                        "on-surface": "var(--on-surface)",
+                        "surface-container-lowest": "var(--surface-container-low)",
+                        "error": "var(--error)",
+                        "surface-container-high": "var(--surface-container-high)",
+                        "outline": "var(--outline)",
+                        "surface": "var(--surface)",
+                        "on-primary-container": "var(--on-primary-container)"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "24px",
+                        "unit": "4px",
+                        "sm": "8px",
+                        "widget-gap": "12px",
+                        "xs": "4px",
+                        "md": "16px",
+                        "xl": "32px",
+                        "gutter": "12px",
+                        "sidebar-width": "260px"
+                    },
+                    "fontFamily": {
+                        "h2": ["Plus Jakarta Sans"],
+                        "body-md": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "h3": ["Plus Jakarta Sans"],
+                        "code": ["monospace"],
+                        "body-lg": ["Inter"],
+                        "h1": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "h2": ["24px", {"lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "label-caps": ["11px", {"lineHeight": "1.2", "letterSpacing": "0.08em", "fontWeight": "600"}],
+                        "h3": ["18px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                        "code": ["13px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "h1": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                }
             }
-          }
         }
-      }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Kalam:wght@300;400;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <style>
-      :root {
-        --color-primary-50: 238 242 255; --color-primary-100: 224 231 255; --color-primary-200: 199 210 254; --color-primary-300: 165 180 252; --color-primary-400: 129 140 248; --color-primary-500: 99 102 241; --color-primary-600: 79 70 229; --color-primary-700: 67 56 202; --color-primary-800: 55 48 163; --color-primary-900: 49 46 129;
+      :root, .theme-default {
+        --primary: #c0c1ff;
+        --primary-container: #8083ff;
+        --on-primary: #1000a9;
+        --on-primary-container: #0d0096;
+        --secondary: #ffb95f;
+        --secondary-container: #ee9800;
+        --on-secondary: #472a00;
+        --on-secondary-container: #5b3800;
+        --tertiary: #ffb783;
+        --tertiary-container: #d97721;
+        --on-tertiary: #4f2500;
+        --error: #ffb4ab;
+        --error-container: #93000a;
+        --on-error: #690005;
+        --on-error-container: #ffdad6;
+        --surface: #13131b;
+        --surface-dim: #13131b;
+        --surface-variant: #34343d;
+        --surface-container-low: #1b1b23;
+        --surface-container: #1f1f27;
+        --surface-container-high: #292932;
+        --surface-container-highest: #34343d;
+        --on-surface: #e4e1ed;
+        --on-surface-variant: #c7c4d7;
+        --outline: #908fa0;
+        --outline-variant: #464554;
       }
 
-      body.theme-ocean {
-        --color-primary-50: 240 249 255; --color-primary-100: 224 242 254; --color-primary-200: 186 230 253; --color-primary-300: 125 211 252; --color-primary-400: 56 189 248; --color-primary-500: 14 165 233; --color-primary-600: 2 132 199; --color-primary-700: 3 105 161; --color-primary-800: 7 89 133; --color-primary-900: 12 74 110;
+      .theme-ocean {
+        --primary: #93c5fd;
+        --primary-container: #3b82f6;
+        --on-primary: #000;
+        --on-primary-container: #fff;
+        --surface: #0f172a;
+        --surface-dim: #0f172a;
+        --surface-variant: #334155;
+        --surface-container-low: #0b1120;
+        --surface-container: #1e293b;
+        --surface-container-high: #334155;
+        --surface-container-highest: #475569;
+        --on-surface: #f1f5f9;
+        --on-surface-variant: #cbd5e1;
+        --outline: #64748b;
+        --outline-variant: #334155;
       }
-      body.theme-forest {
-        --color-primary-50: 236 253 245; --color-primary-100: 209 250 229; --color-primary-200: 167 243 208; --color-primary-300: 110 231 183; --color-primary-400: 52 211 153; --color-primary-500: 16 185 129; --color-primary-600: 5 150 105; --color-primary-700: 4 120 87; --color-primary-800: 6 95 70; --color-primary-900: 6 77 58;
+      .theme-forest {
+        --primary: #86efac;
+        --primary-container: #22c55e;
+        --on-primary: #000;
+        --on-primary-container: #fff;
+        --surface: #052e16;
+        --surface-dim: #052e16;
+        --surface-variant: #166534;
+        --surface-container-low: #022c22;
+        --surface-container: #14532d;
+        --surface-container-high: #166534;
+        --surface-container-highest: #15803d;
+        --on-surface: #f0fdf4;
+        --on-surface-variant: #bbf7d0;
+        --outline: #86efac;
+        --outline-variant: #166534;
       }
-      body.theme-sunset {
-        --color-primary-50: 255 247 237; --color-primary-100: 255 237 213; --color-primary-200: 254 215 170; --color-primary-300: 253 186 116; --color-primary-400: 251 146 60; --color-primary-500: 249 115 22; --color-primary-600: 234 88 12; --color-primary-700: 194 65 12; --color-primary-800: 154 52 18; --color-primary-900: 124 45 18;
+      .theme-sunset {
+        --primary: #fca5a5;
+        --primary-container: #ef4444;
+        --on-primary: #000;
+        --on-primary-container: #fff;
+        --surface: #2a0a0a;
+        --surface-dim: #2a0a0a;
+        --surface-variant: #7f1d1d;
+        --surface-container-low: #1f0d0d;
+        --surface-container: #450a0a;
+        --surface-container-high: #7f1d1d;
+        --surface-container-highest: #991b1b;
+        --on-surface: #fef2f2;
+        --on-surface-variant: #fecaca;
+        --outline: #fca5a5;
+        --outline-variant: #7f1d1d;
       }
-      body.theme-rose {
-        --color-primary-50: 255 241 242; --color-primary-100: 255 228 230; --color-primary-200: 254 205 211; --color-primary-300: 253 164 175; --color-primary-400: 251 113 133; --color-primary-500: 244 63 94; --color-primary-600: 225 29 72; --color-primary-700: 190 18 60; --color-primary-800: 159 18 57; --color-primary-900: 136 19 55;
+      .theme-rose {
+        --primary: #f0abfc;
+        --primary-container: #d946ef;
+        --on-primary: #000;
+        --on-primary-container: #fff;
+        --surface: #2d0a1b;
+        --surface-dim: #2d0a1b;
+        --surface-variant: #701a75;
+        --surface-container-low: #220b18;
+        --surface-container: #4a0f2e;
+        --surface-container-high: #701a75;
+        --surface-container-highest: #86198f;
+        --on-surface: #fdf4ff;
+        --on-surface-variant: #f5d0fe;
+        --outline: #f0abfc;
+        --outline-variant: #701a75;
       }
-      body.theme-midnight {
-        --color-primary-50: 238 242 255; --color-primary-100: 199 210 254; --color-primary-200: 165 180 252; --color-primary-300: 129 140 248; --color-primary-400: 99 102 241; --color-primary-500: 79 70 229; --color-primary-600: 67 56 202; --color-primary-700: 55 48 163; --color-primary-800: 49 46 129; --color-primary-900: 30 27 75;
+      .theme-midnight {
+        --primary: #c4b5fd;
+        --primary-container: #8b5cf6;
+        --on-primary: #000;
+        --on-primary-container: #fff;
+        --surface: #0a0a0f;
+        --surface-dim: #0a0a0f;
+        --surface-variant: #2e1065;
+        --surface-container-low: #05050f;
+        --surface-container: #1e1b4b;
+        --surface-container-high: #2e1065;
+        --surface-container-highest: #3b0764;
+        --on-surface: #f5f3ff;
+        --on-surface-variant: #ddd6fe;
+        --outline: #c4b5fd;
+        --outline-variant: #2e1065;
       }
-      body.theme-coffee {
-        --color-primary-50: 250 250 249; --color-primary-100: 245 245 244; --color-primary-200: 231 229 228; --color-primary-300: 214 211 209; --color-primary-400: 168 162 158; --color-primary-500: 120 113 108; --color-primary-600: 87 83 78; --color-primary-700: 68 64 60; --color-primary-800: 41 37 36; --color-primary-900: 28 25 23;
+      .theme-coffee {
+        --primary: #d6d3d1;
+        --primary-container: #78716c;
+        --on-primary: #000;
+        --on-primary-container: #fff;
+        --surface: #1c1917;
+        --surface-dim: #1c1917;
+        --surface-variant: #44403c;
+        --surface-container-low: #0c0a09;
+        --surface-container: #292524;
+        --surface-container-high: #44403c;
+        --surface-container-highest: #57534e;
+        --on-surface: #fafaf9;
+        --on-surface-variant: #e7e5e4;
+        --outline: #d6d3d1;
+        --outline-variant: #44403c;
       }
-      body.theme-neon {
-        --color-primary-50: 240 253 244; --color-primary-100: 220 252 231; --color-primary-200: 187 247 208; --color-primary-300: 134 239 172; --color-primary-400: 74 222 128; --color-primary-500: 34 197 94; --color-primary-600: 22 163 74; --color-primary-700: 21 128 61; --color-primary-800: 22 101 52; --color-primary-900: 20 83 45;
+      .theme-neon {
+        --primary: #39ff14;
+        --primary-container: #00ff00;
+        --on-primary: #000;
+        --on-primary-container: #000;
+        --surface: #000000;
+        --surface-dim: #000000;
+        --surface-variant: #0a2e0a;
+        --surface-container-low: #000000;
+        --surface-container: #051405;
+        --surface-container-high: #0a2e0a;
+        --surface-container-highest: #145214;
+        --on-surface: #39ff14;
+        --on-surface-variant: #00ff00;
+        --outline: #39ff14;
+        --outline-variant: #0a2e0a;
       }
-      body.theme-cyberpunk {
-        --color-primary-50: 253 242 255; --color-primary-100: 250 232 255; --color-primary-200: 245 208 254; --color-primary-300: 240 171 252; --color-primary-400: 232 121 249; --color-primary-500: 217 70 239; --color-primary-600: 192 38 211; --color-primary-700: 162 28 175; --color-primary-800: 134 25 143; --color-primary-900: 112 26 117;
+      .theme-cyberpunk {
+        --primary: #fce700;
+        --primary-container: #ff003c;
+        --on-primary: #000;
+        --on-primary-container: #fff;
+        --surface: #0d0121;
+        --surface-dim: #0d0121;
+        --surface-variant: #4c0045;
+        --surface-container-low: #05000a;
+        --surface-container: #1b002c;
+        --surface-container-high: #3d004a;
+        --surface-container-highest: #4c0045;
+        --on-surface: #00ffcc;
+        --on-surface-variant: #fce700;
+        --outline: #00ffcc;
+        --outline-variant: #4c0045;
       }
-      body.theme-nord {
-        --color-primary-50: 248 250 252; --color-primary-100: 241 245 249; --color-primary-200: 226 232 240; --color-primary-300: 203 213 225; --color-primary-400: 148 163 184; --color-primary-500: 100 116 139; --color-primary-600: 71 85 105; --color-primary-700: 51 65 85; --color-primary-800: 30 41 59; --color-primary-900: 15 23 42;
+      .theme-nord {
+        --primary: #88c0d0;
+        --primary-container: #5e81ac;
+        --on-primary: #2e3440;
+        --on-primary-container: #eceff4;
+        --surface: #2e3440;
+        --surface-dim: #2e3440;
+        --surface-variant: #434c5e;
+        --surface-container-low: #242933;
+        --surface-container: #3b4252;
+        --surface-container-high: #434c5e;
+        --surface-container-highest: #4c566a;
+        --on-surface: #eceff4;
+        --on-surface-variant: #e5e9f0;
+        --outline: #81a1c1;
+        --outline-variant: #434c5e;
       }
-      body.theme-dracula {
-        --color-primary-50: 250 245 255; --color-primary-100: 243 232 255; --color-primary-200: 233 213 255; --color-primary-300: 216 180 254; --color-primary-400: 192 132 252; --color-primary-500: 168 85 247; --color-primary-600: 147 51 234; --color-primary-700: 126 34 206; --color-primary-800: 107 33 168; --color-primary-900: 88 28 135;
+      .theme-dracula {
+        --primary: #ff79c6;
+        --primary-container: #bd93f9;
+        --on-primary: #282a36;
+        --on-primary-container: #f8f8f2;
+        --surface: #282a36;
+        --surface-dim: #282a36;
+        --surface-variant: #44475a;
+        --surface-container-low: #1e1f29;
+        --surface-container: #343746;
+        --surface-container-high: #44475a;
+        --surface-container-highest: #6272a4;
+        --on-surface: #f8f8f2;
+        --on-surface-variant: #f1fa8c;
+        --outline: #bd93f9;
+        --outline-variant: #44475a;
       }
-      body.theme-lavender {
-        --color-primary-50: 245 243 255; --color-primary-100: 237 233 254; --color-primary-200: 221 214 254; --color-primary-300: 196 181 253; --color-primary-400: 167 139 250; --color-primary-500: 139 92 246; --color-primary-600: 124 58 237; --color-primary-700: 109 40 217; --color-primary-800: 91 33 182; --color-primary-900: 76 29 149;
+      .theme-lavender {
+        --primary: #d8b4e2;
+        --primary-container: #ae8bce;
+        --on-primary: #2c2440;
+        --on-primary-container: #fff;
+        --surface: #f4ecf7;
+        --surface-dim: #f4ecf7;
+        --surface-variant: #e1d3e8;
+        --surface-container-low: #fdfafc;
+        --surface-container: #ebdbf0;
+        --surface-container-high: #ebdbe0;
+        --surface-container-highest: #d1b1d9;
+        --on-surface: #4a3e60;
+        --on-surface-variant: #5f507a;
+        --outline: #b091c5;
+        --outline-variant: #e1d3e8;
       }
-      body.theme-earth {
-        --color-primary-50: 240 244 244; --color-primary-100: 220 228 228; --color-primary-200: 190 200 200; --color-primary-300: 140 160 160; --color-primary-400: 100 120 120; --color-primary-500: 80 100 100; --color-primary-600: 60 80 80; --color-primary-700: 45 60 60; --color-primary-800: 30 40 40; --color-primary-900: 15 20 20;
+      .theme-earth {
+        --primary: #a3b18a;
+        --primary-container: #588157;
+        --on-primary: #dad7cd;
+        --on-primary-container: #fff;
+        --surface: #dad7cd;
+        --surface-dim: #fefdf9;
+        --surface-variant: #a3b18a;
+        --surface-container-low: #ffffff;
+        --surface-container: #e8e6d9;
+        --surface-container-high: #c2c0b6;
+        --surface-container-highest: #aba99e;
+        --on-surface: #344e41;
+        --on-surface-variant: #3a5a40;
+        --outline: #588157;
+        --outline-variant: #a3b18a;
       }
-      body.theme-yellow {
-        --color-primary-50: 254 252 232; --color-primary-100: 254 249 195; --color-primary-200: 254 240 138; --color-primary-300: 253 224 71; --color-primary-400: 250 204 21; --color-primary-500: 234 179 8; --color-primary-600: 202 138 4; --color-primary-700: 161 98 7; --color-primary-800: 133 77 14; --color-primary-900: 113 63 18;
+      .theme-yellow {
+        --primary: #f0e68c;
+        --primary-container: #ffd700;
+        --on-primary: #2f2a00;
+        --on-primary-container: #fff;
+        --surface: #fffde7;
+        --surface-dim: #fffde7;
+        --surface-variant: #fff59d;
+        --surface-container-low: #ffffff;
+        --surface-container: #fff9c4;
+        --surface-container-high: #fff176;
+        --surface-container-highest: #ffee58;
+        --on-surface: #4d4300;
+        --on-surface-variant: #827717;
+        --outline: #d4e157;
+        --outline-variant: #fff59d;
       }
-      body.theme-hyperblue {
-        --color-primary-50: 239 246 255; --color-primary-100: 219 234 254; --color-primary-200: 191 219 254; --color-primary-300: 147 197 253; --color-primary-400: 96 165 250; --color-primary-500: 59 130 246; --color-primary-600: 37 99 235; --color-primary-700: 29 78 216; --color-primary-800: 30 64 175; --color-primary-900: 30 58 138;
+      .theme-hyperblue {
+        --primary: #00e5ff;
+        --primary-container: #00b0ff;
+        --on-primary: #000c28;
+        --on-primary-container: #fff;
+        --surface: #000e28;
+        --surface-dim: #000e28;
+        --surface-variant: #00225d;
+        --surface-container-low: #000516;
+        --surface-container: #001844;
+        --surface-container-high: #00368c;
+        --surface-container-highest: #004fb9;
+        --on-surface: #e0f2fe;
+        --on-surface-variant: #7dd3fc;
+        --outline: #0aeaee;
+        --outline-variant: #00368c;
       }
 
+      .material-symbols-outlined {
+          font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+          display: inline-block;
+          vertical-align: middle;
+      }
+      .glass-panel {
+          background: rgba(31, 31, 39, 0.7);
+          backdrop-filter: blur(12px);
+          border: 1px solid rgba(144, 143, 160, 0.1);
+      }
+      .inner-light-border {
+          border: 1px solid #34343d;
+      }
+      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #34343d; border-radius: 10px; }
+      
       body {
-        font-family: 'Inter', sans-serif;
-        background-color: #f3f4f6; 
+        background-color: var(--surface);
+        color: var(--on-surface);
         transition: background-color 0.3s ease, color 0.3s ease;
       }
-      .dark body { background-color: #0f172a; }
-      .font-hand { font-family: 'Kalam', cursive; }
-      .font-mono { font-family: 'Fira Code', monospace; }
-      
-      ::-webkit-scrollbar { width: 8px; height: 8px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-      
       * { transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out; }
     </style>
   <script type="importmap">
@@ -104,7 +392,6 @@
     "react-markdown": "https://esm.sh/react-markdown@^10.1.0",
     "remark-gfm": "https://esm.sh/remark-gfm@^4.0.0?bundle",
     "rehype-raw": "https://esm.sh/rehype-raw@^7.0.0",
-    "rehype-sanitize": "https://esm.sh/rehype-sanitize@^6.0.0",
     "vite": "https://esm.sh/vite@^7.2.7",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
     "d3": "https://esm.sh/d3@^7.9.0",

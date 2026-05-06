@@ -20,7 +20,6 @@ const getEnvironmentKey = (key: string): string | undefined => {
 // Note: Gemini API Key is now handled directly via process.env.API_KEY in services
 
 // FIREBASE CONFIGURATION
-// Hardcoded Firebase config for Weavenote cloud mode
 export const FIREBASE_CONFIG = {
   apiKey: getEnvironmentKey('VITE_FIREBASE_API_KEY') || "AIzaSyDXMMFw_NfQr9fcrq6-38BNPcwrvQVCklo",
   authDomain: getEnvironmentKey('VITE_FIREBASE_AUTH_DOMAIN') || "weavernote-eeaff.firebaseapp.com",
@@ -28,6 +27,5 @@ export const FIREBASE_CONFIG = {
   storageBucket: getEnvironmentKey('VITE_FIREBASE_STORAGE_BUCKET') || "weavernote-eeaff.firebasestorage.app",
   messagingSenderId: getEnvironmentKey('VITE_FIREBASE_MESSAGING_SENDER_ID') || "217757941342",
   appId: getEnvironmentKey('VITE_FIREBASE_APP_ID') || "1:217757941342:web:7921402a35a582af3dfecf",
-  measurementId: getEnvironmentKey('VITE_FIREBASE_MEASUREMENT_ID') || "G-ZX4TYZENSM",
-  databaseURL: getEnvironmentKey('VITE_FIREBASE_DATABASE_URL') || ""
+  measurementId: getEnvironmentKey('VITE_FIREBASE_MEASUREMENT_ID') || "G-ZX4TYZENSM" 
 };

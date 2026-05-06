@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Note, NoteColor, NoteType, ViewMode, Theme, Folder, User, ProjectData, ProjectMilestone, ProjectItem, QuickReferenceTemplate } from './types';
+import { Note, NoteColor, NoteType, ViewMode, Theme, Folder, User, ProjectData, ProjectMilestone, ProjectItem } from './types';
 import { processNoteWithAI, getDailyUsage } from './services/geminiService';
 import { 
     loadNotes, saveNote, deleteNote, 
@@ -20,8 +20,8 @@ import Sidebar from './components/Sidebar';
 import RightSidebar from './components/RightSidebar';
 import TrashModal from './components/TrashModal';
 import { NotebookView } from './components/NotebookView';
+import { DashboardView } from './components/DashboardView';
 import { Logo } from './components/Logo';
-import { toggleTaskCheckboxAtIndex } from './utils/noteContent';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -45,14 +45,12 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<QuickReferenceTemplate | null>(null);
   
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('ideaweaver_darkmode') !== 'false');
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('ideaweaver_theme') as Theme) || 'default');
   const [reducedMotion, setReducedMotion] = useState(() => localStorage.getItem('ideaweaver_reducedmotion') === 'true');
   const [enableImages, setEnableImages] = useState(() => localStorage.getItem('ideaweaver_enableimages') === 'true');
   const [showLinkPreviews, setShowLinkPreviews] = useState(() => localStorage.getItem('ideaweaver_linkpreviews') === 'true');
-  const [neuralPerformanceMode, setNeuralPerformanceMode] = useState(() => localStorage.getItem('ideaweaver_neural_performance') === 'true');
 
   const extractHashtags = (text: string): string[] => {
     const matches = text.match(/#(\w+)/g);
@@ -61,9 +59,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const body = document.body;
-    const themeClasses = ['theme-ocean', 'theme-forest', 'theme-sunset', 'theme-rose', 'theme-midnight', 'theme-coffee', 'theme-neon', 'theme-cyberpunk', 'theme-nord', 'theme-dracula', 'theme-lavender', 'theme-earth', 'theme-yellow', 'theme-hyperblue'];
+    const themeClasses = ['theme-default', 'theme-ocean', 'theme-forest', 'theme-sunset', 'theme-rose', 'theme-midnight', 'theme-coffee', 'theme-neon', 'theme-cyberpunk', 'theme-nord', 'theme-dracula', 'theme-lavender', 'theme-earth', 'theme-yellow', 'theme-hyperblue'];
     body.classList.remove(...themeClasses);
-    if (theme !== 'default') body.classList.add(`theme-${theme}`);
+    body.classList.add(`theme-${theme}`);
     localStorage.setItem('ideaweaver_theme', theme);
   }, [theme]);
 
@@ -80,11 +78,6 @@ const App: React.FC = () => {
       });
       return () => unsubscribe();
   }, []);
-
-
-  useEffect(() => {
-    localStorage.setItem('ideaweaver_neural_performance', neuralPerformanceMode.toString());
-  }, [neuralPerformanceMode]);
 
   const canEdit = currentUser ? currentUser.permission === 'edit' : true; 
   const storageOwner = currentUser ? currentUser.uid : null;
@@ -128,6 +121,7 @@ const App: React.FC = () => {
 
   const handleTabChange = (type: NoteType) => {
       setActiveTab(type);
+      setViewMode('grid');
       setActiveTagFilter(null);
       setActiveFolderId(null);
       setActiveDateFilter(null);
@@ -195,8 +189,7 @@ const App: React.FC = () => {
             color: type === 'notebook' ? NoteColor.Slate : NoteColor.Yellow, createdAt: Date.now(), type: type,
             attachments: attachments || [], accessCount: 0, folderId: targetFolderId,
             projectData: processed.projectData, userId: storageOwner || undefined, isDeleted: false,
-            isSynthesized: useAI,
-            wordCount: (rawText || processed.formattedContent || "").trim().split(/\s+/).filter(Boolean).length
+            isSynthesized: useAI
         };
 
         setNotes(prev => [newNote, ...prev]);
@@ -221,8 +214,7 @@ const App: React.FC = () => {
           content, 
           ...(category ? { category } : {}), 
           tags: mergedTags,
-          ...(projectData ? { projectData } : {}),
-          wordCount: (target.rawContent || content || "").trim().split(/\s+/).filter(Boolean).length
+          ...(projectData ? { projectData } : {})
       };
       setNotes(prev => prev.map(n => n.id === id ? updated : n));
       if (expandedNote?.id === id) setExpandedNote(updated);
@@ -243,14 +235,25 @@ const App: React.FC = () => {
       if (!canEdit) return;
       const targetNote = notes.find(n => n.id === noteId);
       if (!targetNote) return;
-
-      const newContent = toggleTaskCheckboxAtIndex(targetNote.content, checkboxIndex);
-      if (newContent === null || newContent === targetNote.content) return;
-
-      const updatedNote = { ...targetNote, content: newContent };
-      setNotes(prev => prev.map(n => n.id === noteId ? updatedNote : n));
-      if (expandedNote?.id === noteId) setExpandedNote(updatedNote);
-      await saveNote(updatedNote, storageOwner);
+      const regex = /\[([ xX]?)\]/g;
+      let currentIdx = 0;
+      let newContent = targetNote.content;
+      let match;
+      while ((match = regex.exec(targetNote.content)) !== null) {
+          if (currentIdx === checkboxIndex) {
+              const isChecked = match[1].trim().length > 0;
+              const newStatus = isChecked ? '[ ]' : '[x]';
+              newContent = targetNote.content.substring(0, match.index) + newStatus + targetNote.content.substring(match.index + match[0].length);
+              break;
+          }
+          currentIdx++;
+      }
+      if (newContent !== targetNote.content) {
+          const updatedNote = { ...targetNote, content: newContent };
+          setNotes(prev => prev.map(n => n.id === noteId ? updatedNote : n));
+          if (expandedNote?.id === noteId) setExpandedNote(updatedNote);
+          await saveNote(updatedNote, storageOwner);
+      }
   };
 
   const handleAddTag = async (noteId: string, tag: string) => {
@@ -378,124 +381,124 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans transition-colors duration-300`}>
-        <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50 shadow-sm">
-            <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2"><Logo className="w-8 h-8 text-primary-600" /><h1 className="text-xl font-bold hidden sm:block text-slate-800 dark:text-white">WeaveNote</h1></div>
-                <div className="flex items-center gap-4 flex-1 justify-end">
-                    <div className="flex items-center gap-2 mr-2">
-                        <div className="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-1">
-                            <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600' : 'text-slate-400'}`}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></button>
-                            <button onClick={() => setViewMode('mindmap')} className={`p-1.5 rounded-md transition-all ${viewMode === 'mindmap' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600' : 'text-slate-400'}`}><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 9V3"></path><path d="M12 21v-6"></path><path d="M9 12H3"></path><path d="M21 12h-6"></path></svg></button>
-                        </div>
-                        {viewMode === 'mindmap' && (
-                          <button
-                            onClick={() => setNeuralPerformanceMode(prev => !prev)}
-                            className={`px-2.5 py-1.5 rounded-md border text-[10px] font-black uppercase tracking-widest transition-all ${neuralPerformanceMode ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-200 dark:border-emerald-700' : 'bg-white text-slate-500 border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600'}`}
-                            title="Boost rendering throughput for neural links"
-                          >
-                            {neuralPerformanceMode ? 'Performance ON' : 'Performance'}
-                          </button>
-                        )}
-                    </div>
-                    <button onClick={() => setShowAnalytics(true)} className="flex items-center gap-1 text-sm font-bold text-slate-600 hover:text-primary-600 dark:text-slate-300">📊 Analytics</button>
-                    <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full text-sm outline-none w-full max-w-xs dark:text-white border border-transparent focus:border-primary-400 transition-all" />
-                    <LoginWidget currentUser={currentUser?.username || null} onLoginSuccess={handleLoginSuccess} onLogout={handleLogout} />
-                    <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full">⚙️</button>
+    <div className={`min-h-screen flex flex-col font-body-md bg-background text-on-surface selection:bg-primary/30 overflow-hidden`}>
+        <header className="fixed top-0 w-full z-50 bg-surface-dim/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center h-16 px-md">
+            <div className="flex items-center gap-xl">
+                <span className="font-h2 text-h2 font-bold text-primary flex items-center gap-2"><Logo className="w-8 h-8"/>WeaveNote</span>
+                <div className="hidden md:flex items-center bg-surface-container rounded-lg px-md py-sm border border-outline-variant w-96 group focus-within:border-primary transition-all">
+                    <span className="material-symbols-outlined text-outline mr-sm">search</span>
+                    <input type="text" placeholder="Search workspace..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="bg-transparent border-none text-body-md focus:ring-0 w-full placeholder-outline outline-none" />
                 </div>
+            </div>
+            <div className="flex items-center gap-md">
+                <button onClick={() => setShowAnalytics(true)} className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-80" title="Analytics">
+                    <span className="material-symbols-outlined">analytics</span>
+                </button>
+                <button onClick={() => setShowSettings(true)} className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-80" title="Settings">
+                    <span className="material-symbols-outlined">settings</span>
+                </button>
+                <LoginWidget currentUser={currentUser?.username || null} onLoginSuccess={handleLoginSuccess} onLogout={handleLogout} />
             </div>
         </header>
 
         {cloudError && (
-            <div className="bg-amber-600 text-white px-4 py-3 flex items-center justify-between shadow-lg animate-[badgePop_0.3s_ease-out]">
+            <div className="fixed top-16 left-0 right-0 z-40 bg-error-container text-on-error-container px-4 py-3 flex items-center justify-between shadow-lg">
                 <div className="flex items-center gap-3">
-                    <span className="text-xl">☁️</span>
+                    <span className="material-symbols-outlined">cloud_off</span>
                     <div>
-                        <p className="font-black text-sm uppercase tracking-widest leading-none">Cloud Permission Required</p>
-                        <p className="text-[10px] font-bold opacity-90 mt-1">{cloudError}</p>
+                        <p className="font-bold text-sm uppercase tracking-widest leading-none">Cloud Permission Required</p>
+                        <p className="text-[10px] opacity-90 mt-1">{cloudError}</p>
                     </div>
                 </div>
-                <button onClick={() => { setShowSettings(true); setCloudError(null); }} className="px-4 py-1.5 bg-white text-amber-700 rounded-full hover:bg-amber-50 text-[10px] font-black uppercase tracking-widest shadow-sm">Fix Rules Now</button>
+                <button onClick={() => { setShowSettings(true); setCloudError(null); }} className="px-4 py-1.5 bg-on-error-container text-error-container rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">Fix Rules Now</button>
             </div>
         )}
 
-        <main className="flex-grow max-w-[1600px] mx-auto px-4 py-6 w-full flex flex-col lg:flex-row gap-6">
-            <div className="flex-1 min-0 order-2 lg:order-2">
-                {viewMode === 'grid' && (
-                    <NoteInput 
-                        onAddNote={handleAddNote} onTypeChange={handleTabChange} isProcessing={isProcessing} 
-                        activeType={activeTab} readOnly={!canEdit} isGuest={!currentUser}
-                        selectedTemplate={selectedTemplate}
-                        onTemplateApplied={() => setSelectedTemplate(null)}
-                    />
-                )}
+        <div className="flex pt-16 h-screen w-full">
+            <Sidebar className="fixed left-0 top-16 h-[calc(100vh-64px)] w-sidebar-width bg-surface-container-low border-r border-outline-variant flex flex-col py-md gap-sm overflow-y-auto z-20" notes={activeNotes} folders={folders} onTagClick={(t) => setActiveTagFilter(t === activeTagFilter ? null : t)} activeTag={activeTagFilter} onNoteClick={handleExpandNote} onFolderClick={setActiveFolderId} onCreateFolder={handleCreateFolder} onDateClick={(d) => setActiveDateFilter(d)} onDeleteFolder={handleDeleteFolder} onReorderFolders={() => {}} onMoveNote={handleMoveNote} activeFolderId={activeFolderId} activeDate={activeDateFilter} />
+            
+            <main className="ml-sidebar-width flex-1 flex flex-col bg-surface-dim relative mr-80 z-10 h-[calc(100vh-64px)] overflow-hidden">
+                <nav className="flex items-center gap-md px-lg bg-surface-container/30 border-b border-outline-variant overflow-x-auto whitespace-nowrap scrollbar-hide shrink-0">
+                    <button onClick={() => handleTabChange('quick')} className={`font-medium py-4 px-2 transition-colors ${activeTab === 'quick' ? 'text-primary font-bold border-b-2 border-primary' : 'text-on-surface-variant hover:text-primary'}`}>QUICK</button>
+                    <button onClick={() => handleTabChange('notebook')} className={`font-medium py-4 px-2 transition-colors ${activeTab === 'notebook' ? 'text-primary font-bold border-b-2 border-primary' : 'text-on-surface-variant hover:text-primary'}`}>NOTEBOOK</button>
+                    <button onClick={() => handleTabChange('deep')} className={`font-medium py-4 px-2 transition-colors ${activeTab === 'deep' ? 'text-primary font-bold border-b-2 border-primary' : 'text-on-surface-variant hover:text-primary'}`}>DEEP</button>
+                    <button onClick={() => handleTabChange('code')} className={`font-medium py-4 px-2 transition-colors ${activeTab === 'code' ? 'text-primary font-bold border-b-2 border-primary' : 'text-on-surface-variant hover:text-primary'}`}>CODE</button>
+                    <button onClick={() => handleTabChange('project')} className={`font-medium py-4 px-2 transition-colors ${activeTab === 'project' ? 'text-primary font-bold border-b-2 border-primary' : 'text-on-surface-variant hover:text-primary'}`}>PROJECT</button>
+                    <button onClick={() => setViewMode('dashboard')} className={`font-medium py-4 px-2 transition-colors ${viewMode === 'dashboard' ? 'text-primary font-bold border-b-2 border-primary' : 'text-on-surface-variant hover:text-primary'}`}>DASHBOARD</button>
+                    <button onClick={() => setViewMode('mindmap')} className={`font-medium py-4 px-2 transition-colors ${viewMode === 'mindmap' ? 'text-primary font-bold border-b-2 border-primary' : 'text-on-surface-variant hover:text-primary'}`}>MIND MAP</button>
+                </nav>
 
-                {activeTab === 'notebook' ? (
-                  <NotebookView notes={activeNotes.filter(n => n.type === 'notebook')} folders={folders} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onEdit={setEditingNote} onDelete={handleDeleteNote} onToggleCheckbox={handleToggleCheckbox} />
-                ) : (
-                  <>
-                    <div className="mb-4 overflow-x-auto no-scrollbar pb-2">
-                        <div className="flex items-center gap-2 whitespace-nowrap">
-                            <button onClick={() => setActiveFolderId(null)} className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeFolderId === null ? 'bg-primary-600 text-white border-primary-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary-400'}`}>All Folders</button>
-                            {folders.map(folder => (<button key={folder.id} onClick={() => setActiveFolderId(folder.id)} className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeFolderId === folder.id ? 'bg-primary-600 text-white border-primary-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-primary-400'}`}>📂 {folder.name}</button>))}
-                        </div>
-                    </div>
+                <div className="flex-1 p-lg overflow-y-auto">
+                    {viewMode === 'dashboard' ? (
+                        <DashboardView notes={activeNotes} />
+                    ) : (
+                        <>
+                            {viewMode === 'grid' && (
+                                <NoteInput 
+                                    onAddNote={handleAddNote} onTypeChange={handleTabChange} isProcessing={isProcessing} 
+                                    activeType={activeTab} readOnly={!canEdit} isGuest={!currentUser}
+                                />
+                            )}
 
-                    {isFiltered && (
-                        <div className="mb-4 p-2 bg-primary-50 dark:bg-primary-900/10 border border-primary-100 dark:border-primary-900/30 rounded-lg flex items-center justify-between text-xs animate-[fadeIn_0.2s_ease-out]">
-                            <div className="flex items-center gap-2"><span className="font-bold text-primary-700 dark:text-primary-400 uppercase tracking-tighter">Active Filters:</span>{activeFolderId && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Folder: {folders.find(f => f.id === activeFolderId)?.name} <button onClick={() => setActiveFolderId(null)}>✕</button></span>}{activeTagFilter && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Tag: #{activeTagFilter} <button onClick={() => setActiveTagFilter(null)}>✕</button></span>}{activeDateFilter && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Date: {activeDateFilter.toLocaleDateString()} <button onClick={() => setActiveDateFilter(null)}>✕</button></span>}{searchQuery && <span className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded border shadow-sm flex items-center gap-1">Search: "{searchQuery}" <button onClick={() => setSearchQuery('')}>✕</button></span>}</div>
-                            <button onClick={clearFilters} className="text-primary-600 hover:text-primary-800 font-bold underline">Clear All</button>
-                        </div>
-                    )}
+                            {activeTab === 'notebook' ? (
+                              <NotebookView notes={activeNotes.filter(n => n.type === 'notebook')} folders={folders} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onEdit={setEditingNote} onDelete={handleDeleteNote} onToggleCheckbox={handleToggleCheckbox} />
+                            ) : (
+                              <>
+                                <div className="mb-4 overflow-x-auto no-scrollbar pb-2">
+                                    <div className="flex items-center gap-2 whitespace-nowrap">
+                                        <button onClick={() => setActiveFolderId(null)} className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeFolderId === null ? 'bg-primary-container text-on-primary-container border-primary shadow-md' : 'bg-surface text-on-surface border-outline-variant hover:border-primary'}`}>All Folders</button>
+                                        {folders.map(folder => (<button key={folder.id} onClick={() => setActiveFolderId(folder.id)} className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeFolderId === folder.id ? 'bg-primary-container text-on-primary-container border-primary shadow-md' : 'bg-surface text-on-surface border-outline-variant hover:border-primary'}`}>📂 {folder.name}</button>))}
+                                    </div>
+                                </div>
 
-                    <div className="mt-4">
-                        {viewMode === 'mindmap' ? (<div className="h-[600px] border rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/50"><MindMap notes={activeNotes} performanceMode={neuralPerformanceMode} onNoteClick={(id) => { const n = activeNotes.find(n => n.id === id); if (n) { handleExpandNote(n); setViewMode('grid'); } }} /></div>) : (
-                            <>
-                                {activeTab === 'deep' ? (<div className="space-y-3">{filteredNotes.map(note => (<div key={note.id} onClick={() => handleExpandNote(note)} className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center hover:shadow-lg hover:border-primary-400 dark:hover:border-primary-500 cursor-pointer transition-all animate-[fadeIn_0.2s_ease-out]"><div className="min-w-0 pr-4"><div className="flex items-center gap-2 mb-1"><h3 className="font-bold text-lg text-slate-800 dark:text-white truncate">{note.title}</h3>{note.isSynthesized && <span className="px-1.5 py-0.5 bg-primary-600 text-white text-[8px] font-black uppercase rounded">Synthesized</span>}</div><p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1 mt-1">{note.content.substring(0, 180)}</p><div className="flex gap-2 mt-2">{note.tags.slice(0, 3).map(tag => (<span key={tag} className="text-[10px] text-primary-600 dark:text-primary-400 font-bold">#{tag}</span>))}</div></div><div className="flex flex-col items-end gap-2 shrink-0"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(note.createdAt).toLocaleDateString()}</span><div className="p-2 rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg></div></div></div>))}</div>) : (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">{filteredNotes.map(note => (
-                                      <NoteCard 
-                                        key={note.id} 
-                                        note={note} 
-                                        folders={folders} 
-                                        onDelete={handleDeleteNote} 
-                                        onTagClick={(t) => setActiveTagFilter(t)} 
-                                        onChangeColor={async (id, c) => { 
-                                          setNotes(prev => prev.map(n => n.id === id ? { ...n, color: c } : n)); 
-                                          if (storageOwner) await saveNote({ ...notes.find(n => n.id === id)!, color: c }, storageOwner); 
-                                        }} 
-                                        onUpdateColors={handleUpdateColors}
-                                        onEdit={setEditingNote} 
-                                        onExpand={handleExpandNote} 
-                                        readOnly={!canEdit} 
-                                        onViewImage={setViewingImage} 
-                                        onToggleCheckbox={handleToggleCheckbox} 
-                                        onAddTag={handleAddTag} 
-                                        onRemoveTag={handleRemoveTag} 
-                                        onMoveToFolder={handleMoveNote} 
-                                        onToggleComplete={handleToggleProjectCompletion} 
-                                      />
-                                    ))}</div>
+                                {isFiltered && (
+                                    <div className="mb-4 p-2 bg-surface-container-high border border-outline-variant rounded-lg flex items-center justify-between text-xs">
+                                        <div className="flex items-center gap-2 text-on-surface"><span className="font-bold uppercase tracking-tighter">Active Filters:</span>{activeFolderId && <span className="px-2 py-0.5 bg-surface rounded border border-outline shadow-sm flex items-center gap-1">Folder: {folders.find(f => f.id === activeFolderId)?.name} <button onClick={() => setActiveFolderId(null)}>✕</button></span>}{activeTagFilter && <span className="px-2 py-0.5 bg-surface rounded border border-outline shadow-sm flex items-center gap-1">Tag: #{activeTagFilter} <button onClick={() => setActiveTagFilter(null)}>✕</button></span>}{activeDateFilter && <span className="px-2 py-0.5 bg-surface rounded border border-outline shadow-sm flex items-center gap-1">Date: {activeDateFilter.toLocaleDateString()} <button onClick={() => setActiveDateFilter(null)}>✕</button></span>}{searchQuery && <span className="px-2 py-0.5 bg-surface rounded border border-outline shadow-sm flex items-center gap-1">Search: "{searchQuery}" <button onClick={() => setSearchQuery('')}>✕</button></span>}</div>
+                                        <button onClick={clearFilters} className="text-primary hover:text-primary-fixed font-bold underline">Clear All</button>
+                                    </div>
                                 )}
-                                {filteredNotes.length === 0 && (<div className="col-span-full text-center py-20 bg-white/50 dark:bg-slate-800/50 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700"><p className="text-slate-400 text-lg font-bold">No results found.</p><p className="text-slate-400 text-sm mt-1">Try switching categories or clearing filters.</p>{isFiltered && <button onClick={clearFilters} className="mt-4 px-6 py-2 bg-primary-600 text-white rounded-full font-bold shadow-md">Clear all filters</button>}</div>)}
-                            </>
-                        )}
-                    </div>
-                  </>
-                )}
-            </div>
 
-            <Sidebar className="order-1 lg:order-1" notes={activeNotes} folders={folders} onTagClick={(t) => setActiveTagFilter(t === activeTagFilter ? null : t)} activeTag={activeTagFilter} onNoteClick={handleExpandNote} onFolderClick={setActiveFolderId} onCreateFolder={handleCreateFolder} onDateClick={(d) => setActiveDateFilter(d)} onDeleteFolder={handleDeleteFolder} onReorderFolders={() => {}} onMoveNote={handleMoveNote} activeFolderId={activeFolderId} activeDate={activeDateFilter} onApplyTemplate={(template) => { setSelectedTemplate(template); handleTabChange(template.type); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
-            <RightSidebar className="hidden xl:block order-3 lg:order-3" notes={activeNotes} onNoteClick={handleExpandNote} />
-        </main>
-        
-        <footer className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 py-3 px-6 text-xs text-slate-400 flex justify-between items-center shadow-[0_-1px_3px_rgba(0,0,0,0.05)]">
-            <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2"><div className={`w-2 h-2 rounded-full ${storageOwner ? (cloudError ? 'bg-rose-500' : 'bg-green-500 animate-pulse') : 'bg-slate-400'}`}></div>{storageOwner ? (cloudError ? <span className="text-rose-600 font-bold">Database Locked</span> : <span className="text-slate-600 dark:text-slate-300 font-bold">Cloud Sync Active</span>) : <span className="text-slate-500">Guest Mode (Local Only)</span>}</div>
-                <button onClick={() => setShowTrash(true)} className="flex items-center gap-1.5 hover:text-red-500 transition-colors font-bold px-3 py-1 rounded-md bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg><span>Trash</span>{trashedNotes.length > 0 && <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full min-w-[16px] text-center">{trashedNotes.length}</span>}</button>
-            </div>
-            <div className="flex-1 text-center font-black uppercase tracking-widest text-[10px] opacity-40">Created by Nathan Carrasco ™</div>
-            <div className="font-medium">Daily AI Usage: {dailyUsage}/800</div>
-        </footer>
+                                <div className="mt-4">
+                                    {viewMode === 'mindmap' ? (<div className="h-[600px] border border-outline-variant rounded-xl overflow-hidden bg-surface-container/50"><MindMap notes={activeNotes} onNoteClick={(id) => { const n = activeNotes.find(n => n.id === id); if (n) { handleExpandNote(n); setViewMode('grid'); } }} /></div>) : (
+                                        <>
+                                            {activeTab === 'deep' ? (<div className="space-y-3">{filteredNotes.map(note => (<div key={note.id} onClick={() => handleExpandNote(note)} className="bg-surface-container-low p-5 rounded-xl border border-outline flex justify-between items-center hover:shadow-lg hover:border-primary cursor-pointer transition-all animate-[fadeIn_0.2s_ease-out]"><div className="min-w-0 pr-4"><div className="flex items-center gap-2 mb-1"><h3 className="font-bold text-lg text-on-surface truncate">{note.title}</h3>{note.isSynthesized && <span className="px-1.5 py-0.5 bg-primary-container text-on-primary-container text-[8px] font-black uppercase rounded">Synthesized</span>}</div><p className="text-sm text-outline line-clamp-1 mt-1">{note.content.substring(0, 180)}</p><div className="flex gap-2 mt-2">{note.tags.slice(0, 3).map(tag => (<span key={tag} className="text-[10px] text-primary font-bold">#{tag}</span>))}</div></div><div className="flex flex-col items-end gap-2 shrink-0"><span className="text-[10px] font-bold text-outline-variant uppercase tracking-widest">{new Date(note.createdAt).toLocaleDateString()}</span><div className="p-2 rounded-full bg-surface-container text-outline"><span className="material-symbols-outlined text-[18px]">keyboard_arrow_right</span></div></div></div>))}</div>) : (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">{filteredNotes.map(note => (
+                                                  <NoteCard 
+                                                    key={note.id} 
+                                                    note={note} 
+                                                    folders={folders} 
+                                                    onDelete={handleDeleteNote} 
+                                                    onTagClick={(t) => setActiveTagFilter(t)} 
+                                                    onChangeColor={async (id, c) => { 
+                                                      setNotes(prev => prev.map(n => n.id === id ? { ...n, color: c } : n)); 
+                                                      if (storageOwner) await saveNote({ ...notes.find(n => n.id === id)!, color: c }, storageOwner); 
+                                                    }} 
+                                                    onUpdateColors={handleUpdateColors}
+                                                    onEdit={setEditingNote} 
+                                                    onExpand={handleExpandNote} 
+                                                    readOnly={!canEdit} 
+                                                    onViewImage={setViewingImage} 
+                                                    onToggleCheckbox={handleToggleCheckbox} 
+                                                    onAddTag={handleAddTag} 
+                                                    onRemoveTag={handleRemoveTag} 
+                                                    onMoveToFolder={handleMoveNote} 
+                                                    onToggleComplete={handleToggleProjectCompletion} 
+                                                  />
+                                                ))}</div>
+                                            )}
+                                            {filteredNotes.length === 0 && (<div className="col-span-full text-center py-20 bg-surface-container-low rounded-2xl border-2 border-dashed border-outline-variant"><p className="text-outline text-lg font-bold">No results found.</p><p className="text-outline-variant text-sm mt-1">Try switching categories or clearing filters.</p>{isFiltered && <button onClick={clearFilters} className="mt-4 px-6 py-2 bg-primary text-on-primary rounded-full font-bold shadow-md">Clear all filters</button>}</div>)}
+                                        </>
+                                    )}
+                                </div>
+                              </>
+                            )}
+                        </>
+                    )}
+                </div>
+            </main>
+
+            <RightSidebar className="fixed right-0 top-16 h-[calc(100vh-64px)] w-80 bg-surface-container-low border-l border-outline-variant p-md flex flex-col gap-lg overflow-y-auto z-20" notes={activeNotes} onNoteClick={handleExpandNote} />
+        </div>
 
         <EditNoteModal note={editingNote} isOpen={!!editingNote} onClose={() => setEditingNote(null)} onSave={handleUpdateNote} currentUser={currentUser?.username || 'Guest'} />
         <NoteDetailModal 

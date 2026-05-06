@@ -2,13 +2,11 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
-import { customSanitizeSchema } from '../services/security';
+import { cleanMarkdownText } from '../utils/markdownUtils';
 import { Note, NOTE_COLORS, ProjectData, Folder } from '../types';
-import { getTagStyle } from '../utils/styleUtils';
+import { getTagStyle } from './NoteCard';
 import GanttChart from './GanttChart';
 import WorkflowEditor from './WorkflowEditor';
-import { normalizeNoteContentImages } from '../utils/noteContent';
 
 interface NoteDetailModalProps {
   note: Note | null;
@@ -26,8 +24,7 @@ interface NoteDetailModalProps {
 
 const processContent = (text: string) => {
     if (!text) return "";
-    const withImages = normalizeNoteContentImages(text);
-    return withImages.replace(/([^\S]|^)(https?:\/\/[^\s]+)(?=[^\S]|$)/g, '$1[$2]($2)');
+    return text.replace(/([^\S]|^)(https?:\/\/[^\s]+)(?=[^\S]|$)/g, '$1[$2]($2)');
 };
 
 const NoteDetailModal: React.FC<NoteDetailModalProps> = ({ 
@@ -44,8 +41,6 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
   }, [note, folders]);
 
   if (!isOpen || !note) return null;
-
-  checkboxCounter.current = 0;
   
   const colorClass = NOTE_COLORS[note.color];
   const isMatrix = note.color === 'matrix' || note.type === 'code';
@@ -58,6 +53,10 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
 
   const markdownComponents = {
       p: ({ children }: any) => <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>,
+      div: ({ node, "aria-c": ariaC, ...props }: any) => <div {...props} />,
+      td: ({ node, vAlign, ...props }: any) => <td valign={vAlign ? String(vAlign).toLowerCase() : undefined} {...props} />,
+      th: ({ node, vAlign, ...props }: any) => <th valign={vAlign ? String(vAlign).toLowerCase() : undefined} {...props} />,
+      policyid: ({ node, ...props }: any) => <span {...props} />,
       input: (props: any) => {
           if (props.type === 'checkbox') {
               const index = checkboxCounter.current++;
@@ -97,16 +96,16 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
         className={`relative w-full max-w-5xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden ${isMatrix ? 'bg-black text-[#39ff14] font-mono' : (!note.backgroundColor ? colorClass : '') + ' font-sans'}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className={`flex justify-between items-start p-6 pb-4 border-b border-black/5 ${isMatrix ? 'bg-black border-[#39ff14]/20' : 'bg-black/5'}`}>
+        <div className={`flex justify-between items-start p-6 pb-4 border-b border-outline/30 ${isMatrix ? 'bg-black border-[#39ff14]/20' : 'bg-surface-container-low'}`}>
             <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${isMatrix ? 'bg-[#39ff14]/20 text-[#39ff14]' : 'bg-black/40 text-white'}`}>{note.type}</span>
+                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${isMatrix ? 'bg-[#39ff14]/20 text-[#39ff14]' : 'bg-primary-container text-on-primary-container'}`}>{note.type}</span>
                     <span className="text-[9px] font-black uppercase tracking-widest opacity-40">{note.category}</span>
                     {folderName && (
                         <>
-                            <span className="text-slate-400">/</span>
+                            <span className="text-outline">/</span>
                             <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest opacity-70">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                                <span className="material-symbols-outlined text-[12px]">folder</span>
                                 {folderName}
                             </span>
                         </>
@@ -114,38 +113,38 @@ const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
                 </div>
                 <h2 className={`text-2xl font-black mt-1 ${isCompleted ? 'line-through opacity-60' : ''}`}>{note.title}</h2>
             </div>
-            <button onClick={onClose} className={`p-2 rounded-full transition-colors ${isMatrix ? 'hover:bg-[#39ff14]/10 text-[#39ff14]' : 'hover:bg-black/10'}`}>✕</button>
+            <button onClick={onClose} className={`p-2 rounded-full transition-colors ${isMatrix ? 'hover:bg-[#39ff14]/10 text-[#39ff14]' : 'hover:bg-surface-variant'}`}><span className="material-symbols-outlined text-[20px]">close</span></button>
         </div>
 
         {note.type === 'project' && (
-            <div className={`flex px-6 border-b border-black/5 ${isMatrix ? 'bg-black border-[#39ff14]/20' : 'bg-black/5'}`}>
-                <button onClick={() => setActiveTab('content')} className={`px-4 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'content' ? 'border-primary-600 text-primary-600' : 'border-transparent opacity-40 hover:opacity-100'}`}>Description</button>
-                <button onClick={() => setActiveTab('infrastructure')} className={`px-4 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'infrastructure' ? 'border-primary-600 text-primary-600' : 'border-transparent opacity-40 hover:opacity-100'}`}>Infrastructure</button>
+            <div className={`flex px-6 border-b border-outline/30 ${isMatrix ? 'bg-black border-[#39ff14]/20' : 'bg-surface-container-low'}`}>
+                <button onClick={() => setActiveTab('content')} className={`px-4 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'content' ? 'border-primary text-primary' : 'border-transparent text-outline hover:text-on-surface'}`}>Description</button>
+                <button onClick={() => setActiveTab('infrastructure')} className={`px-4 py-3 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'infrastructure' ? 'border-primary text-primary' : 'border-transparent text-outline hover:text-on-surface'}`}>Infrastructure</button>
             </div>
         )}
 
-        <div className={`p-8 overflow-y-auto custom-scrollbar flex-grow ${isMatrix ? 'bg-black' : 'bg-white/10'}`}>
+        <div className={`p-8 overflow-y-auto custom-scrollbar flex-grow ${isMatrix ? 'bg-black' : 'bg-surface-dim'}`}>
             {activeTab === 'content' ? (
                 <>
-                    <div className={`prose prose-lg max-w-none opacity-95 ${isMatrix ? 'text-[#39ff14] prose-invert' : ''}`}>
+                    <div className={`prose prose-lg max-w-none opacity-95 ${isMatrix ? 'text-[#39ff14] prose-invert' : 'prose-invert'} w-full`}>
                         <ReactMarkdown 
                             remarkPlugins={[remarkGfm]} 
-                            rehypePlugins={[rehypeRaw, [rehypeSanitize, customSanitizeSchema]]}
+                            rehypePlugins={[rehypeRaw]} 
                             components={markdownComponents}
                         >
-                            {processContent(note.content)}
+                            {cleanMarkdownText(processContent(note.content))}
                         </ReactMarkdown>
                     </div>
                 </>
             ) : (
                 <div className="space-y-12 animate-[fadeIn_0.3s_ease-out]">
-                    <div className="p-6 bg-black/5 dark:bg-white/5 rounded-2xl">
-                        <h3 className="text-xs font-black uppercase tracking-[0.3em] mb-6 opacity-60">Timeline Visualization</h3>
+                    <div className="p-6 bg-surface-container-low rounded-2xl border border-outline-variant">
+                        <h3 className="text-xs font-black uppercase tracking-[0.3em] mb-6 text-outline">Timeline Visualization</h3>
                         {note.projectData && <GanttChart data={note.projectData} />}
                     </div>
                     
-                    <div className="p-6 bg-black/5 dark:bg-white/5 rounded-2xl">
-                        <h3 className="text-xs font-black uppercase tracking-[0.3em] mb-6 opacity-60">Architectural Workflow</h3>
+                    <div className="p-6 bg-surface-container-low rounded-2xl border border-outline-variant">
+                        <h3 className="text-xs font-black uppercase tracking-[0.3em] mb-6 text-outline">Architectural Workflow</h3>
                         {note.projectData?.workflow && onUpdateProjectData && (
                             <WorkflowEditor 
                                 nodes={note.projectData.workflow.nodes} 

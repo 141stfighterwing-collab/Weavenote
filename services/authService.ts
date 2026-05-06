@@ -24,16 +24,6 @@ import {
 } from 'firebase/firestore';
 import { User, Permission, UserStatus, UserRole } from '../types';
 import { DiagnosticLog } from './geminiService';
-import { 
-    isApiMode, 
-    loginWithAPI, 
-    registerWithAPI, 
-    logoutFromAPI, 
-    validateToken,
-    getAuthToken,
-    setAuthToken,
-    createGuestSession 
-} from './apiDatabaseService';
 
 export interface AuditLogEntry {
     id: string;
@@ -53,7 +43,6 @@ export interface SystemLogEntry {
 
 const LOCAL_AUDIT_KEY = 'ideaweaver_audit_logs';
 const SYSTEM_LOG_KEY = 'ideaweaver_system_checkpoints';
-const LOCAL_USER_KEY = 'weavenote_local_user';
 
 export const logSystemCheckpoint = (message: string, level: SystemLogEntry['level'] = 'info') => {
     try {
@@ -100,7 +89,7 @@ export const logAudit = async (action: string, actor: string, target?: string, d
         details: details || null
     };
 
-    if (db && !isApiMode()) {
+    if (db) {
         try {
             setDoc(doc(collection(db, 'audit_logs'), entry.id), entry).catch(() => {});
         } catch (e) {}
@@ -115,43 +104,6 @@ export const logAudit = async (action: string, actor: string, target?: string, d
 };
 
 export const subscribeToAuthChanges = (callback: (user: User | null) => void) => {
-    // API Mode: Check for stored token and validate
-    if (isApiMode()) {
-        logSystemCheckpoint("[AUTH_CHECKPOINT_API_MODE] Using local API authentication", "info");
-        const token = getAuthToken();
-        if (token) {
-            validateToken().then(result => {
-                if (result.valid && result.user) {
-                    const localUser = localStorage.getItem(LOCAL_USER_KEY);
-                    if (localUser) {
-                        callback(JSON.parse(localUser));
-                    } else {
-                        callback({
-                            uid: result.user.uid,
-                            username: result.user.username,
-                            email: result.user.email,
-                            permission: 'edit',
-                            status: 'active',
-                            role: result.user.role || 'user',
-                            lastLogin: Date.now(),
-                            aiUsageCount: 0
-                        });
-                    }
-                } else {
-                    setAuthToken(null);
-                    localStorage.removeItem(LOCAL_USER_KEY);
-                    callback(null);
-                }
-            }).catch(() => {
-                callback(null);
-            });
-        } else {
-            setTimeout(() => callback(null), 0);
-        }
-        return () => {};
-    }
-
-    // Firebase Mode
     if (!auth || !db) {
         setTimeout(() => callback(null), 0);
         return () => {};
@@ -220,94 +172,13 @@ export const subscribeToAuthChanges = (callback: (user: User | null) => void) =>
 
 export const login = async (usernameOrEmail: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> => {
     logSystemCheckpoint("[AUTH_CHECKPOINT_1] Initializing Login Sequence...", "security");
-
-    // API Mode: Use local backend authentication
-    if (isApiMode()) {
-        logSystemCheckpoint("[AUTH_CHECKPOINT_API_MODE] Using local API login", "info");
-        try {
-            let email = usernameOrEmail.trim();
-            
-            // Admin bootstrap for local mode
-            // SECURITY: Removed hardcoded fallback password.
-            // Only allow bootstrap if ADMIN_SETUP_PASS is explicitly defined and non-empty.
-            const adminPass = typeof process !== 'undefined' ? process.env.ADMIN_SETUP_PASS : "";
-            if (usernameOrEmail === 'admin' && adminPass && password === adminPass) {
-                // Try to login as admin, if fails create admin account
-                try {
-                    const result = await loginWithAPI('admin@weavenote.local', password);
-                    const user: User = {
-                        uid: result.user.uid,
-                        username: result.user.username || 'Admin',
-                        email: result.user.email,
-                        permission: 'edit',
-                        status: 'active',
-                        role: 'super-admin',
-                        lastLogin: Date.now(),
-                        aiUsageCount: 0
-                    };
-                    localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(user));
-                    logAudit('ADMIN_LOGIN_API', user.username);
-                    return { success: true, user };
-                } catch (adminError) {
-                    // Admin doesn't exist, try to register
-                    try {
-                        const result = await registerWithAPI('admin@weavenote.local', 'Admin', password);
-                        const user: User = {
-                            uid: result.user.uid,
-                            username: 'Admin',
-                            email: result.user.email,
-                            permission: 'edit',
-                            status: 'active',
-                            role: 'super-admin',
-                            lastLogin: Date.now(),
-                            aiUsageCount: 0
-                        };
-                        localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(user));
-                        logAudit('ADMIN_REGISTER_API', user.username);
-                        return { success: true, user };
-                    } catch (regError: any) {
-                        // If admin email exists with different password, try direct login
-                        return { success: false, error: "Admin setup failed. Check password." };
-                    }
-                }
-            }
-
-            // Regular login - if username provided, try email format
-            if (!email.includes('@')) {
-                email = `${email}@weavenote.local`;
-            }
-
-            const result = await loginWithAPI(email, password);
-            const user: User = {
-                uid: result.user.uid,
-                username: result.user.username,
-                email: result.user.email,
-                permission: (result.user.permission as Permission) || 'edit',
-                status: 'active',
-                role: (result.user.role as UserRole) || 'user',
-                lastLogin: Date.now(),
-                aiUsageCount: 0
-            };
-            localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(user));
-            logAudit('LOGIN_SUCCESS_API', user.username);
-            return { success: true, user };
-        } catch (e: any) {
-            logSystemCheckpoint(`[AUTH_CHECKPOINT_API_ERROR] ${e.message}`, "error");
-            return { success: false, error: e.message || "Identity verification failed." };
-        }
-    }
-
-    // Firebase Mode (Cloud)
     if (!isFirebaseReady || !auth || !db) return { success: false, error: "Database infrastructure unreachable." };
 
     try {
         let email = usernameOrEmail.trim();
         
         // Admin Bootstrap Override
-        // SECURITY: Removed hardcoded fallback password.
-        // Only allow bootstrap if ADMIN_SETUP_PASS is explicitly defined and non-empty.
-        const adminSetupPass = typeof process !== 'undefined' ? process.env.ADMIN_SETUP_PASS : "";
-        if (usernameOrEmail === 'admin' && adminSetupPass && password === adminSetupPass) {
+        if (usernameOrEmail === 'admin' && password === (process.env.ADMIN_SETUP_PASS || "Zaqxsw12gobeavers")) {
             email = 'system-bootstrap@weavenote.com';
             try {
                 const cred = await signInWithEmailAndPassword(auth, email, password);
@@ -394,26 +265,6 @@ export const checkDatabaseConnection = async (): Promise<{ success: boolean; lat
     const logs: DiagnosticLog[] = [];
     const addLog = (message: string, type: DiagnosticLog['type'] = 'info') => logs.push({ timestamp: Date.now(), message, type });
 
-    // API Mode check
-    if (isApiMode()) {
-        addLog("Checking API connection...");
-        const start = Date.now();
-        try {
-            const response = await fetch('/api/health');
-            const latency = Date.now() - start;
-            if (response.ok) {
-                addLog(`API connection successful (${latency}ms)`, "success");
-                return { success: true, latency, message: "Connected", logs };
-            } else {
-                addLog(`API returned status ${response.status}`, "error");
-                return { success: false, latency: 0, message: "API Error", logs };
-            }
-        } catch (e: any) {
-            addLog(`API connection failed: ${e.message}`, "error");
-            return { success: false, latency: 0, message: "Connection Failed", logs };
-        }
-    }
-
     addLog("Initializing Firestore Handshake...");
     if (!isFirebaseReady || !db) {
         addLog("CRITICAL: Firebase App is NOT initialized. Check config.ts.", "error");
@@ -444,21 +295,9 @@ export const checkDatabaseConnection = async (): Promise<{ success: boolean; lat
     }
 };
 
-export const logout = async () => {
-    if (isApiMode()) {
-        logSystemCheckpoint("[AUTH_CHECKPOINT_API_LOGOUT] Logging out from API", "info");
-        await logoutFromAPI();
-        localStorage.removeItem(LOCAL_USER_KEY);
-        return;
-    }
-    if (auth) await signOut(auth);
-};
+export const logout = async () => { if (auth) await signOut(auth); };
 
 export const getUsers = async (): Promise<User[]> => {
-    if (isApiMode()) {
-        // API mode - users managed by backend
-        return [];
-    }
     if (!db) return [];
     try {
         const snapshot = await getDocs(collection(db, 'users'));
@@ -483,10 +322,6 @@ export const updateUserRole = async (uid: string, role: UserRole) => {
 };
 
 export const updateUserPassword = async (newPassword: string): Promise<{ success: boolean; message: string }> => {
-    if (isApiMode()) {
-        // API mode - password change via backend
-        return { success: false, message: "Password change requires backend endpoint." };
-    }
     if (!auth?.currentUser) return { success: false, message: "User session expired." };
     try {
         await updatePassword(auth.currentUser, newPassword);
@@ -498,9 +333,6 @@ export const updateUserPassword = async (newPassword: string): Promise<{ success
 };
 
 export const adminTriggerReset = async (email: string): Promise<{ success: boolean; message: string }> => {
-    if (isApiMode()) {
-        return { success: false, message: "Password reset requires backend endpoint." };
-    }
     if (!auth) return { success: false, message: "Auth service offline." };
     try {
         await sendPasswordResetEmail(auth, email);
@@ -511,9 +343,6 @@ export const adminTriggerReset = async (email: string): Promise<{ success: boole
 };
 
 export const testWriteCapability = async (): Promise<{ success: boolean; message: string }> => {
-    if (isApiMode()) {
-        return { success: true, message: "API mode - write capability handled by backend." };
-    }
     if (!db || !auth?.currentUser) return { success: false, message: "Cloud Unconfigured or Not Authenticated" };
     try {
         const testDoc = doc(db, 'system_test', auth.currentUser.uid);
@@ -525,35 +354,6 @@ export const testWriteCapability = async (): Promise<{ success: boolean; message
 };
 
 export const requestAccount = async (username: string, password: string, email: string): Promise<{ success: boolean; message: string }> => {
-    logSystemCheckpoint("[AUTH_CHECKPOINT_REGISTER] Attempting account creation", "info");
-
-    // API Mode
-    if (isApiMode()) {
-        try {
-            let apiEmail = email;
-            if (!apiEmail.includes('@')) {
-                apiEmail = `${apiEmail}@weavenote.local`;
-            }
-            const result = await registerWithAPI(apiEmail, username, password);
-            const user: User = {
-                uid: result.user.uid,
-                username: result.user.username,
-                email: result.user.email,
-                permission: 'edit',
-                status: 'active',
-                role: 'user',
-                lastLogin: Date.now(),
-                aiUsageCount: 0
-            };
-            localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(user));
-            return { success: true, message: "Identity created successfully." };
-        } catch (e: any) {
-            logSystemCheckpoint(`[AUTH_CHECKPOINT_API_REGISTER_ERROR] ${e.message}`, "error");
-            return { success: false, message: `Setup failed: ${e.message}` };
-        }
-    }
-
-    // Firebase Mode
     if (!isFirebaseReady || !auth || !db) return { success: false, message: "Service offline." };
     try {
         const info = await fetchClientInfo();
@@ -570,9 +370,6 @@ export const requestAccount = async (username: string, password: string, email: 
 };
 
 export const sendResetLink = async (email: string): Promise<{ success: boolean; message: string }> => {
-    if (isApiMode()) {
-        return { success: false, message: "Password reset not available in local mode. Contact admin." };
-    }
     if (!isFirebaseReady || !auth) return { success: false, message: "System initializing." };
     try {
         await sendPasswordResetEmail(auth, email);
@@ -583,38 +380,9 @@ export const sendResetLink = async (email: string): Promise<{ success: boolean; 
 };
 
 export const incrementUserAIUsage = async (uid: string) => {
-    if (isApiMode()) {
-        // Handled by backend
-        return;
-    }
     if (!db) return;
     try {
         const userDocRef = doc(db, 'users', uid);
         await updateDoc(userDocRef, { aiUsageCount: increment(1) });
     } catch (e) {}
-};
-
-// Create guest session for local development
-export const createGuestUser = async (): Promise<{ success: boolean; user?: User; error?: string }> => {
-    if (isApiMode()) {
-        try {
-            const result = await createGuestSession();
-            const user: User = {
-                uid: result.user.uid,
-                username: 'Guest',
-                email: '',
-                permission: 'read',
-                status: 'active',
-                role: 'user',
-                lastLogin: Date.now(),
-                aiUsageCount: 0,
-                isGuest: true
-            };
-            localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(user));
-            return { success: true, user };
-        } catch (e: any) {
-            return { success: false, error: e.message };
-        }
-    }
-    return { success: false, error: "Guest mode requires API mode." };
 };

@@ -71,7 +71,6 @@ export interface Note {
   isSynthesized?: boolean;
   textColor?: string;
   backgroundColor?: string;
-  wordCount?: number;
 }
 
 export enum NoteColor {
@@ -114,7 +113,7 @@ export const NOTE_COLORS: Record<NoteColor, string> = {
   [NoteColor.Matrix]: 'bg-black border-[#39ff14]/50 text-[#39ff14] selection:bg-[#39ff14]/30'
 };
 
-export type ViewMode = 'grid' | 'mindmap';
+export type ViewMode = 'grid' | 'mindmap' | 'dashboard';
 
 export interface ProcessedNoteData {
   title: string;
@@ -123,14 +122,6 @@ export interface ProcessedNoteData {
   tags: string[];
   suggestedFolderName?: string;
   projectData?: ProjectData;
-}
-
-export interface QuickReferenceTemplate {
-  id: string;
-  title: string;
-  type: NoteType;
-  workflowSteps: string[];
-  content: string;
 }
 
 // Hierarchical roles for NIST/SOC2 compliance
