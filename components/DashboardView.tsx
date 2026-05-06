@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Note } from '../types';
-import { motion } from 'motion/react';
+import { motion, Variants } from 'motion/react';
 
 interface DashboardViewProps {
   notes: Note[];
@@ -28,7 +28,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ notes }) => {
 
   const heights = [80, 60, 66, 83, 100, 80, 66, 75, 83, 100]; // Simulated trend data
 
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: { 
       opacity: 1,
@@ -36,7 +36,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ notes }) => {
     }
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
   };

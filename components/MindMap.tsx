@@ -40,6 +40,21 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver(entries => {
+      if (entries[0]) {
+        setDimensions({
+          width: entries[0].contentRect.width,
+          height: entries[0].contentRect.height
+        });
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -57,15 +72,15 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
   };
 
   useEffect(() => {
-    if (!svgRef.current || !containerRef.current) return;
+    if (!svgRef.current || !containerRef.current || dimensions.width === 0 || dimensions.height === 0) return;
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
     if (notes.length === 0) return;
 
-    const width = containerRef.current.clientWidth;
-    const height = containerRef.current.clientHeight;
+    const width = dimensions.width;
+    const height = dimensions.height;
     const centerX = width / 2;
     const centerY = height / 2;
 
@@ -89,7 +104,7 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
 
     // B. Tags (Explicit connections)
     notes.forEach(note => {
-      note.tags.forEach(tag => {
+      (note.tags || []).forEach(tag => {
         const tagId = `tag-${tag.toLowerCase()}`;
         if (!tagMap.has(tag)) {
           tagMap.set(tag, tagId);
@@ -110,10 +125,10 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
     // C. Similarity (Implicit connections)
     for (let i = 0; i < notes.length; i++) {
         const noteA = notes[i];
-        const wordsA = new Set([...getWords(noteA.title), ...getWords(noteA.category)]); 
+        const wordsA = new Set([...getWords(noteA.title || ''), ...getWords(noteA.category || '')]); 
         for (let j = i + 1; j < notes.length; j++) {
             const noteB = notes[j];
-            const wordsB = new Set([...getWords(noteB.title), ...getWords(noteB.category)]);
+            const wordsB = new Set([...getWords(noteB.title || ''), ...getWords(noteB.category || '')]);
             
             let matches = 0;
             wordsA.forEach(w => { if (wordsB.has(w)) matches++; });
@@ -245,7 +260,7 @@ const MindMap: React.FC<MindMapProps> = ({ notes, onNoteClick }) => {
     }
 
     return () => { simulation.stop(); };
-  }, [notes, onNoteClick]);
+  }, [notes, onNoteClick, dimensions.width, dimensions.height]);
 
   return (
     <div ref={containerRef} className={`w-full h-full relative overflow-hidden ${isFullscreen ? 'fixed inset-0 z-[100] bg-slate-50 dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700'}`}>
