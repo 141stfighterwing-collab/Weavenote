@@ -1,0 +1,3 @@
+## 2026-05-15 - Keyboard Shortcuts and Accessibility Labels for Note Inputs
+**Learning:** Adding keyboard shortcuts (Ctrl+Enter) to `contentEditable` editors and standard inputs in a unified component significantly improves task completion speed for power users, while ARIA labels on icon-only formatting buttons ensure the interface remains usable for screen reader users without cluttering the visual design.
+**Action:** Always include `aria-label` and `title` attributes with shortcut hints (e.g. "Save (Ctrl+Enter)") for primary action buttons in input-heavy components to provide multi-modal feedback and interaction paths.
