@@ -342,4 +342,17 @@ This project uses **Semantic Versioning (SemVer)**:
 - Administrative bootstrap now requires an explicitly defined and non-empty `ADMIN_SETUP_PASS` environment variable.
 - Removed insecure default fallback for `JWT_SECRET` in backend configuration.
 
-Current version: **1.6.3**.
+## [1.6.4] - 2026-05-15
+
+### 🎨 Palette: Micro-UX & Accessibility Enhancements
+
+### Added
+- **Keyboard Shortcut**: Added `Ctrl/Cmd + Enter` global shortcut for the NoteInput component to quickly "Save Raw" notes from the title, editor, or tag input fields.
+- **Accessibility Labels**: Added descriptive `aria-label` and `title` attributes to all formatting buttons (Bold, Italic, lists, etc.) and tool buttons (Emoji, Color, GIF, Image) to improve the experience for screen reader and keyboard users.
+- **Shortcuts Tooltips**: Added shortcut hints to action button tooltips for better discoverability.
+
+### Changed
+- Improved focus management and keyboard interaction within the `NoteInput` component.
+- Clarified disabled states with descriptive tooltips (e.g., "Synthesis (Login required)").
+
+Current version: **1.6.4**.
