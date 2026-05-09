@@ -195,7 +195,7 @@ const NoteCard: React.FC<NoteCardProps> = ({
             <div className="text-[10px] text-outline font-bold uppercase tracking-widest">{new Date(note.createdAt).toLocaleDateString()}</div>
             <div className="flex items-center gap-1 shrink-0 relative">
             <div className="relative">
-                <button onClick={(e) => { e.stopPropagation(); setShowColorPicker(!showColorPicker); setShowCustomColorPicker(false); }} className={`p-1.5 flex items-center justify-center rounded hover:bg-surface-variant transition-colors text-on-surface-variant`}><span className="material-symbols-outlined text-[18px]">palette</span></button>
+                <button onClick={(e) => { e.stopPropagation(); setShowColorPicker(!showColorPicker); setShowCustomColorPicker(false); }} className={`p-1.5 flex items-center justify-center rounded hover:bg-surface-variant transition-colors text-on-surface-variant`} aria-label="Change Color" title="Change Color"><span className="material-symbols-outlined text-[18px]">palette</span></button>
                 {showColorPicker && (
                     <div className="absolute bottom-full right-0 mb-3 p-3 bg-surface-container-highest rounded-xl shadow-2xl border border-outline-variant flex flex-col gap-3 w-44 z-50">
                         <div className="flex flex-wrap gap-1.5">
@@ -248,8 +248,8 @@ const NoteCard: React.FC<NoteCardProps> = ({
                     </div>
                 )}
             </div>
-            <button onClick={(e) => { e.stopPropagation(); onEdit(note); }} className={`p-1.5 flex items-center justify-center rounded hover:bg-surface-variant transition-colors text-on-surface-variant`}><span className="material-symbols-outlined text-[18px]">edit</span></button>
-            <button onClick={(e) => { e.stopPropagation(); onDelete(note.id); }} className="p-1.5 flex items-center justify-center rounded hover:bg-error-container hover:text-on-error-container transition-colors text-error"><span className="material-symbols-outlined text-[18px]">delete</span></button>
+            <button onClick={(e) => { e.stopPropagation(); onEdit(note); }} className={`p-1.5 flex items-center justify-center rounded hover:bg-surface-variant transition-colors text-on-surface-variant`} aria-label="Edit Note" title="Edit Note"><span className="material-symbols-outlined text-[18px]">edit</span></button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(note.id); }} className="p-1.5 flex items-center justify-center rounded hover:bg-error-container hover:text-on-error-container transition-colors text-error" aria-label="Delete Note" title="Delete Note"><span className="material-symbols-outlined text-[18px]">delete</span></button>
             </div>
         </div>
       </div>
