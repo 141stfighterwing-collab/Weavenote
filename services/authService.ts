@@ -178,7 +178,7 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
         let email = usernameOrEmail.trim();
         
         // Admin Bootstrap Override
-        if (usernameOrEmail === 'admin' && password === (process.env.ADMIN_SETUP_PASS || "Zaqxsw12gobeavers")) {
+        if (usernameOrEmail === 'admin' && process.env.ADMIN_SETUP_PASS && password === process.env.ADMIN_SETUP_PASS) {
             email = 'system-bootstrap@weavenote.com';
             try {
                 const cred = await signInWithEmailAndPassword(auth, email, password);
