@@ -136,17 +136,32 @@ const NoteInput: React.FC<NoteInputProps> = ({
     setProjectObjectives(''); setProjectDeliverables(''); setProjectProgress(0);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (!isProcessing && !isIngesting) {
+            handleAction(false);
+        }
+    }
+  };
+
   return (
     <div className="max-w-[840px] mx-auto flex flex-col bg-surface-container-low rounded-xl border border-outline-variant shadow-lg overflow-hidden mb-8">
-        <div className="flex gap-1 p-1 bg-surface-container-low border-b border-outline-variant overflow-x-auto no-scrollbar">
+        <div role="tablist" aria-label="Note type" className="flex gap-1 p-1 bg-surface-container-low border-b border-outline-variant overflow-x-auto no-scrollbar">
             {(['quick', 'notebook', 'deep', 'code', 'project', 'document'] as NoteType[]).map(type => (
-                <button key={type} onClick={() => onTypeChange?.(type)} className={`flex-1 py-1 text-label-caps rounded transition-all min-w-[85px] uppercase tracking-widest ${activeType === type ? 'text-primary font-bold bg-surface-variant' : 'text-on-surface-variant hover:bg-surface-container-highest'}`}>
+                <button
+                  key={type}
+                  role="tab"
+                  aria-selected={activeType === type}
+                  onClick={() => onTypeChange?.(type)}
+                  className={`flex-1 py-1 text-label-caps rounded transition-all min-w-[85px] uppercase tracking-widest ${activeType === type ? 'text-primary font-bold bg-surface-variant' : 'text-on-surface-variant hover:bg-surface-container-highest'}`}
+                >
                     {type}
                 </button>
             ))}
         </div>
 
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full" onKeyDown={handleKeyDown}>
         <div className="p-md border-b border-outline-variant bg-surface-container-high/50">
             <input 
               type="text" value={title} onChange={(e) => setTitle(e.target.value)} 
@@ -158,17 +173,23 @@ const NoteInput: React.FC<NoteInputProps> = ({
         <div className="px-md py-sm border-b border-outline-variant flex items-center justify-between bg-surface-container">
             <div className="flex items-center gap-md">
                 <div className="flex gap-sm border-r border-outline-variant pr-md mr-2 text-on-surface-variant">
-                    <button onClick={() => execCommand('bold')} className="hover:text-primary transition-colors"><span className="material-symbols-outlined">format_bold</span></button>
-                    <button onClick={() => execCommand('italic')} className="hover:text-primary transition-colors"><span className="material-symbols-outlined">format_italic</span></button>
-                    <button onClick={() => execCommand('insertUnorderedList')} className="hover:text-primary transition-colors"><span className="material-symbols-outlined">format_list_bulleted</span></button>
+                    <button onClick={() => execCommand('bold')} className="hover:text-primary transition-colors" aria-label="Bold" title="Bold"><span className="material-symbols-outlined">format_bold</span></button>
+                    <button onClick={() => execCommand('italic')} className="hover:text-primary transition-colors" aria-label="Italic" title="Italic"><span className="material-symbols-outlined">format_italic</span></button>
+                    <button onClick={() => execCommand('insertUnorderedList')} className="hover:text-primary transition-colors" aria-label="Bullet List" title="Bullet List"><span className="material-symbols-outlined">format_list_bulleted</span></button>
                 </div>
                 <div className="flex gap-sm text-on-surface-variant relative">
                     <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".pdf,.txt,.md" />
-                    <button onClick={() => fileInputRef.current?.click()} className={`hover:text-primary transition-colors ${isIngesting ? 'animate-pulse text-primary' : ''}`} disabled={isIngesting}>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`hover:text-primary transition-colors ${isIngesting ? 'animate-pulse text-primary' : ''}`}
+                      disabled={isIngesting}
+                      aria-label={activeType === 'document' ? 'Upload Document' : 'Attach File'}
+                      title={activeType === 'document' ? 'Upload Document' : 'Attach File'}
+                    >
                         <span className="material-symbols-outlined">{activeType === 'document' ? 'upload_file' : 'attach_file'}</span>
                     </button>
-                    <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="hover:text-primary transition-colors"><span className="material-symbols-outlined">mood</span></button>
-                    <button onClick={() => setShowColorPicker(!showColorPicker)} className="hover:text-primary transition-colors"><span className="material-symbols-outlined">palette</span></button>
+                    <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="hover:text-primary transition-colors" aria-label="Insert Emoji" title="Insert Emoji"><span className="material-symbols-outlined">mood</span></button>
+                    <button onClick={() => setShowColorPicker(!showColorPicker)} className="hover:text-primary transition-colors" aria-label="Text & Highlight Color" title="Text & Highlight Color"><span className="material-symbols-outlined">palette</span></button>
 
                     {showEmojiPicker && (
                         <div className="absolute top-full left-0 mt-2 p-2 bg-surface-container-highest border border-outline-variant rounded-xl shadow-2xl z-50 grid grid-cols-4 gap-1 min-w-[140px]">
@@ -241,26 +262,41 @@ const NoteInput: React.FC<NoteInputProps> = ({
                 <div className="flex flex-wrap gap-xs flex-1">
                     {tags.map(tag => (
                         <span key={tag} className="bg-primary/10 text-primary px-sm py-unit rounded text-label-caps border border-primary/20 flex items-center gap-1">
-                            #{tag.toUpperCase()} <button type="button" onClick={() => setTags(tags.filter(t => t !== tag))}>✕</button>
+                            #{tag.toUpperCase()} <button type="button" onClick={() => setTags(tags.filter(t => t !== tag))} aria-label={`Remove tag ${tag}`}>✕</button>
                         </span>
                     ))}
                     <input 
                         type="text" value={tagInput} onChange={e => setTagInput(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const val = tagInput.trim().toLowerCase().replace('#',''); if (val && !tags.includes(val)) { setTags([...tags, val]); setTagInput(''); } } }}
+                        onKeyDown={e => {
+                            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') return;
+                            if (e.key === 'Enter') { e.preventDefault(); const val = tagInput.trim().toLowerCase().replace('#',''); if (val && !tags.includes(val)) { setTags([...tags, val]); setTagInput(''); } }
+                        }}
                         placeholder="Add tag..." className="bg-transparent border-none text-[11px] focus:ring-0 p-0 w-24 outline-none placeholder:text-outline-variant"
+                        aria-label="Add tag"
                     />
                 </div>
             </div>
             
             <div className="flex justify-between items-center">
-                <div className={`text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 ${aiStep ? 'text-primary animate-pulse' : 'text-outline'}`}>
+                <div
+                    aria-live="polite"
+                    className={`text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 ${aiStep ? 'text-primary animate-pulse' : 'text-outline'}`}
+                >
                     {aiStep ? `✨ ${aiStep}` : ""}
                 </div>
                 <div className="flex gap-md">
-                    <button onClick={() => handleAction(false)} disabled={isProcessing || isIngesting} className="px-lg py-sm rounded-lg border border-outline text-on-surface hover:bg-surface-variant transition-colors font-semibold active:scale-[0.98]">SAVE</button>
+                    <button
+                        onClick={() => handleAction(false)}
+                        disabled={isProcessing || isIngesting}
+                        className="px-lg py-sm rounded-lg border border-outline text-on-surface hover:bg-surface-variant transition-colors font-semibold active:scale-[0.98]"
+                        title="Save Note (⌘/Ctrl+Enter)"
+                    >
+                        SAVE
+                    </button>
                     <button 
                       onClick={() => handleAction(true)} disabled={isProcessing || isGuest || isIngesting} 
                       className={`px-lg py-sm rounded-lg bg-secondary text-on-secondary font-bold flex items-center gap-sm shadow-[0_0_20px_rgba(255,185,95,0.2)] hover:opacity-90 active:scale-[0.98] transition-all ${isGuest || isIngesting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      title={isGuest ? "Synthesis (Login required)" : "Neural Synthesis"}
                     >
                       <span className="material-symbols-outlined text-[20px]" style={{fontVariationSettings: "'FILL' 1"}}>auto_awesome</span>
                       {isProcessing ? 'SYNTHESIZING' : 'SYNTHESIS'}
