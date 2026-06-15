@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 // Version from BUILD_VERSION env (set by Dockerfile at build time),
 // fallback to the current release string.
 function getVersion(): string {
-  return process.env.BUILD_VERSION || '4.4.8';
+  return process.env.BUILD_VERSION || '4.4.7';
 }
 
 // GET /api/health — Database connectivity health check

@@ -1,11 +1,11 @@
-# ── WSH Dockerfile v4.4.8 ────────────────────────────────────────
+# ── WSH Dockerfile v4.4.7 ────────────────────────────────────────
 # Multi-stage build with progress output. Update with: ./update.sh
 #
 # Stage 1 (deps):   npm install (cached unless package.json changes)
 # Stage 2 (build):  prisma generate → next build → standalone output
 # Stage 3 (runner): Lean production image with standalone server
 #
-# v4.4.8 FIX: Removed | tail pipes that hid npm install errors.
+# v4.4.7 FIX: Removed | tail pipes that hid npm install errors.
 # The pipe caused npm install failures to be silently swallowed
 # (tail's exit code 0 replaced npm's non-zero exit code).
 # Root cause: react-devtools-inline@4.4.1 was yanked from npm,
@@ -13,7 +13,7 @@
 
 FROM node:20-alpine AS deps
 
-ARG BUILD_VERSION=4.4.8
+ARG BUILD_VERSION=4.4.7
 
 # System deps for building
 RUN echo "[1/6] Installing system dependencies..." && \
@@ -65,7 +65,7 @@ RUN echo "[5/6] Building Next.js application..." && \
 # ── Stage 3: Production Runner ─────────────────────────────────
 FROM node:20-alpine AS runner
 
-ARG BUILD_VERSION=4.4.8
+ARG BUILD_VERSION=4.4.7
 ENV BUILD_VERSION=${BUILD_VERSION}
 
 RUN echo "[6/6] Creating production image (v${BUILD_VERSION})..." && \

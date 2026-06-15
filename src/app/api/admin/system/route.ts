@@ -101,7 +101,7 @@ export async function GET() {
   const memUsage = process.memoryUsage();
 
   // Build version from env (set by Dockerfile), fallback to the current release string.
-  const version = process.env.BUILD_VERSION || '4.4.8';
+  const version = process.env.BUILD_VERSION || '4.4.7';
 
   // Disk sizes
   const appSize = dirSize('/app');

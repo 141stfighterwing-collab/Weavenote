@@ -7,17 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [4.4.8] - 2026-06-15
-
-### Added
-- **Resizable images in notes** — Images inserted into notes now support an explicit initial width control for URL-based inserts and are rendered with resize-friendly styling so users can make images smaller or larger directly inside note content.
-
-### Changed
-- **Image attachments in notes are compressed client-side before insertion** — Large attached images are resized down to a saner maximum dimension and re-encoded before being embedded into note HTML, reducing note payload size and making note load/save/render faster.
-- **Version bumped to 4.4.8** for the image-handling performance and usability patch.
-
----
-
 ## [4.4.7] - 2026-06-15
 
 ### Security
