@@ -51,6 +51,14 @@ const NOTE_TYPES: { type: NoteType; label: string }[] = [
 
 type SynthesisMode = 'summarize' | 'expand' | 'improve' | 'tags' | 'outline';
 
+const MAX_IMAGES_PER_NOTE = 4;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+function countImagesInEditor(editor: HTMLDivElement | null): number {
+  if (!editor) return 0;
+  return editor.querySelectorAll('img[data-wsh-image="true"], img').length;
+}
+
 const synthesisModes: { mode: SynthesisMode; label: string; icon: React.ReactNode }[] = [
   { mode: 'summarize', label: 'Summarize', icon: <FileText className="w-3 h-3" /> },
   { mode: 'expand', label: 'Expand', icon: <Maximize2 className="w-3 h-3" /> },
@@ -229,6 +237,12 @@ export default function NoteEditor() {
 
   const insertImage = () => {
     if (imageUrl.trim()) {
+      if (countImagesInEditor(editorRef.current) >= MAX_IMAGES_PER_NOTE) {
+        setEngineStatus('Image limit reached (max 4 images per note)');
+        setTimeout(() => setEngineStatus('Intelligence Idle'), 3000);
+        return;
+      }
+
       editorRef.current?.focus();
       const safeUrl = imageUrl.trim();
       document.execCommand('insertHTML', false, `<img src="${safeUrl}" alt="image" data-wsh-image="true" style="max-width:100%;width:${imageWidthPercent}%;height:auto;resize:both;overflow:auto;display:block;border-radius:8px;margin:8px 0" />`);

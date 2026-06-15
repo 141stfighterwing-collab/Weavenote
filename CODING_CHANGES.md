@@ -1,3 +1,54 @@
+# WSH v4.4.9 — Coding Changes
+
+## Overview
+v4.4.9 adds simple but important image guardrails for note content:
+
+1. **Maximum 4 images per note**
+2. **Maximum 5 MB per image attachment**
+
+This keeps image-heavy notes from turning into giant payloads and provides predictable limits for performance.
+
+## 1. NoteEditor.tsx — image count and size enforcement
+
+**File:** `src/components/wsh/NoteEditor.tsx`
+
+### Added
+- `MAX_IMAGES_PER_NOTE = 4`
+- `MAX_IMAGE_BYTES = 5 * 1024 * 1024`
+- helper to count images currently embedded in the editor
+
+### Changed
+- attached image files are rejected if they exceed 5 MB
+- attached image files are rejected if the note already contains 4 images
+- URL-based image insertion is also blocked once the note reaches 4 images
+- user gets explicit editor status feedback when either limit is hit
+
+### Effect
+- prevents runaway image stuffing into a single note/post
+- keeps note size and editor responsiveness more predictable
+
+## 2. Versioning / release trail
+
+**Files:**
+- `package.json`
+- `CHANGELOG.md`
+- `CODING_CHANGES.md`
+
+### Changed
+- bumped version from `4.4.8` to `4.4.9`
+- added changelog entry for image limits
+- added this coding change record
+
+## Files Changed
+| # | File | Description |
+|---|------|-------------|
+| 1 | `src/components/wsh/NoteEditor.tsx` | Enforced max-image count and per-image file-size guardrails |
+| 2 | `package.json` | Version bump to 4.4.9 |
+| 3 | `CHANGELOG.md` | Added 4.4.9 release notes |
+| 4 | `CODING_CHANGES.md` | Added technical record for the image-limit patch |
+
+---
+
 # WSH v4.4.8 — Coding Changes
 
 ## Overview

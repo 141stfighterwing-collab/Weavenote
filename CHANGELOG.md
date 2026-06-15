@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.4.9] - 2026-06-15
+
+### Changed
+- **Image guardrails for notes** — Added a hard cap of **4 images per note** and a **5 MB maximum per image attachment** in the note editor flow to keep note payloads responsive and reduce runaway image-heavy saves.
+
+### UX
+- When a user exceeds the image limit or file-size limit, the editor now surfaces a clear status message instead of silently accepting oversized content.
+
+### Changed
+- **Version bumped to 4.4.9** for the note-image limit enforcement patch.
+
+---
+
 ## [4.4.8] - 2026-06-15
 
 ### Added
