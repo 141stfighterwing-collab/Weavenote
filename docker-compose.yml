@@ -1,0 +1,128 @@
+services:
+  # ── PostgreSQL Database ────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: wsh-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-wsh}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wsh-secret-pw}
+      POSTGRES_DB: ${POSTGRES_DB:-weavenote}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wsh} -d ${POSTGRES_DB:-weavenote}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - wsh-net
+
+  # ── WSH Application ────────────────────────────────────────────
+  weavenote:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_VERSION: "4.4.7"
+    container_name: weavenote-app
+    image: weavenote:4.4.7
+    ports:
+      - "${WSH_PORT:-8883}:3000"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-wsh}:${POSTGRES_PASSWORD:-wsh-secret-pw}@postgres:5432/${POSTGRES_DB:-weavenote}
+      - AI_PROVIDER=${AI_PROVIDER:-gemini}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-AIzaSyDiZhsZhPNJ2bTps7MDZRuwJ18O7VLLXzg}
+      - AI_SYNTHESIS_MODEL=${AI_SYNTHESIS_MODEL:-}
+      - AI_SYNTHESIS_TEMPERATURE=${AI_SYNTHESIS_TEMPERATURE:-0.7}
+      - AI_SYNTHESIS_MAX_TOKENS=${AI_SYNTHESIS_MAX_TOKENS:-4096}
+      - AI_DAILY_LIMIT=${AI_DAILY_LIMIT:-800}
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - ADMIN_DEFAULT_USERNAME=${ADMIN_DEFAULT_USERNAME:-admin}
+      - ADMIN_DEFAULT_EMAIL=${ADMIN_DEFAULT_EMAIL:-admin@example.com}
+      - ADMIN_DEFAULT_PASSWORD=${ADMIN_DEFAULT_PASSWORD:-admin123}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - weavenote-data:/app/tmp
+      - upload-data:/app/upload
+      - wsh-env:/app/tmp/env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    networks:
+      - wsh-net
+
+  # ── Database Viewer (Adminer) on port 5682 ─────────────────────
+  db-viewer:
+    image: adminer:latest
+    container_name: wsh-dbviewer
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5682:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: pepa-linhac
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - wsh-net
+
+  # ── pgAdmin (optional — requires admin profile) ────────────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: wsh-pgadmin
+    restart: unless-stopped
+    profiles:
+      - admin
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - wsh-net
+
+volumes:
+  upload-data:
+    driver: local
+  postgres-data:
+    driver: local
+  weavenote-data:
+    driver: local
+  pgadmin-data:
+    driver: local
+  wsh-env:
+    driver: local
+
+networks:
+  wsh-net:
+    driver: bridge
