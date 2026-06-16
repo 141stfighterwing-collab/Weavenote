@@ -73,10 +73,10 @@ const Calendar: React.FC<{ activeDate: Date | null; onDateClick: (d: Date | null
             <div className="flex items-center justify-between mb-3 px-1">
                 <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200">{monthNames[viewDate.getMonth()]} {viewDate.getFullYear()}</h4>
                 <div className="flex gap-1">
-                    <button onClick={handlePrev} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
+                    <button onClick={handlePrev} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none" aria-label="Previous month" title="Previous Month">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="m15 18-6-6 6-6"/></svg>
                     </button>
-                    <button onClick={handleNext} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
+                    <button onClick={handleNext} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none" aria-label="Next month" title="Next Month">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="m9 18 6-6-6-6"/></svg>
                     </button>
                 </div>
@@ -182,7 +182,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                 onDragOver={(e) => handleDragOver(e, null)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, undefined)}
-                className={`w-full flex items-center justify-between p-sm rounded-lg transition-colors group text-on-surface relative ${activeFolderId === null ? 'bg-surface-container before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:bg-primary before:rounded-r-full' : 'hover:bg-surface-container'} ${dragOverFolderId === 'null' ? 'ring-2 ring-primary ring-inset bg-primary/10' : ''}`}
+                className={`w-full flex items-center justify-between p-sm rounded-lg transition-colors group text-on-surface relative focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${activeFolderId === null ? 'bg-surface-container before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:bg-primary before:rounded-r-full' : 'hover:bg-surface-container'} ${dragOverFolderId === 'null' ? 'ring-2 ring-primary ring-inset bg-primary/10' : ''}`}
+                aria-label="View all notes"
             >
                 <div className={`flex items-center gap-sm ${activeFolderId === null ? 'ml-1' : ''}`}>
                     <span className={`material-symbols-outlined text-[18px] ${activeFolderId === null ? 'text-primary' : 'text-outline'}`}>book</span>
@@ -205,7 +206,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                         onDragLeave={handleDragLeave}
                         onDrop={(e) => handleDrop(e, folder.id)}
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onFolderClick(folder.id); }}
-                        className={`w-full flex items-center justify-between p-sm rounded-lg transition-colors group text-on-surface relative cursor-pointer ${isActive ? 'bg-surface-container before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:bg-primary before:rounded-r-full' : 'hover:bg-surface-container'} ${isDragOver ? 'ring-2 ring-primary ring-inset bg-primary/10 scale-[1.02]' : ''}`}
+                        className={`w-full flex items-center justify-between p-sm rounded-lg transition-colors group text-on-surface relative cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${isActive ? 'bg-surface-container before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:bg-primary before:rounded-r-full' : 'hover:bg-surface-container'} ${isDragOver ? 'ring-2 ring-primary ring-inset bg-primary/10 scale-[1.02]' : ''}`}
+                        aria-label={`View notes in folder ${folder.name}`}
                     >
                         <div className={`flex items-center gap-sm ${isActive ? 'ml-1' : ''}`}>
                             <span className={`material-symbols-outlined text-[18px] ${isActive ? 'text-primary' : 'text-outline'}`}>folder</span>
@@ -236,7 +238,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <button 
                         key={tag} 
                         onClick={() => onTagClick(tag)}
-                        className={`px-3 py-1 text-[11px] font-bold uppercase rounded-lg border transition-all flex items-center gap-2 ${isActive ? 'bg-primary/20 text-primary border-primary/30' : 'bg-surface text-on-surface border-outline-variant hover:border-outline'}`}
+                        className={`px-3 py-1 text-[11px] font-bold uppercase rounded-lg border transition-all flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none ${isActive ? 'bg-primary/20 text-primary border-primary/30' : 'bg-surface text-on-surface border-outline-variant hover:border-outline'}`}
+                        aria-label={`Filter by tag ${tag}`}
+                        aria-pressed={isActive}
                     >
                         <span>#{tag}</span>
                         <span className="text-[9px] opacity-50">{count}</span>
