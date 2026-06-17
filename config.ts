@@ -3,7 +3,7 @@
  */
 
 // Helper to safely check environment variables
-const getEnvironmentKey = (key: string): string | undefined => {
+export const getEnvironmentKey = (key: string): string | undefined => {
   try {
     // @ts-ignore
     if (typeof import.meta !== 'undefined' && import.meta.env?.[key]) {
@@ -20,12 +20,13 @@ const getEnvironmentKey = (key: string): string | undefined => {
 // Note: Gemini API Key is now handled directly via process.env.API_KEY in services
 
 // FIREBASE CONFIGURATION
+// Security: Hardcoded secrets removed. Ensure these are provided via environment variables.
 export const FIREBASE_CONFIG = {
-  apiKey: getEnvironmentKey('VITE_FIREBASE_API_KEY') || "AIzaSyDXMMFw_NfQr9fcrq6-38BNPcwrvQVCklo",
-  authDomain: getEnvironmentKey('VITE_FIREBASE_AUTH_DOMAIN') || "weavernote-eeaff.firebaseapp.com",
-  projectId: getEnvironmentKey('VITE_FIREBASE_PROJECT_ID') || "weavernote-eeaff",
-  storageBucket: getEnvironmentKey('VITE_FIREBASE_STORAGE_BUCKET') || "weavernote-eeaff.firebasestorage.app",
-  messagingSenderId: getEnvironmentKey('VITE_FIREBASE_MESSAGING_SENDER_ID') || "217757941342",
-  appId: getEnvironmentKey('VITE_FIREBASE_APP_ID') || "1:217757941342:web:7921402a35a582af3dfecf",
-  measurementId: getEnvironmentKey('VITE_FIREBASE_MEASUREMENT_ID') || "G-ZX4TYZENSM" 
+  apiKey: getEnvironmentKey('VITE_FIREBASE_API_KEY') || "",
+  authDomain: getEnvironmentKey('VITE_FIREBASE_AUTH_DOMAIN') || "",
+  projectId: getEnvironmentKey('VITE_FIREBASE_PROJECT_ID') || "",
+  storageBucket: getEnvironmentKey('VITE_FIREBASE_STORAGE_BUCKET') || "",
+  messagingSenderId: getEnvironmentKey('VITE_FIREBASE_MESSAGING_SENDER_ID') || "",
+  appId: getEnvironmentKey('VITE_FIREBASE_APP_ID') || "",
+  measurementId: getEnvironmentKey('VITE_FIREBASE_MEASUREMENT_ID') || ""
 };

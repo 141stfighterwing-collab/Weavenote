@@ -24,6 +24,7 @@ import {
 } from 'firebase/firestore';
 import { User, Permission, UserStatus, UserRole } from '../types';
 import { DiagnosticLog } from './geminiService';
+import { getEnvironmentKey } from '../config';
 
 export interface AuditLogEntry {
     id: string;
@@ -178,7 +179,8 @@ export const login = async (usernameOrEmail: string, password: string): Promise<
         let email = usernameOrEmail.trim();
         
         // Admin Bootstrap Override
-        if (usernameOrEmail === 'admin' && password === (process.env.ADMIN_SETUP_PASS || "Zaqxsw12gobeavers")) {
+        // Security: Hardcoded default password removed. Use ADMIN_SETUP_PASS environment variable.
+        if (usernameOrEmail === 'admin' && password === getEnvironmentKey('ADMIN_SETUP_PASS')) {
             email = 'system-bootstrap@weavenote.com';
             try {
                 const cred = await signInWithEmailAndPassword(auth, email, password);
