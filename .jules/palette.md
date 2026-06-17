@@ -1,0 +1,3 @@
+## 2026-05-09 - Focus Visibility and Shortcut Patterns
+**Learning:** In a dense UI like WeaveNote, using `focus:ring-0` on inputs significantly impairs keyboard navigation discoverability. Transitioning to `focus-visible:ring-2` provides the necessary visual anchor for power users without cluttering the UI for mouse users. Additionally, surfacing keyboard shortcuts (like Cmd/Ctrl + Enter) via tooltips on primary action buttons dramatically improves feature discoverability.
+**Action:** Always prefer `focus-visible` over `focus` for focus rings and ensure primary submission actions have both a keyboard listener and a corresponding tooltip hint.

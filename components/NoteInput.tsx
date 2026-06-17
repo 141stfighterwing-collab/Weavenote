@@ -63,6 +63,15 @@ const NoteInput: React.FC<NoteInputProps> = ({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      if (!isProcessing && !isIngesting) {
+        handleAction(false);
+      }
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -150,25 +159,32 @@ const NoteInput: React.FC<NoteInputProps> = ({
         <div className="p-md border-b border-outline-variant bg-surface-container-high/50">
             <input 
               type="text" value={title} onChange={(e) => setTitle(e.target.value)} 
+              onKeyDown={handleKeyDown}
               placeholder={activeType === 'project' ? "Project Identity Title..." : "Title of this Idea block..."} 
-              className="w-full bg-transparent border-none font-h1 text-[24px] font-bold text-on-surface placeholder:text-outline focus:ring-0 outline-none" 
+              className="w-full bg-transparent border-none font-h1 text-[24px] font-bold text-on-surface placeholder:text-outline focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded"
             />
         </div>
 
         <div className="px-md py-sm border-b border-outline-variant flex items-center justify-between bg-surface-container">
             <div className="flex items-center gap-md">
                 <div className="flex gap-sm border-r border-outline-variant pr-md mr-2 text-on-surface-variant">
-                    <button onClick={() => execCommand('bold')} className="hover:text-primary transition-colors"><span className="material-symbols-outlined">format_bold</span></button>
-                    <button onClick={() => execCommand('italic')} className="hover:text-primary transition-colors"><span className="material-symbols-outlined">format_italic</span></button>
-                    <button onClick={() => execCommand('insertUnorderedList')} className="hover:text-primary transition-colors"><span className="material-symbols-outlined">format_list_bulleted</span></button>
+                    <button onClick={() => execCommand('bold')} className="hover:text-primary transition-colors" aria-label="Bold" title="Bold"><span className="material-symbols-outlined">format_bold</span></button>
+                    <button onClick={() => execCommand('italic')} className="hover:text-primary transition-colors" aria-label="Italic" title="Italic"><span className="material-symbols-outlined">format_italic</span></button>
+                    <button onClick={() => execCommand('insertUnorderedList')} className="hover:text-primary transition-colors" aria-label="Bullet List" title="Bullet List"><span className="material-symbols-outlined">format_list_bulleted</span></button>
                 </div>
                 <div className="flex gap-sm text-on-surface-variant relative">
                     <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".pdf,.txt,.md" />
-                    <button onClick={() => fileInputRef.current?.click()} className={`hover:text-primary transition-colors ${isIngesting ? 'animate-pulse text-primary' : ''}`} disabled={isIngesting}>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`hover:text-primary transition-colors ${isIngesting ? 'animate-pulse text-primary' : ''}`}
+                      disabled={isIngesting}
+                      aria-label="Attach File"
+                      title="Attach File"
+                    >
                         <span className="material-symbols-outlined">{activeType === 'document' ? 'upload_file' : 'attach_file'}</span>
                     </button>
-                    <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="hover:text-primary transition-colors"><span className="material-symbols-outlined">mood</span></button>
-                    <button onClick={() => setShowColorPicker(!showColorPicker)} className="hover:text-primary transition-colors"><span className="material-symbols-outlined">palette</span></button>
+                    <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="hover:text-primary transition-colors" aria-label="Insert Emoji" title="Insert Emoji"><span className="material-symbols-outlined">mood</span></button>
+                    <button onClick={() => setShowColorPicker(!showColorPicker)} className="hover:text-primary transition-colors" aria-label="Change Color" title="Change Color"><span className="material-symbols-outlined">palette</span></button>
 
                     {showEmojiPicker && (
                         <div className="absolute top-full left-0 mt-2 p-2 bg-surface-container-highest border border-outline-variant rounded-xl shadow-2xl z-50 grid grid-cols-4 gap-1 min-w-[140px]">
@@ -219,16 +235,16 @@ const NoteInput: React.FC<NoteInputProps> = ({
             <div className={`flex flex-col md:flex-row gap-4 min-h-[300px]`}>
                 <div className="flex-1 flex flex-col min-w-0 relative">
                     <div 
-                        ref={editorRef} contentEditable onPaste={handlePaste}
-                        className="flex-1 p-md focus:outline-none text-body-lg whitespace-pre-wrap leading-relaxed empty:before:content-['Start_writing_your_thoughts...'] empty:before:text-outline-variant overflow-y-auto custom-scrollbar bg-transparent text-on-surface resize-y"
+                        ref={editorRef} contentEditable onPaste={handlePaste} onKeyDown={handleKeyDown}
+                        className="flex-1 p-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl text-body-lg whitespace-pre-wrap leading-relaxed empty:before:content-['Start_writing_your_thoughts...'] empty:before:text-outline-variant overflow-y-auto custom-scrollbar bg-transparent text-on-surface resize-y"
                     />
                 </div>
 
                 {activeType === 'code' && (
                     <div className="flex-1 flex flex-col min-w-0 animate-[fadeIn_0.3s_ease-out]">
                         <div 
-                            ref={codeEditorRef} contentEditable
-                            className="flex-1 p-md focus:outline-none text-sm font-mono whitespace-pre bg-surface-dim text-secondary selection:bg-secondary/30 overflow-y-auto custom-scrollbar rounded-xl border border-outline-variant resize-y empty:before:content-['//_Paste_raw_source_code_here...'] empty:before:text-outline"
+                            ref={codeEditorRef} contentEditable onKeyDown={handleKeyDown}
+                            className="flex-1 p-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary text-sm font-mono whitespace-pre bg-surface-dim text-secondary selection:bg-secondary/30 overflow-y-auto custom-scrollbar rounded-xl border border-outline-variant resize-y empty:before:content-['//_Paste_raw_source_code_here...'] empty:before:text-outline"
                         />
                     </div>
                 )}
@@ -246,8 +262,19 @@ const NoteInput: React.FC<NoteInputProps> = ({
                     ))}
                     <input 
                         type="text" value={tagInput} onChange={e => setTagInput(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const val = tagInput.trim().toLowerCase().replace('#',''); if (val && !tags.includes(val)) { setTags([...tags, val]); setTagInput(''); } } }}
-                        placeholder="Add tag..." className="bg-transparent border-none text-[11px] focus:ring-0 p-0 w-24 outline-none placeholder:text-outline-variant"
+                        onKeyDown={e => {
+                            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                                e.preventDefault();
+                                if (!isProcessing && !isIngesting) handleAction(false);
+                                return;
+                            }
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const val = tagInput.trim().toLowerCase().replace('#','');
+                                if (val && !tags.includes(val)) { setTags([...tags, val]); setTagInput(''); }
+                            }
+                        }}
+                        placeholder="Add tag..." className="bg-transparent border-none text-[11px] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none rounded p-0 w-24 placeholder:text-outline-variant"
                     />
                 </div>
             </div>
@@ -257,7 +284,7 @@ const NoteInput: React.FC<NoteInputProps> = ({
                     {aiStep ? `✨ ${aiStep}` : ""}
                 </div>
                 <div className="flex gap-md">
-                    <button onClick={() => handleAction(false)} disabled={isProcessing || isIngesting} className="px-lg py-sm rounded-lg border border-outline text-on-surface hover:bg-surface-variant transition-colors font-semibold active:scale-[0.98]">SAVE</button>
+                    <button onClick={() => handleAction(false)} disabled={isProcessing || isIngesting} className="px-lg py-sm rounded-lg border border-outline text-on-surface hover:bg-surface-variant transition-colors font-semibold active:scale-[0.98]" title="Save Note (Cmd/Ctrl + Enter)">SAVE</button>
                     <button 
                       onClick={() => handleAction(true)} disabled={isProcessing || isGuest || isIngesting} 
                       className={`px-lg py-sm rounded-lg bg-secondary text-on-secondary font-bold flex items-center gap-sm shadow-[0_0_20px_rgba(255,185,95,0.2)] hover:opacity-90 active:scale-[0.98] transition-all ${isGuest || isIngesting ? 'opacity-50 cursor-not-allowed' : ''}`}
