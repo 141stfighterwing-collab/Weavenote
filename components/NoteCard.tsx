@@ -106,6 +106,7 @@ const NoteCard: React.FC<NoteCardProps> = ({
                   onClick={(e) => { e.stopPropagation(); onToggleCheckbox(note.id, index); }}
                   className="inline-flex items-center justify-center mr-2 transform active:scale-75 transition-transform text-sm"
                   title={props.checked ? "Completed" : "Mark Complete"}
+                  aria-label={props.checked ? "Completed" : "Mark Complete"}
                 >
                   {props.checked ? '✅' : '⬜'}
                 </button>
@@ -195,17 +196,18 @@ const NoteCard: React.FC<NoteCardProps> = ({
             <div className="text-[10px] text-outline font-bold uppercase tracking-widest">{new Date(note.createdAt).toLocaleDateString()}</div>
             <div className="flex items-center gap-1 shrink-0 relative">
             <div className="relative">
-                <button onClick={(e) => { e.stopPropagation(); setShowColorPicker(!showColorPicker); setShowCustomColorPicker(false); }} className={`p-1.5 flex items-center justify-center rounded hover:bg-surface-variant transition-colors text-on-surface-variant`}><span className="material-symbols-outlined text-[18px]">palette</span></button>
+                <button onClick={(e) => { e.stopPropagation(); setShowColorPicker(!showColorPicker); setShowCustomColorPicker(false); }} className={`p-1.5 flex items-center justify-center rounded hover:bg-surface-variant transition-colors text-on-surface-variant`} aria-label="Change Color" title="Change Color"><span className="material-symbols-outlined text-[18px]">palette</span></button>
                 {showColorPicker && (
                     <div className="absolute bottom-full right-0 mb-3 p-3 bg-surface-container-highest rounded-xl shadow-2xl border border-outline-variant flex flex-col gap-3 w-44 z-50">
                         <div className="flex flex-wrap gap-1.5">
                             {Object.values(NoteColor).map((c) => (
-                                <button key={c} onClick={(e) => { e.stopPropagation(); onChangeColor(note.id, c); onUpdateColors?.(note.id, undefined, undefined); setShowColorPicker(false); }} className={`w-7 h-7 rounded border border-outline transition-transform hover:scale-110 ${c === 'matrix' ? 'bg-black border-[#39ff14]' : `bg-${c}-200`}`} title={c} />
+                                <button key={c} onClick={(e) => { e.stopPropagation(); onChangeColor(note.id, c); onUpdateColors?.(note.id, undefined, undefined); setShowColorPicker(false); }} className={`w-7 h-7 rounded border border-outline transition-transform hover:scale-110 ${c === 'matrix' ? 'bg-black border-[#39ff14]' : `bg-${c}-200`}`} title={c} aria-label={`Color ${c}`} />
                             ))}
                         </div>
                         <button 
                             onClick={(e) => { e.stopPropagation(); setShowCustomColorPicker(true); setShowColorPicker(false); }}
                             className="text-label-caps py-2 bg-surface hover:bg-surface-variant rounded border border-outline transition-colors text-on-surface"
+                            aria-label="Open Custom Color Picker"
                         >
                             Custom Colors
                         </button>
@@ -222,6 +224,7 @@ const NoteCard: React.FC<NoteCardProps> = ({
                                         onClick={(e) => { e.stopPropagation(); onUpdateColors?.(note.id, c, note.backgroundColor); }} 
                                         className={`w-6 h-6 rounded-full border border-black/10 ${note.textColor === c ? 'ring-2 ring-primary' : ''}`} 
                                         style={{backgroundColor: c}} 
+                                        aria-label={`Text color ${c}`}
                                     />
                                 ))}
                             </div>
@@ -235,6 +238,7 @@ const NoteCard: React.FC<NoteCardProps> = ({
                                         onClick={(e) => { e.stopPropagation(); onUpdateColors?.(note.id, note.textColor, c); }} 
                                         className={`w-6 h-6 rounded border border-black/10 ${note.backgroundColor === c ? 'ring-2 ring-primary' : ''}`} 
                                         style={{backgroundColor: c}} 
+                                        aria-label={`Background color ${c}`}
                                     />
                                 ))}
                             </div>
@@ -242,14 +246,15 @@ const NoteCard: React.FC<NoteCardProps> = ({
                         <button 
                             onClick={(e) => { e.stopPropagation(); onUpdateColors?.(note.id, undefined, undefined); setShowCustomColorPicker(false); }}
                             className="text-[9px] font-black uppercase tracking-widest py-2 text-error hover:bg-error-container rounded transition-colors border border-error-container"
+                            aria-label="Reset to Default"
                         >
                             Reset
                         </button>
                     </div>
                 )}
             </div>
-            <button onClick={(e) => { e.stopPropagation(); onEdit(note); }} className={`p-1.5 flex items-center justify-center rounded hover:bg-surface-variant transition-colors text-on-surface-variant`}><span className="material-symbols-outlined text-[18px]">edit</span></button>
-            <button onClick={(e) => { e.stopPropagation(); onDelete(note.id); }} className="p-1.5 flex items-center justify-center rounded hover:bg-error-container hover:text-on-error-container transition-colors text-error"><span className="material-symbols-outlined text-[18px]">delete</span></button>
+            <button onClick={(e) => { e.stopPropagation(); onEdit(note); }} className={`p-1.5 flex items-center justify-center rounded hover:bg-surface-variant transition-colors text-on-surface-variant`} aria-label="Edit Note" title="Edit Note"><span className="material-symbols-outlined text-[18px]">edit</span></button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(note.id); }} className="p-1.5 flex items-center justify-center rounded hover:bg-error-container hover:text-on-error-container transition-colors text-error" aria-label="Delete Note" title="Delete Note"><span className="material-symbols-outlined text-[18px]">delete</span></button>
             </div>
         </div>
       </div>
