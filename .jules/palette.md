@@ -1,0 +1,3 @@
+## 2026-05-10 - NoteInput Accessibility and Micro-UX
+**Learning:** Icon-only buttons and complex input components like `NoteInput` require explicit ARIA roles (tablist, tab, aria-selected) and labels to be usable by screen readers. Adding `aria-live="polite"` to AI status indicators ensures users are aware of background processing without being interrupted. For micro-UX, keyboard shortcuts like `Cmd/Ctrl + Enter` significantly improve speed, but their presence must be clearly communicated via tooltips on the primary action button to avoid "hidden" features.
+**Action:** Always include keyboard shortcut hints in the `title` attribute of primary action buttons. Ensure all icon-only buttons have descriptive `aria-label` and `title` attributes.
